@@ -2,6 +2,8 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TICK_MS } from '../config';
 import { phaseAtTick } from '../domain/phase';
 import { SimState } from '../domain/types';
+import { localizeCard } from '../i18n/cards';
+import { t } from '../i18n/locale';
 import { loadProgression, recordRunEnd, saveProgression, unlockLabel } from '../meta/progression';
 import { RELICS } from '../meta/relics';
 import { clearSave } from '../meta/save';
@@ -28,7 +30,7 @@ export class GameOverScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
 
     // 타이틀
-    this.add.text(GAME_WIDTH / 2, 60, '게임 오버', {
+    this.add.text(GAME_WIDTH / 2, 60, t('gameover.title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '56px', color: '#e74c3c', fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -40,7 +42,7 @@ export class GameOverScene extends Phaser.Scene {
     const panelX = 180, panelY = 180, panelW = GAME_WIDTH - 360, panelH = 360;
     this.add.rectangle(panelX, panelY, panelW, panelH, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
 
-    this.add.text(panelX + 20, panelY + 16, '이번 런 결산', {
+    this.add.text(panelX + 20, panelY + 16, t('gameover.summary_title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
     });
 
@@ -55,27 +57,29 @@ export class GameOverScene extends Phaser.Scene {
 
     // 우측 — 획득 카드 리스트
     const rightX = panelX + 440;
-    this.add.text(rightX, panelY + 56, '획득 유물', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#e2a04a' });
+    this.add.text(rightX, panelY + 56, t('gameover.acquired_relics'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#e2a04a' });
     if (s.ownedRelics.length === 0) {
-      this.add.text(rightX, panelY + 80, '— 없음', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX, panelY + 80, t('common.empty'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedRelics) {
         const r = RELICS[id];
-        this.add.text(rightX, ry, `• ${r?.name ?? id}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
+        const nm = r ? localizeCard('relic', r).name : id;
+        this.add.text(rightX, ry, `• ${nm}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }
 
     const rightX2 = rightX + 200;
-    this.add.text(rightX2, panelY + 56, '보유 스킬', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#7ed957' });
+    this.add.text(rightX2, panelY + 56, t('gameover.held_skills'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#7ed957' });
     if (s.ownedSkills.length === 0) {
-      this.add.text(rightX2, panelY + 80, '— 없음', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX2, panelY + 80, t('common.empty'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedSkills) {
         const sk = SKILLS[id];
-        this.add.text(rightX2, ry, `• ${sk?.name ?? id}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
+        const nm = sk ? localizeCard('skill', sk).name : id;
+        this.add.text(rightX2, ry, `• ${nm}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }
@@ -84,7 +88,7 @@ export class GameOverScene extends Phaser.Scene {
     if (newUnlocks.length > 0) {
       const noticeY = panelY + panelH + 12;
       this.add.rectangle(panelX, noticeY, panelW, 50, 0x2a3d1f, 1).setOrigin(0, 0).setStrokeStyle(2, 0x7ed957);
-      this.add.text(panelX + panelW / 2, noticeY + 8, '🎉 새 테마 해금!', {
+      this.add.text(panelX + panelW / 2, noticeY + 8, t('gameover.unlock_banner'), {
         fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: '#7ed957', fontStyle: 'bold',
       }).setOrigin(0.5, 0);
       const names = newUnlocks.map((id) => THEMES[id]?.name ?? id).join(', ');
@@ -95,9 +99,9 @@ export class GameOverScene extends Phaser.Scene {
 
     // 버튼
     const btnY = GAME_HEIGHT - 70;
-    new Button(this, GAME_WIDTH / 2 - 130, btnY, 200, 44, '다시 도전 (R)', () => this.restart(),
+    new Button(this, GAME_WIDTH / 2 - 130, btnY, 200, 44, t('gameover.retry'), () => this.restart(),
       { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
-    new Button(this, GAME_WIDTH / 2 + 130, btnY, 200, 44, '메인 메뉴', () => this.toTitle(),
+    new Button(this, GAME_WIDTH / 2 + 130, btnY, 200, 44, t('gameover.menu'), () => this.toTitle(),
       { fontSize: 14 });
 
     this.input.keyboard?.on('keydown-R', () => this.restart());
@@ -129,30 +133,25 @@ export class GameOverScene extends Phaser.Scene {
     const angryPct = s.servedCount > 0 ? Math.round((s.angryServedCount / s.servedCount) * 100) : 0;
 
     return [
-      ['생존 시간', `${m}분 ${sec.toString().padStart(2, '0')}초`],
-      ['최종 일자', `${info.day + 1}일차 · ${this.phaseLabel(info.phase)}`],
-      ['처리 승객', `${s.servedCount}명`],
-      ['그중 불만 처리', `${s.angryServedCount}명 (${angryPct}%)`],
-      ['최종 골드', `${s.gold}G`],
-      ['최종 빌딩', `${s.building.floors.length}층`],
-      ['엘리베이터', `${elev.length}대 · 총 정원 ${totalCap}`],
-      ['보유 유물', `${s.ownedRelics.length}개`],
-      ['보유 스킬', `${s.ownedSkills.length}개`],
-      ['활성 변수', `${s.activeModifiers.length}개`],
+      [t('gameover.stat.survival'), `${m}m ${sec.toString().padStart(2, '0')}s`],
+      [t('gameover.stat.last_day'), `${info.day + 1} · ${t(`phase.${info.phase}` as 'phase.morning')}`],
+      [t('gameover.stat.served'), `${s.servedCount}`],
+      [t('gameover.stat.angry_served'), `${s.angryServedCount} (${angryPct}%)`],
+      [t('gameover.stat.gold'), `${s.gold}${t('common.gold_suffix')}`],
+      [t('gameover.stat.floors'), `${s.building.floors.length}`],
+      [t('gameover.stat.elevators'), `${elev.length} (cap ${totalCap})`],
+      [t('gameover.stat.relics'), `${s.ownedRelics.length}`],
+      [t('gameover.stat.skills'), `${s.ownedSkills.length}`],
+      [t('gameover.stat.modifiers'), `${s.activeModifiers.length}`],
     ];
-  }
-
-  private phaseLabel(p: string): string {
-    const map: Record<string, string> = { morning: '출근', work: '근무', lunch: '점심', evening: '퇴근', night: '야간' };
-    return map[p] ?? p;
   }
 
   private deathFlavor(s: SimState): string {
     const day = phaseAtTick(s.tick).day + 1;
-    if (day <= 1) return '하루도 못 버틸 줄이야...';
-    if (day <= 3) return '운영 정책을 조금만 더 다듬어보세요.';
-    if (day <= 7) return '꽤 버텼습니다. 한 주는 채울 수 있을까?';
-    if (day <= 14) return '베테랑 운영자의 경지에 가까워졌습니다.';
-    return '전설적인 빌딩 운영자였습니다.';
+    if (day <= 1) return t('gameover.flavor.0');
+    if (day <= 3) return t('gameover.flavor.3');
+    if (day <= 7) return t('gameover.flavor.7');
+    if (day <= 14) return t('gameover.flavor.14');
+    return t('gameover.flavor.max');
   }
 }

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { t } from '../i18n/locale';
 import { Button } from '../ui/Button';
 
 export interface HelpData { firstTime?: boolean }
@@ -66,11 +67,11 @@ export class HelpScene extends Phaser.Scene {
   create(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
 
-    this.add.text(GAME_WIDTH / 2, 28, this.firstTime ? '환영합니다 — 빠른 가이드' : '조작법 / 가이드', {
+    this.add.text(GAME_WIDTH / 2, 28, this.firstTime ? t('help.welcome') : t('help.title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '22px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    new Button(this, GAME_WIDTH - 80, 38, 100, 28, '닫기 (ESC)', () => this.scene.stop(),
+    new Button(this, GAME_WIDTH - 80, 38, 100, 28, t('help.close'), () => this.scene.stop(),
       { fontSize: 12 });
 
     this.input.keyboard?.on('keydown-ESC', () => this.scene.stop());

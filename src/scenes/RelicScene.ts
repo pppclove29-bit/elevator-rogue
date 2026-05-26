@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { localizeCard } from '../i18n/cards';
+import { t } from '../i18n/locale';
 import { RelicEntry, RELICS } from '../meta/relics';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
@@ -13,11 +15,11 @@ export class RelicScene extends Phaser.Scene {
     this.gs = this.scene.get('Game') as GameScene;
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.8);
 
-    this.add.text(GAME_WIDTH / 2, 60, '운명의 선택 — Relic', {
+    this.add.text(GAME_WIDTH / 2, 60, t('relic.title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '28px', color: COLORS.text,
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 96, '이번 런 동안 영구 지속. 3장 중 1택 (SKIP 가능)', {
+    this.add.text(GAME_WIDTH / 2, 96, t('relic.subtitle'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
@@ -40,7 +42,7 @@ export class RelicScene extends Phaser.Scene {
       this.drawCard(startX + i * (cardW + gap), cardY, cardW, cardH, choices[i]!);
     }
 
-    new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 50, 120, 36, 'SKIP', () => {
+    new Button(this, GAME_WIDTH / 2, GAME_HEIGHT - 50, 120, 36, t('reward.skip'), () => {
       this.gs.resolveRelic(null);
       this.scene.stop();
     }, { fontSize: 13 });
@@ -48,21 +50,22 @@ export class RelicScene extends Phaser.Scene {
 
   private drawCard(x: number, y: number, w: number, h: number, r: RelicEntry): void {
     const accent = r.type === 'pure' ? 0xe2a04a : r.type === 'tradeoff' ? 0xb08cff : 0x6a5a3a;
-    const tag = r.type === 'pure' ? 'RELIC' : r.type === 'tradeoff' ? 'RELIC · TRADE' : 'RELIC · CURSE';
+    const tag = r.type === 'pure' ? t('relic.tag.pure') : r.type === 'tradeoff' ? t('relic.tag.tradeoff') : t('relic.tag.curse');
+    const localized = localizeCard('relic', r);
 
     this.add.rectangle(x, y, w, h, 0x1c1c26, 1).setOrigin(0, 0).setStrokeStyle(2, accent);
     this.add.rectangle(x, y, w, 32, accent, 1).setOrigin(0, 0);
     this.add.text(x + 14, y + 6, tag, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#0b0b10' });
-    this.add.text(x + 14, y + 50, r.name, {
+    this.add.text(x + 14, y + 50, localized.name, {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '20px', color: COLORS.text, wordWrap: { width: w - 28 },
     });
-    this.add.text(x + 14, y + 110, r.desc, {
+    this.add.text(x + 14, y + 110, localized.desc, {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim, wordWrap: { width: w - 28 },
     });
-    this.add.text(x + 14, y + h - 80, '이번 런 동안 영구', {
+    this.add.text(x + 14, y + h - 80, t('relic.note'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e2a04a', fontStyle: 'italic',
     });
-    new Button(this, x + w / 2, y + h - 36, w - 40, 40, 'TAKE', () => {
+    new Button(this, x + w / 2, y + h - 36, w - 40, 40, t('reward.take'), () => {
       this.gs.resolveRelic(r.id);
       this.scene.stop();
     }, { fontSize: 14, bg: accent, bgHover: accent, textColor: '#0b0b10', textColorActive: '#0b0b10' });

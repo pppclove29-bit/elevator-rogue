@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { ElevatorId, ElevatorPolicy, FloorRole, PolicyParity, PolicyPickup } from '../domain/types';
 import { ROLE_COLOR, ROLE_SHORT } from '../domain/spawner';
+import { t } from '../i18n/locale';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
 
@@ -21,11 +22,11 @@ export class RuleEditorScene extends Phaser.Scene {
   create(): void {
     this.gs = this.scene.get('Game') as GameScene;
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
-    this.add.text(GAME_WIDTH / 2, 16, '엘리베이터 운영 정책', {
+    this.add.text(GAME_WIDTH / 2, 16, t('policy.title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '22px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    new Button(this, GAME_WIDTH - 100, 30, 140, 32, '재개 (Space)', () => this.gs.togglePause(), { fontSize: 13 });
+    new Button(this, GAME_WIDTH - 100, 30, 140, 32, t('policy.resume'), () => this.gs.togglePause(), { fontSize: 13 });
 
     this.content = this.add.container(0, 0);
     this.input.keyboard?.on('keydown-ESC', () => this.gs.togglePause());
@@ -62,7 +63,7 @@ export class RuleEditorScene extends Phaser.Scene {
       this.content.add([bg, t]);
     }
 
-    const hint = this.add.text(GAME_WIDTH / 2, 68, '엘리베이터별로 운영 범위와 픽업 정책을 설정하세요.', {
+    const hint = this.add.text(GAME_WIDTH / 2, 68, t('policy.hint'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
     this.content.add(hint);
@@ -80,19 +81,19 @@ export class RuleEditorScene extends Phaser.Scene {
     const rowGap = 80;
 
     // 1. 운영 층 범위
-    rowY = this.drawRangeRow(px + 24, rowY, pw - 48, '운영 층 범위', policy, floorCount);
+    rowY = this.drawRangeRow(px + 24, rowY, pw - 48, t('policy.floor_range'), policy, floorCount);
     rowY += rowGap;
 
     // 2. 층 패리티
-    rowY = this.drawParityRow(px + 24, rowY, pw - 48, '층 패리티', policy);
+    rowY = this.drawParityRow(px + 24, rowY, pw - 48, t('policy.parity'), policy);
     rowY += rowGap;
 
     // 3. 픽업 모드
-    rowY = this.drawPickupRow(px + 24, rowY, pw - 48, '픽업 대상', policy);
+    rowY = this.drawPickupRow(px + 24, rowY, pw - 48, t('policy.pickup_mode'), policy);
     rowY += rowGap;
 
     // 4. 정원 풀 시 하차 우선
-    this.drawToggleRow(px + 24, rowY, pw - 48, '정원 풀이면 즉시 하차', policy.prioritizeUnloadWhenFull, (v) => {
+    this.drawToggleRow(px + 24, rowY, pw - 48, t('policy.unload_when_full'), policy.prioritizeUnloadWhenFull, (v) => {
       this.gs.updatePolicy(this.currentElevator, { prioritizeUnloadWhenFull: v });
       this.rebuild();
     });
@@ -106,7 +107,7 @@ export class RuleEditorScene extends Phaser.Scene {
     const maxF = policy.maxFloor < 0 ? floorCount - 1 : policy.maxFloor;
 
     let bx = x + 140;
-    this.content.add(this.add.text(bx, y + 34, '최저층', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim }));
+    this.content.add(this.add.text(bx, y + 34, t('policy.min_floor'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim }));
     bx += 48;
     const minDec = new Button(this, bx + 12, y + 34, 24, 22, '−', () => {
       this.gs.updatePolicy(this.currentElevator, { minFloor: Math.max(0, minF - 1) }); this.rebuild();
@@ -117,7 +118,7 @@ export class RuleEditorScene extends Phaser.Scene {
     }, { fontSize: 14 });
 
     bx += 120;
-    this.content.add(this.add.text(bx, y + 34, '최고층', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim }));
+    this.content.add(this.add.text(bx, y + 34, t('policy.max_floor'), { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim }));
     bx += 48;
     const maxDec = new Button(this, bx + 12, y + 34, 24, 22, '−', () => {
       this.gs.updatePolicy(this.currentElevator, { maxFloor: Math.max(minF, maxF - 1) }); this.rebuild();
@@ -128,7 +129,7 @@ export class RuleEditorScene extends Phaser.Scene {
     }, { fontSize: 14 });
 
     bx += 120;
-    const noLimit = new Button(this, bx + 60, y + 34, 100, 24, '무제한', () => {
+    const noLimit = new Button(this, bx + 60, y + 34, 100, 24, t('policy.unlimited'), () => {
       this.gs.updatePolicy(this.currentElevator, { minFloor: 0, maxFloor: -1 }); this.rebuild();
     }, { fontSize: 11 });
 
@@ -139,7 +140,7 @@ export class RuleEditorScene extends Phaser.Scene {
   private drawParityRow(x: number, y: number, w: number, label: string, policy: ElevatorPolicy): number {
     this.content.add(this.add.rectangle(x, y, w, 60, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
     this.content.add(this.add.text(x + 14, y + 8, label, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.text }));
-    const opts: Array<[PolicyParity, string]> = [['all', '모두'], ['even', '짝수층(2,4,…)'], ['odd', '홀수층(1,3,…)']];
+    const opts: Array<[PolicyParity, string]> = [['all', t('policy.parity.all')], ['even', t('policy.parity.even')], ['odd', t('policy.parity.odd')]];
     let bx = x + 140;
     for (const [val, name] of opts) {
       const active = policy.parity === val;
@@ -158,9 +159,9 @@ export class RuleEditorScene extends Phaser.Scene {
     this.content.add(this.add.text(x + 14, y + 8, label, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.text }));
 
     const opts: Array<[PolicyPickup, string]> = [
-      ['any', '모든 호출'],
-      ['lobby-only', '1F(로비)에서만'],
-      ['role', '특정 역할만'],
+      ['any', t('policy.pickup.any')],
+      ['lobby-only', t('policy.pickup.lobby_only')],
+      ['role', t('policy.pickup.role')],
     ];
     let bx = x + 140;
     for (const [val, name] of opts) {

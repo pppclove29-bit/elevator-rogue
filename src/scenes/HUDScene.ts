@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS } from '../config';
-import { DAY_OF_WEEK_LABEL, dayOfWeekFor, dayToDate, phaseAtTick, PHASE_LABEL, WEEKEND } from '../domain/phase';
+import { dayOfWeekFor, dayToDate, phaseAtTick, WEEKEND } from '../domain/phase';
+import { t } from '../i18n/locale';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
 import { REPAIR_COST } from '../domain/types';
 import { MAX_SKILLS, skillById } from '../meta/skills';
@@ -109,7 +110,7 @@ export class HUDScene extends Phaser.Scene {
     let x = 16;
     const gap = 6;
 
-    this.pauseBtn = new ControlButton(this, x, y, 80, 28, '일시정지', () => game.togglePause());
+    this.pauseBtn = new ControlButton(this, x, y, 80, 28, t('hud.pause'), () => game.togglePause());
     x += 80 + gap + 8;
 
     for (const s of SPEEDS) {
@@ -119,7 +120,7 @@ export class HUDScene extends Phaser.Scene {
     }
 
     x += 8;
-    this.restartBtn = new ControlButton(this, x, y, 80, 28, '재시작', () => game.restart());
+    this.restartBtn = new ControlButton(this, x, y, 80, 28, t('hud.restart'), () => game.restart());
   }
 
   update(): void {
@@ -136,16 +137,19 @@ export class HUDScene extends Phaser.Scene {
     const dayNum = info.day + 1;
     const cal = dayToDate(dayNum);
     const dow = dayOfWeekFor(dayNum);
-    const dowLabel = DAY_OF_WEEK_LABEL[dow];
+    const dowLabel = t(`dow.${dow}` as 'dow.mon');
+    const phaseLabel = t(`phase.${info.phase}` as 'phase.morning');
     const weekendColor = WEEKEND.has(dow) ? '#ffd700' : COLORS.text;
-    const yearPrefix = cal.year > 1 ? `${cal.year}년차 ` : '';
-    this.phaseText.setText(`${yearPrefix}${cal.monthName} ${cal.date}일 (${dowLabel}) · ${PHASE_LABEL[info.phase]}`);
+    const yearPrefix = cal.year > 1 ? t('hud.day_year_prefix', { year: cal.year }) : '';
+    this.phaseText.setText(t('hud.day_format', {
+      prefix: yearPrefix, month: cal.month, date: cal.date, dow: dowLabel, phase: phaseLabel,
+    }));
     this.phaseText.setColor(weekendColor);
     const ratio = info.tickInPhase / info.phaseTicks;
     const barW = this.phaseBarBg.width;
     this.phaseBarFill.width = Math.max(2, Math.floor(barW * ratio));
 
-    this.pauseBtn.setLabel(game.paused ? '재개' : '일시정지');
+    this.pauseBtn.setLabel(game.paused ? t('hud.resume') : t('hud.pause'));
     this.pauseBtn.setActive(game.paused);
     for (let i = 0; i < SPEEDS.length; i++) {
       this.speedBtns[i]!.setActive(!game.paused && game.timeScale === SPEEDS[i]);
@@ -153,12 +157,12 @@ export class HUDScene extends Phaser.Scene {
     this.restartBtn.setActive(false);
 
     const angry = countActiveAngry(game.state);
-    this.dangerText.setText(`불만  ${angry} / ${GAME_OVER_ACTIVE_ANGRY}`);
+    this.dangerText.setText(`${t('hud.angry')}  ${angry} / ${GAME_OVER_ACTIVE_ANGRY}`);
     this.dangerText.setColor(angry >= GAME_OVER_ACTIVE_ANGRY - 1 ? '#e74c3c' : COLORS.textDim);
 
     const mods = game.state.activeModifiers;
-    this.modifierText.setText(mods.length > 0 ? `오늘의 변수: ${mods.length}` : '');
-    this.relicText.setText(game.state.ownedRelics.length > 0 ? `유물 ${game.state.ownedRelics.length}` : '');
+    this.modifierText.setText(mods.length > 0 ? t('hud.modifier_count', { n: mods.length }) : '');
+    this.relicText.setText(game.state.ownedRelics.length > 0 ? t('hud.relic_count', { n: game.state.ownedRelics.length }) : '');
     if (game.activeEventToday) {
       const isBoss = game.activeEventToday.name.includes('🔥');
       this.eventText.setText(isBoss ? game.activeEventToday.name : `⚠ ${game.activeEventToday.name}`);
@@ -189,7 +193,7 @@ export class HUDScene extends Phaser.Scene {
 
     const startY = 84;
     const titleY = startY;
-    const title = this.add.text(GAME_WIDTH - 16, titleY, '긴급 수리', {
+    const title = this.add.text(GAME_WIDTH - 16, titleY, t('hud.emergency_repair'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e74c3c',
     }).setOrigin(1, 0);
     this.repairContainer.add(title);
@@ -200,7 +204,7 @@ export class HUDScene extends Phaser.Scene {
       const bg = this.add.rectangle(GAME_WIDTH - 16, y, 150, 24, affordable ? 0xe74c3c : 0x4a2222, affordable ? 1 : 0.6)
         .setOrigin(1, 0).setStrokeStyle(1, 0x6a2c2c)
         .setInteractive({ useHandCursor: affordable });
-      const txt = this.add.text(GAME_WIDTH - 16 - 75, y + 12, `🔧 E${e.id + 1} 수리 ${REPAIR_COST}G`, {
+      const txt = this.add.text(GAME_WIDTH - 16 - 75, y + 12, t('hud.repair_button', { id: e.id + 1, cost: REPAIR_COST }), {
         fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px',
         color: affordable ? '#0b0b10' : '#7a5a5a',
       }).setOrigin(0.5);

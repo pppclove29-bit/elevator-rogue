@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { repairElevator } from '../domain/simulation';
+import { localizeCard } from '../i18n/cards';
+import { t } from '../i18n/locale';
 import { currentShopItems, rerollCost, ShopItem, tryReroll } from '../meta/shop';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
@@ -18,11 +20,11 @@ export class ShopScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
 
-    this.add.text(GAME_WIDTH / 2, 24, '상점', {
+    this.add.text(GAME_WIDTH / 2, 24, t('shop.title'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '26px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    this.add.text(GAME_WIDTH / 2, 58, '오늘의 매물 — 마음에 안 들면 리롤하세요. 다음 날 시작 시 매물 갱신.', {
+    this.add.text(GAME_WIDTH / 2, 58, t('shop.subtitle'), {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
@@ -30,13 +32,13 @@ export class ShopScene extends Phaser.Scene {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '22px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
-    new Button(this, GAME_WIDTH - 100, 36, 140, 32, '다음 날 시작', () => this.closeShop(), { fontSize: 13 });
+    new Button(this, GAME_WIDTH - 100, 36, 140, 32, t('shop.next_day'), () => this.closeShop(), { fontSize: 13 });
 
     this.rerollText = this.add.text(GAME_WIDTH / 2 - 80, GAME_HEIGHT - 60, '', {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
-    new Button(this, GAME_WIDTH / 2 + 60, GAME_HEIGHT - 60, 140, 36, '리롤 (?G)', () => {
+    new Button(this, GAME_WIDTH / 2 + 60, GAME_HEIGHT - 60, 140, 36, t('shop.reroll_button', { cost: '?' }), () => {
       this.doReroll();
     }, { fontSize: 13, bg: 0x4a3a22, bgHover: 0x6a542a, textColor: '#f5c542', textColorActive: '#f5c542' });
 
@@ -58,9 +60,9 @@ export class ShopScene extends Phaser.Scene {
 
   private rebuild(): void {
     this.content.removeAll(true);
-    this.goldText.setText(`${this.gs.state.gold}G`);
+    this.goldText.setText(`${this.gs.state.gold}${t('common.gold_suffix')}`);
     const cost = rerollCost(this.gs.state);
-    this.rerollText.setText(`리롤 ${this.gs.state.shopRerollCount}회 · 다음 ${cost}G`);
+    this.rerollText.setText(t('shop.reroll_status', { n: this.gs.state.shopRerollCount, cost }));
 
     // 리롤 버튼 라벨 갱신
     const rerollBtn = this.children.list.find(
@@ -85,10 +87,10 @@ export class ShopScene extends Phaser.Scene {
     }
 
     if (items.length === 0) {
-      const t = this.add.text(GAME_WIDTH / 2, startY + 60, '매물 없음 — 리롤하거나 다음 날 시작', {
+      const txt = this.add.text(GAME_WIDTH / 2, startY + 60, t('shop.no_items'), {
         fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: COLORS.textDim,
       }).setOrigin(0.5);
-      this.content.add(t);
+      this.content.add(txt);
     }
   }
 
@@ -117,13 +119,13 @@ export class ShopScene extends Phaser.Scene {
       wordWrap: { width: w - 20 },
     });
 
-    const cost = this.add.text(x + 10, y + h - 36, `${meta.cost}G`, {
+    const cost = this.add.text(x + 10, y + h - 36, `${meta.cost}${t('common.gold_suffix')}`, {
       fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '16px',
       color: affordable ? '#f5c542' : '#5a5a68',
     });
 
     const buy = new Button(this, x + w - 60, y + h - 20, 100, 28,
-      affordable ? '구매' : '골드 부족',
+      affordable ? t('shop.buy') : t('shop.no_gold'),
       () => { if (affordable) this.purchase(item); },
       { fontSize: 12, bg: affordable ? meta.accent : 0x2a2a35, bgHover: affordable ? meta.accent : 0x2a2a35,
         textColor: affordable ? '#0b0b10' : '#5a5a68',
@@ -136,12 +138,20 @@ export class ShopScene extends Phaser.Scene {
   private itemMeta(item: ShopItem): { tag: string; accent: number; name: string; desc: string; cost: number } {
     switch (item.kind) {
       case 'upgrade': {
-        const tagBase = '업그레이드';
-        const tag = item.card.stackable ? `${tagBase} · 누적` : `${tagBase} · 1회 한정`;
-        return { tag, accent: 0xf5c542, name: item.card.name, desc: item.card.desc, cost: item.card.cost };
+        const localized = localizeCard('up', item.card);
+        return {
+          tag: item.card.stackable ? t('shop.tag.upgrade_stackable') : t('shop.tag.upgrade_unique'),
+          accent: 0xf5c542, name: localized.name, desc: localized.desc, cost: item.card.cost,
+        };
       }
-      case 'skill':   return { tag: '스킬 · 1회 한정', accent: 0x7ed957, name: item.card.name, desc: item.card.desc, cost: item.card.cost };
-      case 'repair':  return { tag: '수리', accent: 0xe74c3c, name: `엘리베이터 E${item.elevatorId + 1} 수리`, desc: '고장 즉시 복구', cost: item.cost };
+      case 'skill': {
+        const localized = localizeCard('skill', item.card);
+        return { tag: t('shop.tag.skill'), accent: 0x7ed957, name: localized.name, desc: localized.desc, cost: item.card.cost };
+      }
+      case 'repair':
+        return { tag: t('shop.tag.repair'), accent: 0xe74c3c,
+          name: t('shop.repair_name', { id: item.elevatorId + 1 }),
+          desc: t('shop.repair_desc'), cost: item.cost };
     }
   }
 

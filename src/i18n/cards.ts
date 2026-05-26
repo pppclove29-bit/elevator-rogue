@@ -1,0 +1,293 @@
+/**
+ * 카드 (Modifier/Relic/Upgrade/Skill) name/desc 번역.
+ *
+ * 사용: tCard('mod.dm-bad-mood.name') / tCard('relic.r-host.desc') / ...
+ * 키 컨벤션: <kind>.<card-id>.<name|desc>
+ *   kind: mod | relic | up | skill
+ *
+ * 키가 없으면 fallback으로 카드 데이터의 name/desc를 반환하기 위해 헬퍼 사용.
+ */
+
+import { getLocale } from './locale';
+
+type CardDict = Record<string, string>;
+
+// ────────────────────────────────────────────────────────
+// 한국어 (코드의 카드 데이터와 동일 — fallback 기준)
+// ────────────────────────────────────────────────────────
+const KO: CardDict = {
+  // ── Daily Modifier 20 ───────────────
+  'mod.dm-traffic-jam-morning.name': '출근길 정체',
+  'mod.dm-traffic-jam-morning.desc': '출근 스폰 ×1.7 (간격 ×0.6)',
+  'mod.dm-lunch-rush.name': '점심 광풍',
+  'mod.dm-lunch-rush.desc': '점심 스폰 ×1.7',
+  'mod.dm-evening-rush.name': '퇴근 러시',
+  'mod.dm-evening-rush.desc': '퇴근 스폰 ×1.7',
+  'mod.dm-bad-mood.name': '짜증의 날',
+  'mod.dm-bad-mood.desc': '오늘 불만 누적 ×1.4',
+  'mod.dm-power-dip.name': '정전 경고',
+  'mod.dm-power-dip.desc': '오늘 엘베 속도 ×0.7',
+  'mod.dm-heavy-load.name': '무거운 짐',
+  'mod.dm-heavy-load.desc': '정차 시간 +4 tick',
+  'mod.dm-narrow-door.name': '좁은 문',
+  'mod.dm-narrow-door.desc': '엘베 정원 -2 (최소 2)',
+  'mod.dm-restaurant-fest.name': '식당가 축제',
+  'mod.dm-restaurant-fest.desc': '점심 식당 트래픽 폭증',
+  'mod.dm-vip-day.name': 'VIP 방문',
+  'mod.dm-vip-day.desc': '근무 스폰 ×1.5',
+  'mod.dm-night-shift.name': '야간 근무',
+  'mod.dm-night-shift.desc': '야간 스폰 ×3.3',
+  'mod.dm-fire-drill.name': '화재 대피',
+  'mod.dm-fire-drill.desc': '시작 시 랜덤 층 큐 +4',
+  'mod.dm-calm-day.name': '명상의 날',
+  'mod.dm-calm-day.desc': '오늘 불만 누적 ×0.7',
+  'mod.dm-smooth-ops.name': '효율 운영',
+  'mod.dm-smooth-ops.desc': '정차 시간 -2 tick',
+  'mod.dm-quiet-day.name': '한산한 하루',
+  'mod.dm-quiet-day.desc': '모든 페이즈 스폰 ×0.7',
+  'mod.dm-fast-motors.name': '신속 모터',
+  'mod.dm-fast-motors.desc': '엘베 속도 ×1.2',
+  'mod.dm-skill-prime.name': '즉발 풀가동',
+  'mod.dm-skill-prime.desc': '스킬 쿨다운 ×0.5',
+  'mod.dm-free-coffee.name': '무료 커피',
+  'mod.dm-free-coffee.desc': '층 큐 상한 +3',
+  'mod.dm-rush-rewards.name': '위기는 곧 기회',
+  'mod.dm-rush-rewards.desc': '스폰 ×1.5, 보상 +30G',
+  'mod.dm-marathon.name': '마라톤 데이',
+  'mod.dm-marathon.desc': '스폰 ×0.7, 불만 ×0.8',
+  'mod.dm-vip-protocol.name': 'VIP 의전',
+  'mod.dm-vip-protocol.desc': '엘베 속도 +20%, 정원 -1',
+
+  // ── Relics 25+ ──────────────────────
+  'relic.r-revolving-door.name': '회전문',
+  'relic.r-revolving-door.desc': '엘베 정원 +1',
+  'relic.r-light-cage.name': '가벼운 케이지',
+  'relic.r-light-cage.desc': '엘베 속도 +10%',
+  'relic.r-host.name': '친절한 안내원',
+  'relic.r-host.desc': '불만 누적 -5%',
+  'relic.r-24h-cafe.name': '24시간 카페',
+  'relic.r-24h-cafe.desc': '근무 페이즈 스폰 ×0.8',
+  'relic.r-security.name': '보안 시스템',
+  'relic.r-security.desc': '층 큐 상한 +2',
+  'relic.r-skill-keeper.name': '스킬 키퍼',
+  'relic.r-skill-keeper.desc': '스킬 쿨다운 -15%',
+  'relic.r-spare-key.name': '보조 키',
+  'relic.r-spare-key.desc': '시작 골드 +50 (즉시)',
+  'relic.r-frequent-rider.name': '단골 우대',
+  'relic.r-frequent-rider.desc': '탑승 불만 누적 -25%',
+  'relic.r-luxury-interior.name': '럭셔리 인테리어',
+  'relic.r-luxury-interior.desc': '정원 +2, 속도 -10%',
+  'relic.r-master-key.name': '마스터 키',
+  'relic.r-master-key.desc': '스킬 쿨다운 -30%, 불만 +10%',
+  'relic.r-night-contract.name': '야간 근무 협약',
+  'relic.r-night-contract.desc': '야간 ×0.5, 출근 ×1.3',
+  'relic.r-vip-pass.name': 'VIP 패스',
+  'relic.r-vip-pass.desc': '정원 +3, 정차 시간 +2',
+  'relic.r-overtime.name': '야근 수당',
+  'relic.r-overtime.desc': '시작 즉시 +30G',
+  'relic.r-escalator.name': '에스컬레이터',
+  'relic.r-escalator.desc': '한 층 차이(±1) 즉시 처리',
+  'relic.r-escalator-pro.name': '에스컬레이터 확장',
+  'relic.r-escalator-pro.desc': '두 층 차이(±2)까지 즉시 처리',
+  'relic.r-subway-line.name': '지하철 노선 개통',
+  'relic.r-subway-line.desc': '로비 출발 승객 30% 즉시 흡수',
+  'relic.r-subway-express.name': '지하철 급행',
+  'relic.r-subway-express.desc': '로비 흡수 확률 +25%',
+  'relic.r-helipad.name': '옥상 헬리포트',
+  'relic.r-helipad.desc': '옥상 도착 골드 ×2',
+  'relic.r-guard.name': '경비 고용',
+  'relic.r-guard.desc': '도둑 스폰 확률 -50%',
+  'relic.r-guard-pro.name': '경비 강화',
+  'relic.r-guard-pro.desc': '도둑 스폰 추가 -50%',
+  'relic.r-janitor.name': '청소부 고용',
+  'relic.r-janitor.desc': '화장실 청결 자동 회복 +0.3',
+  'relic.r-janitor-pro.name': '청소반 확장',
+  'relic.r-janitor-pro.desc': '청결 회복 +0.5 (누적)',
+  'relic.r-toilet-renovation.name': '화장실 리모델링',
+  'relic.r-toilet-renovation.desc': '청결 초기화 + 더러움 가중 ×0.7',
+  'relic.r-extra-toilet.name': '화장실 추가 신설',
+  'relic.r-extra-toilet.desc': '랜덤 층에 화장실 부여',
+  'relic.r-old-cable.name': '노후 케이블',
+  'relic.r-old-cable.desc': '속도 -15% (영구)',
+  'relic.r-strict-union.name': '엄격한 노조',
+  'relic.r-strict-union.desc': '정차 시간 +2 (영구)',
+  'relic.r-complaint-board.name': '불만 게시판',
+  'relic.r-complaint-board.desc': '불만 누적 +10% (영구)',
+
+  // ── Upgrades ────────────────────────
+  'up.upgrade-speed.name': '엘베 속도 +20%',
+  'up.upgrade-speed.desc': '모든 엘베 이동 속도 (누적)',
+  'up.upgrade-capacity.name': '엘베 정원 +2',
+  'up.upgrade-capacity.desc': '모든 엘베 정원 (누적)',
+  'up.upgrade-load-fast.name': '신속 승하차',
+  'up.upgrade-load-fast.desc': '기본 정차 -2 (최소 2, 누적)',
+  'up.upgrade-anger-decay.name': '서비스 친절도',
+  'up.upgrade-anger-decay.desc': '불만 누적 속도 -10% (누적)',
+  'up.upgrade-floor-capacity.name': '대기 공간 확장 (+3)',
+  'up.upgrade-floor-capacity.desc': '층별 대기 상한 (누적)',
+  'up.upgrade-add-elevator.name': '엘리베이터 +1',
+  'up.upgrade-add-elevator.desc': '새 엘베 1대 (최대 3)',
+  'up.upgrade-repair-kit.name': '응급 수리 키트',
+  'up.upgrade-repair-kit.desc': '고장 시 자동 복구 (소모, 누적 보유)',
+  'up.upgrade-durability.name': '내구성 패키지',
+  'up.upgrade-durability.desc': '고장 확률 ×0.5 (영구, 누적)',
+
+  // ── Skills ──────────────────────────
+  'skill.skill-anger-relief.name': '서비스 회복',
+  'skill.skill-anger-relief.desc': '모든 승객의 불만을 50% 감소',
+  'skill.skill-warp-lobby.name': '전원 1F 집결',
+  'skill.skill-warp-lobby.desc': '모든 엘베 즉시 1F로 이동 명령',
+  'skill.skill-clear-largest.name': '비상 처리',
+  'skill.skill-clear-largest.desc': '가장 큰 대기열 즉시 모두 도착 처리',
+  'skill.skill-slow-spawn.name': '한산한 시간',
+  'skill.skill-slow-spawn.desc': '20초간 승객 스폰 간격 ×2',
+};
+
+// ────────────────────────────────────────────────────────
+// English
+// ────────────────────────────────────────────────────────
+const EN: CardDict = {
+  // ── Modifiers ──────────────────────
+  'mod.dm-traffic-jam-morning.name': 'Morning Jam',
+  'mod.dm-traffic-jam-morning.desc': 'Morning spawn ×1.7',
+  'mod.dm-lunch-rush.name': 'Lunch Rush',
+  'mod.dm-lunch-rush.desc': 'Lunch spawn ×1.7',
+  'mod.dm-evening-rush.name': 'Evening Rush',
+  'mod.dm-evening-rush.desc': 'Evening spawn ×1.7',
+  'mod.dm-bad-mood.name': 'Bad Mood Day',
+  'mod.dm-bad-mood.desc': 'Anger accrual ×1.4 today',
+  'mod.dm-power-dip.name': 'Power Dip',
+  'mod.dm-power-dip.desc': 'Elevator speed ×0.7 today',
+  'mod.dm-heavy-load.name': 'Heavy Load',
+  'mod.dm-heavy-load.desc': 'Load time +4 ticks',
+  'mod.dm-narrow-door.name': 'Narrow Door',
+  'mod.dm-narrow-door.desc': 'Capacity −2 (min 2)',
+  'mod.dm-restaurant-fest.name': 'Restaurant Festival',
+  'mod.dm-restaurant-fest.desc': 'Lunch restaurant traffic surges',
+  'mod.dm-vip-day.name': 'VIP Visit',
+  'mod.dm-vip-day.desc': 'Work spawn ×1.5',
+  'mod.dm-night-shift.name': 'Night Shift',
+  'mod.dm-night-shift.desc': 'Night spawn ×3.3',
+  'mod.dm-fire-drill.name': 'Fire Drill',
+  'mod.dm-fire-drill.desc': 'Random floor queue +4 at start',
+  'mod.dm-calm-day.name': 'Calm Day',
+  'mod.dm-calm-day.desc': 'Anger accrual ×0.7 today',
+  'mod.dm-smooth-ops.name': 'Smooth Ops',
+  'mod.dm-smooth-ops.desc': 'Load time −2 ticks',
+  'mod.dm-quiet-day.name': 'Quiet Day',
+  'mod.dm-quiet-day.desc': 'All-phase spawn ×0.7',
+  'mod.dm-fast-motors.name': 'Fast Motors',
+  'mod.dm-fast-motors.desc': 'Elevator speed ×1.2',
+  'mod.dm-skill-prime.name': 'Skill Prime',
+  'mod.dm-skill-prime.desc': 'Skill cooldown ×0.5',
+  'mod.dm-free-coffee.name': 'Free Coffee',
+  'mod.dm-free-coffee.desc': 'Floor capacity +3',
+  'mod.dm-rush-rewards.name': 'Crisis is Opportunity',
+  'mod.dm-rush-rewards.desc': 'Spawn ×1.5, bonus +30G',
+  'mod.dm-marathon.name': 'Marathon Day',
+  'mod.dm-marathon.desc': 'Spawn ×0.7, anger ×0.8',
+  'mod.dm-vip-protocol.name': 'VIP Protocol',
+  'mod.dm-vip-protocol.desc': 'Speed +20%, capacity −1',
+
+  // ── Relics ────────────────────────
+  'relic.r-revolving-door.name': 'Revolving Door',
+  'relic.r-revolving-door.desc': 'Elevator capacity +1',
+  'relic.r-light-cage.name': 'Light Cage',
+  'relic.r-light-cage.desc': 'Elevator speed +10%',
+  'relic.r-host.name': 'Friendly Host',
+  'relic.r-host.desc': 'Anger accrual −5%',
+  'relic.r-24h-cafe.name': '24/7 Café',
+  'relic.r-24h-cafe.desc': 'Work-phase spawn ×0.8',
+  'relic.r-security.name': 'Security System',
+  'relic.r-security.desc': 'Floor capacity +2',
+  'relic.r-skill-keeper.name': 'Skill Keeper',
+  'relic.r-skill-keeper.desc': 'Skill cooldown −15%',
+  'relic.r-spare-key.name': 'Spare Key',
+  'relic.r-spare-key.desc': 'Instant +50 gold',
+  'relic.r-frequent-rider.name': 'Frequent Rider',
+  'relic.r-frequent-rider.desc': 'Onboard anger accrual −25%',
+  'relic.r-luxury-interior.name': 'Luxury Interior',
+  'relic.r-luxury-interior.desc': 'Capacity +2, speed −10%',
+  'relic.r-master-key.name': 'Master Key',
+  'relic.r-master-key.desc': 'Skill cooldown −30%, anger +10%',
+  'relic.r-night-contract.name': 'Night Shift Contract',
+  'relic.r-night-contract.desc': 'Night ×0.5, morning ×1.3',
+  'relic.r-vip-pass.name': 'VIP Pass',
+  'relic.r-vip-pass.desc': 'Capacity +3, load time +2',
+  'relic.r-overtime.name': 'Overtime Pay',
+  'relic.r-overtime.desc': 'Instant +30G',
+  'relic.r-escalator.name': 'Escalator',
+  'relic.r-escalator.desc': '±1 floor travel resolved instantly',
+  'relic.r-escalator-pro.name': 'Escalator+ Network',
+  'relic.r-escalator-pro.desc': '±2 floor travel resolved instantly',
+  'relic.r-subway-line.name': 'Subway Line',
+  'relic.r-subway-line.desc': '30% of lobby spawns absorbed',
+  'relic.r-subway-express.name': 'Subway Express',
+  'relic.r-subway-express.desc': 'Lobby absorption +25%',
+  'relic.r-helipad.name': 'Rooftop Helipad',
+  'relic.r-helipad.desc': 'Rooftop arrivals gold ×2',
+  'relic.r-guard.name': 'Hire Guard',
+  'relic.r-guard.desc': 'Thief spawn chance ×0.5',
+  'relic.r-guard-pro.name': 'Guard Reinforced',
+  'relic.r-guard-pro.desc': 'Thief spawn additional ×0.5',
+  'relic.r-janitor.name': 'Hire Janitor',
+  'relic.r-janitor.desc': 'Toilet cleanliness +0.3/tick',
+  'relic.r-janitor-pro.name': 'Janitor Crew',
+  'relic.r-janitor-pro.desc': 'Cleanliness +0.5 (stacks)',
+  'relic.r-toilet-renovation.name': 'Toilet Renovation',
+  'relic.r-toilet-renovation.desc': 'Reset cleanliness + dirty penalty ×0.7',
+  'relic.r-extra-toilet.name': 'Extra Toilet Installed',
+  'relic.r-extra-toilet.desc': 'Add toilet to a random floor',
+  'relic.r-old-cable.name': 'Old Cable',
+  'relic.r-old-cable.desc': 'Speed −15% (permanent)',
+  'relic.r-strict-union.name': 'Strict Union',
+  'relic.r-strict-union.desc': 'Load time +2 (permanent)',
+  'relic.r-complaint-board.name': 'Complaint Board',
+  'relic.r-complaint-board.desc': 'Anger accrual +10% (permanent)',
+
+  // ── Upgrades ───────────────────────
+  'up.upgrade-speed.name': 'Elevator Speed +20%',
+  'up.upgrade-speed.desc': 'All elevators move speed (stacks)',
+  'up.upgrade-capacity.name': 'Capacity +2',
+  'up.upgrade-capacity.desc': 'All elevators capacity (stacks)',
+  'up.upgrade-load-fast.name': 'Quick Load',
+  'up.upgrade-load-fast.desc': 'Base load time −2 (min 2, stacks)',
+  'up.upgrade-anger-decay.name': 'Service Politeness',
+  'up.upgrade-anger-decay.desc': 'Anger accrual −10% (stacks)',
+  'up.upgrade-floor-capacity.name': 'Waiting Space +3',
+  'up.upgrade-floor-capacity.desc': 'Per-floor queue limit (stacks)',
+  'up.upgrade-add-elevator.name': '+1 Elevator',
+  'up.upgrade-add-elevator.desc': 'New elevator (max 3)',
+  'up.upgrade-repair-kit.name': 'Emergency Repair Kit',
+  'up.upgrade-repair-kit.desc': 'Auto-recover on breakdown (consumable, stacks)',
+  'up.upgrade-durability.name': 'Durability Package',
+  'up.upgrade-durability.desc': 'Breakdown chance ×0.5 (permanent, stacks)',
+
+  // ── Skills ─────────────────────────
+  'skill.skill-anger-relief.name': 'Service Recovery',
+  'skill.skill-anger-relief.desc': 'Reduce all passenger anger by 50%',
+  'skill.skill-warp-lobby.name': 'Lobby Recall',
+  'skill.skill-warp-lobby.desc': 'Send all elevators to lobby immediately',
+  'skill.skill-clear-largest.name': 'Emergency Service',
+  'skill.skill-clear-largest.desc': 'Instantly resolve largest queue',
+  'skill.skill-slow-spawn.name': 'Quiet Time',
+  'skill.skill-slow-spawn.desc': 'Spawn interval ×2 for 20s',
+};
+
+const DICTS: Record<string, CardDict> = { ko: KO, en: EN };
+
+/** 카드 키 → 현재 locale 문자열. 없으면 ko fallback. 그도 없으면 key 자체. */
+export function tCard(key: string): string {
+  const loc = getLocale();
+  return DICTS[loc]?.[key] ?? KO[key] ?? key;
+}
+
+/** 카드 데이터 → 표시 이름 (i18n 키 우선, 없으면 card.name fallback) */
+export function localizeCard(prefix: 'mod' | 'relic' | 'up' | 'skill', card: { id: string; name: string; desc: string }): { name: string; desc: string } {
+  const nKey = `${prefix}.${card.id}.name`;
+  const dKey = `${prefix}.${card.id}.desc`;
+  const loc = getLocale();
+  const name = DICTS[loc]?.[nKey] ?? card.name;
+  const desc = DICTS[loc]?.[dKey] ?? card.desc;
+  return { name, desc };
+}
