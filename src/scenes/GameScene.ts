@@ -8,6 +8,7 @@ import { defaultPolicy, ElevatorId, ElevatorPolicy, MAX_SLOTS_PER_ELEVATOR, SimS
 import { EventEntry, rollDailyEvent } from '../meta/events';
 import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
+import { loadProgression, recordDayReached, saveProgression } from '../meta/progression';
 import { rollShopOffers } from '../meta/shop';
 import { readSave, SaveData, writeSave } from '../meta/save';
 import { skillById } from '../meta/skills';
@@ -27,6 +28,7 @@ export class GameScene extends Phaser.Scene {
   private eventCleanups: Array<{ id: string; expiresAtTick: number; cleanup: () => void }> = [];
   activeEventToday: EventEntry | null = null;
   pendingModalQueue: Array<'Shop' | 'Modifier' | 'Relic'> = [];
+  recentUnlocks: ThemeId[] = []; // HUD가 잠시 표시할 새 해금
   private rng!: Rng;
   private view!: BuildingView;
   private sprites!: PassengerSprites;
@@ -251,6 +253,15 @@ export class GameScene extends Phaser.Scene {
 
     // 깨끗한 상태 → 자동 저장
     this.saveNow();
+
+    // 진행도 기록 (day = 방금 끝난 day. 새 day는 day+1)
+    const prog = loadProgression();
+    const newUnlocks = recordDayReached(prog, this.themeId, day + 1);
+    saveProgression(prog);
+    if (newUnlocks.length > 0) {
+      this.recentUnlocks.push(...newUnlocks);
+      console.log(`[해금] 새 테마: ${newUnlocks.join(', ')}`);
+    }
 
     // 새 day 이벤트 굴림
     this.maybeRollDailyEvent(day + 1);

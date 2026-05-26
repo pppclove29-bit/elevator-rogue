@@ -2,9 +2,11 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, TICK_MS } from '../config';
 import { phaseAtTick } from '../domain/phase';
 import { SimState } from '../domain/types';
+import { loadProgression, recordRunEnd, saveProgression, unlockLabel } from '../meta/progression';
 import { RELICS } from '../meta/relics';
 import { clearSave } from '../meta/save';
 import { SKILLS } from '../meta/skills';
+import { THEMES } from '../meta/themes';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
 
@@ -17,8 +19,11 @@ export class GameOverScene extends Phaser.Scene {
     this.gs = this.scene.get('Game') as GameScene;
     const s = this.gs.state;
 
-    // 게임 오버 = 런 종료. 저장 삭제.
+    // 게임 오버 = 런 종료. 저장 삭제 + 진행도 기록.
     clearSave();
+    const prog = loadProgression();
+    const newUnlocks = recordRunEnd(prog, (this.gs as any).themeId ?? 'office', s.dayCompleted + 1, s.servedCount);
+    saveProgression(prog);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
 
@@ -73,6 +78,19 @@ export class GameOverScene extends Phaser.Scene {
         this.add.text(rightX2, ry, `• ${sk?.name ?? id}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
+    }
+
+    // 해금 알림 (있으면)
+    if (newUnlocks.length > 0) {
+      const noticeY = panelY + panelH + 12;
+      this.add.rectangle(panelX, noticeY, panelW, 50, 0x2a3d1f, 1).setOrigin(0, 0).setStrokeStyle(2, 0x7ed957);
+      this.add.text(panelX + panelW / 2, noticeY + 8, '🎉 새 테마 해금!', {
+        fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: '#7ed957', fontStyle: 'bold',
+      }).setOrigin(0.5, 0);
+      const names = newUnlocks.map((id) => THEMES[id]?.name ?? id).join(', ');
+      this.add.text(panelX + panelW / 2, noticeY + 28, names + ' — ' + unlockLabel(newUnlocks[0]!), {
+        fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text,
+      }).setOrigin(0.5, 0);
     }
 
     // 버튼

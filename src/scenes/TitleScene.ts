@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
 import { DEFAULT_THEME, ThemeId, THEMES } from '../meta/themes';
 import { Button } from '../ui/Button';
@@ -52,8 +53,12 @@ export class TitleScene extends Phaser.Scene {
     const cardW = 200, cardH = 110, gap = 8;
     const startX = GAME_WIDTH / 2 + 30 - (cardW * 2 + gap) / 2;
     const themeY = 348;
+    const prog = loadProgression();
 
-    const cardElements: Array<{ id: ThemeId; bg: Phaser.GameObjects.Rectangle; nameText: Phaser.GameObjects.Text; descText: Phaser.GameObjects.Text }> = [];
+    const cardElements: Array<{ id: ThemeId; locked: boolean; bg: Phaser.GameObjects.Rectangle; nameText: Phaser.GameObjects.Text; descText: Phaser.GameObjects.Text }> = [];
+
+    // 잠금 테마는 선택 못 함. selectedTheme이 잠금이면 첫 해금 테마로.
+    if (!isUnlocked(prog, this.selectedTheme)) this.selectedTheme = 'office';
 
     for (let i = 0; i < themes.length; i++) {
       const t = themes[i]!;
@@ -61,32 +66,39 @@ export class TitleScene extends Phaser.Scene {
       const row = Math.floor(i / 2);
       const x = startX + col * (cardW + gap);
       const y = themeY + row * (cardH + gap);
-      const bg = this.add.rectangle(x, y, cardW, cardH, 0x14141c, 1).setOrigin(0, 0)
-        .setStrokeStyle(2, 0x3a3a48).setInteractive({ useHandCursor: true });
-      const nameText = this.add.text(x + 10, y + 8, t.name, {
-        fontFamily: FONT, fontSize: '14px', color: COLORS.text,
+      const locked = !isUnlocked(prog, t.id);
+
+      const bg = this.add.rectangle(x, y, cardW, cardH, locked ? 0x0e0e14 : 0x14141c, 1).setOrigin(0, 0)
+        .setStrokeStyle(2, locked ? 0x2a2a35 : 0x3a3a48);
+      if (!locked) bg.setInteractive({ useHandCursor: true });
+
+      const nameText = this.add.text(x + 10, y + 8, locked ? `🔒 ${t.name}` : t.name, {
+        fontFamily: FONT, fontSize: '14px', color: locked ? '#5a5a68' : COLORS.text,
       });
       this.add.text(x + 10, y + 28, t.flavor, {
-        fontFamily: FONT, fontSize: '10px', color: '#f5c542',
+        fontFamily: FONT, fontSize: '10px', color: locked ? '#3a3a48' : '#f5c542',
       });
-      const descText = this.add.text(x + 10, y + 46, t.desc, {
-        fontFamily: FONT, fontSize: '10px', color: COLORS.textDim,
+      const descText = this.add.text(x + 10, y + 46, locked ? `해금 조건: ${unlockLabel(t.id)}` : t.desc, {
+        fontFamily: FONT, fontSize: '10px', color: locked ? '#5a5a68' : COLORS.textDim,
         wordWrap: { width: cardW - 20 },
       });
-      if (t.startingGoldBonus) {
+      if (t.startingGoldBonus && !locked) {
         this.add.text(x + cardW - 10, y + 8, `+${t.startingGoldBonus}G`, {
           fontFamily: FONT, fontSize: '11px', color: '#f5c542',
         }).setOrigin(1, 0);
       }
-      bg.on('pointerdown', () => {
-        this.selectedTheme = t.id;
-        this.refreshThemeCards();
-      });
-      cardElements.push({ id: t.id, bg, nameText, descText });
+      if (!locked) {
+        bg.on('pointerdown', () => {
+          this.selectedTheme = t.id;
+          this.refreshThemeCards();
+        });
+      }
+      cardElements.push({ id: t.id, locked, bg, nameText, descText });
     }
 
     this.themeRefresh = () => {
       for (const c of cardElements) {
+        if (c.locked) continue;
         const sel = c.id === this.selectedTheme;
         c.bg.setStrokeStyle(2, sel ? 0x4a90e2 : 0x3a3a48);
         c.bg.setFillStyle(sel ? 0x1f2a3d : 0x14141c, 1);
