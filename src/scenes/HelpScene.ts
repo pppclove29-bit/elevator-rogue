@@ -68,7 +68,7 @@ export class HelpScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
 
     this.add.text(GAME_WIDTH / 2, 28, this.firstTime ? t('help.welcome') : t('help.title'), {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '22px', color: COLORS.text,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '22px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
     new Button(this, GAME_WIDTH - 80, 38, 100, 28, t('help.close'), () => this.scene.stop(),
@@ -94,10 +94,10 @@ export class HelpScene extends Phaser.Scene {
   private drawSection(x: number, y: number, w: number, h: number, sec: { title: string; body: string[] }): void {
     this.add.rectangle(x, y, w, h, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
     this.add.text(x + 16, y + 10, sec.title, {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '15px', color: '#f5c542', fontStyle: 'bold',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '15px', color: '#f5c542', fontStyle: 'bold',
     });
     this.add.text(x + 16, y + 36, sec.body.join('\n'), {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.textDim,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: COLORS.textDim,
       lineSpacing: 4, wordWrap: { width: w - 32 },
     });
   }

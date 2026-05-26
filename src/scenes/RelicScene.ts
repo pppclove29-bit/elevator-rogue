@@ -16,11 +16,11 @@ export class RelicScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.8);
 
     this.add.text(GAME_WIDTH / 2, 60, t('relic.title'), {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '28px', color: COLORS.text,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '28px', color: COLORS.text,
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2, 96, t('relic.subtitle'), {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
     const owned = new Set(this.gs.state.ownedRelics);
@@ -55,15 +55,15 @@ export class RelicScene extends Phaser.Scene {
 
     this.add.rectangle(x, y, w, h, 0x1c1c26, 1).setOrigin(0, 0).setStrokeStyle(2, accent);
     this.add.rectangle(x, y, w, 32, accent, 1).setOrigin(0, 0);
-    this.add.text(x + 14, y + 6, tag, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#0b0b10' });
+    this.add.text(x + 14, y + 6, tag, { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: '#0b0b10' });
     this.add.text(x + 14, y + 50, localized.name, {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '20px', color: COLORS.text, wordWrap: { width: w - 28 },
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '20px', color: COLORS.text, wordWrap: { width: w - 28 },
     });
     this.add.text(x + 14, y + 110, localized.desc, {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim, wordWrap: { width: w - 28 },
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: COLORS.textDim, wordWrap: { width: w - 28 },
     });
     this.add.text(x + 14, y + h - 80, t('relic.note'), {
-      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e2a04a', fontStyle: 'italic',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#e2a04a', fontStyle: 'italic',
     });
     new Button(this, x + w / 2, y + h - 36, w - 40, 40, t('reward.take'), () => {
       this.gs.resolveRelic(r.id);

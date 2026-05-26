@@ -6,8 +6,8 @@ export const TICK_MS = 50;
 export const INITIAL_FLOORS = 5;
 export const INITIAL_ELEVATORS = 1;
 
-// 픽셀 폰트 (한글: DotGothic16, 영문/숫자: Press Start 2P fallback)
-export const FONT = '"DotGothic16", "Press Start 2P", monospace';
+// 게임 폰트 (가독성 우선 — system-ui)
+export const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 
 export const COLORS = {
   bg: '#0b0b10',

@@ -43,7 +43,7 @@ export class Button {
     this.bg = scene.add.rectangle(0, 0, w, h, this.style.bg, 1).setStrokeStyle(1, this.style.stroke);
     this.label = scene.add
       .text(0, 0, text, {
-        fontFamily: '"DotGothic16", "Press Start 2P", monospace',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
         fontSize: `${this.style.fontSize}px`,
         color: this.style.textColor,
       })
