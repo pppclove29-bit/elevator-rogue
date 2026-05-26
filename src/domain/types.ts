@@ -132,7 +132,13 @@ export interface SimState {
   ownedRelics: string[];
   shopOfferIds: string[];        // 이번 상점에 등장할 카드 id (upgrade/skill만, 수리는 고장 시 자동 추가)
   shopRerollCount: number;       // 이번 상점에서 리롤 횟수 (비용 점증)
+  visualHints: VisualHint[];     // 시각 신호 큐 (렌더가 매 frame 소비)
 }
+
+/** 도메인 → 렌더로 보내는 일회성 시각 신호 (sprite 시스템에 hint) */
+export type VisualHint =
+  | { kind: 'escalator'; originFloorId: number; destFloorId: number; archetype: import('./archetypes').PassengerArchetype }
+  | { kind: 'subway'; floorId: number; archetype: import('./archetypes').PassengerArchetype };
 
 export const SHOP_OFFER_SIZE = 4;
 export const SHOP_REROLL_BASE_COST = 8;

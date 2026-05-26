@@ -48,6 +48,7 @@ export function maybeSpawn(state: SimState, rng: Rng): void {
   if (archetype !== 'thief' && effOrigin.role === 'lobby' && state.params.subwayAbsorbChance > 0
       && rng() < state.params.subwayAbsorbChance) {
     state.servedCount += count;
+    for (let i = 0; i < count; i++) state.visualHints.push({ kind: 'subway', floorId: effOrigin.id, archetype });
     return;
   }
 
@@ -55,6 +56,7 @@ export function maybeSpawn(state: SimState, rng: Rng): void {
   const dist = Math.abs(destFloor.id - effOrigin.id);
   if (archetype !== 'thief' && state.params.escalatorReach > 0 && dist <= state.params.escalatorReach) {
     state.servedCount += count;
+    for (let i = 0; i < count; i++) state.visualHints.push({ kind: 'escalator', originFloorId: effOrigin.id, destFloorId: destFloor.id, archetype });
     return;
   }
 

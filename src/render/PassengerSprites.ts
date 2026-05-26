@@ -5,7 +5,7 @@ import { ANGER_THRESHOLD } from '../domain/simulation';
 import { SimState } from '../domain/types';
 import { BuildingViewLayout, DOOR_AREA_W } from './BuildingView';
 
-type Phase = 'entering' | 'queued' | 'boarding' | 'riding' | 'alighting' | 'leaving';
+type Phase = 'entering' | 'queued' | 'boarding' | 'riding' | 'alighting' | 'leaving' | 'escalator' | 'subway';
 
 interface Sprite {
   id: number;
@@ -20,6 +20,8 @@ interface Sprite {
   /** 남은 ms. 0이 되어야 움직임/fade 시작 (stagger 처리) */
   delay: number;
 }
+
+let HINT_ID_COUNTER = -1000;
 
 const LERP_SPEED = 16;
 const FADE_SPEED = 12;
@@ -42,6 +44,7 @@ export class PassengerSprites {
   }
 
   update(state: SimState, deltaMs: number): void {
+    this.consumeHints(state);
     this.sync(state);
 
     const dt = deltaMs / 1000;
@@ -51,7 +54,7 @@ export class PassengerSprites {
     for (const s of this.map.values()) {
       if (s.delay > 0) {
         s.delay = Math.max(0, s.delay - deltaMs);
-        continue; // 대기 중에는 위치/알파 변화 X
+        continue;
       }
       s.x = approach(s.x, s.targetX, moveStep * 60);
       s.y = approach(s.y, s.targetY, moveStep * 60);
@@ -60,9 +63,11 @@ export class PassengerSprites {
       if (s.phase === 'entering' && Math.abs(s.x - s.targetX) < 1 && s.alpha >= 0.95) {
         s.phase = 'queued';
       }
-      if (s.phase === 'leaving' && s.alpha <= 0.01) {
-        s.done = true;
-      }
+      if (s.phase === 'leaving' && s.alpha <= 0.01) s.done = true;
+      // escalator/subway 임시 sprite: target 도달 + fade 끝나면 제거
+      if ((s.phase === 'escalator' || s.phase === 'subway')
+          && Math.abs(s.x - s.targetX) < 1 && Math.abs(s.y - s.targetY) < 1
+          && s.alpha <= 0.01) s.done = true;
     }
 
     // 제거
@@ -155,14 +160,50 @@ export class PassengerSprites {
     let leavingStaggerIdx = 0;
     for (const [id, s] of this.map) {
       if (stillAlive.has(id)) continue;
-      if (s.phase === 'leaving') continue;
+      if (s.phase === 'leaving' || s.phase === 'escalator' || s.phase === 'subway') continue;
       s.phase = 'leaving';
-      // 좌측 문 방향으로 빠짐
-      s.targetX = (this.layout.x - DOOR_AREA_W / 2);
+      // 우측 방 문(층 안쪽 출구)으로 빠짐
+      s.targetX = this.layout.x + this.layout.width - 8;
       s.targetAlpha = 0;
       s.delay = leavingStaggerIdx * STAGGER_MS;
       leavingStaggerIdx += 1;
     }
+  }
+
+  private consumeHints(state: SimState): void {
+    if (state.visualHints.length === 0) return;
+    const { x, y, width, totalHeight } = this.layout;
+    const floors = state.building.floors;
+    const floorHeight = totalHeight / floors.length;
+    const stairX = x + width;
+
+    for (const h of state.visualHints) {
+      if (h.kind === 'escalator') {
+        const fyOrigin = y + totalHeight - h.originFloorId * floorHeight - floorHeight / 2;
+        const fyDest = y + totalHeight - h.destFloorId * floorHeight - floorHeight / 2;
+        const id = HINT_ID_COUNTER--;
+        this.map.set(id, {
+          id, archetype: h.archetype, anger: 0,
+          x: stairX + 18, y: fyOrigin,
+          targetX: stairX + 38, targetY: fyDest,
+          phase: 'escalator',
+          alpha: 1, targetAlpha: 0,
+          done: false, delay: 0,
+        });
+      } else if (h.kind === 'subway') {
+        const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
+        const id = HINT_ID_COUNTER--;
+        this.map.set(id, {
+          id, archetype: h.archetype, anger: 0,
+          x: x - DOOR_AREA_W / 2, y: fy,
+          targetX: x - DOOR_AREA_W - 20, targetY: fy + 10,
+          phase: 'subway',
+          alpha: 1, targetAlpha: 0,
+          done: false, delay: 0,
+        });
+      }
+    }
+    state.visualHints.length = 0;
   }
 
   private draw(): void {

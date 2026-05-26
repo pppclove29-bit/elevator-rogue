@@ -77,6 +77,7 @@ export function createSim(cfg: SimConfig): { state: SimState; rng: Rng } {
       ownedRelics: [],
       shopOfferIds: [],
       shopRerollCount: 0,
+      visualHints: [],
     },
     rng: mulberry32(cfg.seed),
   };

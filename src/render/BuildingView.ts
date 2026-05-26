@@ -117,6 +117,18 @@ export class BuildingView {
       this.g.fillStyle(0xc0a040, 1);
       this.g.fillRect(doorX + doorW - 4, doorY + doorH / 2 - 1, 2, 2);
 
+      // 우측 방 문 (그 층의 사무실/식당 등 내부 입구) — 큐 라벨 옆
+      const roomDoorW = 12, roomDoorH = Math.min(22, floorHeight - 10);
+      const roomDoorX = x + width - roomDoorW - 4;
+      const roomDoorY = fy - roomDoorH / 2;
+      const roleC = ROLE_COLOR[floor.role];
+      this.g.fillStyle(0x2a2a35, 1);
+      this.g.fillRect(roomDoorX - 1, roomDoorY - 1, roomDoorW + 2, roomDoorH + 2);
+      this.g.fillStyle(roleC, 0.7);
+      this.g.fillRect(roomDoorX, roomDoorY, roomDoorW, roomDoorH);
+      this.g.fillStyle(0x000000, 0.4);
+      this.g.fillRect(roomDoorX + roomDoorW - 3, roomDoorY + roomDoorH / 2 - 1, 1, 2);
+
       // 우측 계단 — 지그재그 픽셀
       const reachableFromHere = hasEscalator && floor.id < floors.length - 1 && (floors.length - 1 - floor.id <= reach);
       const stairColor = hasEscalator ? COLORS.escalator : COLORS.stairLine;
@@ -140,9 +152,9 @@ export class BuildingView {
         this.g.fillTriangle(ax - 4, ay + 4, ax + 4, ay + 4, ax, ay);
       }
 
-      // 큐 길이 라벨
+      // 큐 길이 라벨 (방 문 왼쪽에)
       const qLabel = this.queueLabels[floor.id]!;
-      qLabel.setPosition(x + width - 8, fy);
+      qLabel.setPosition(x + width - 24, fy);
       qLabel.setText(`${floor.queue.length}/${floorCap}`);
       qLabel.setColor(isFull ? '#e74c3c' : COLORS.textDim);
     }
