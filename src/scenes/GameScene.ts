@@ -10,6 +10,7 @@ import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
 import { rollShopOffers } from '../meta/shop';
 import { skillById } from '../meta/skills';
+import { DEFAULT_THEME, THEMES, ThemeId } from '../meta/themes';
 import { addFloor } from '../domain/building';
 import { BuildingView } from '../render/BuildingView';
 import { PassengerSprites } from '../render/PassengerSprites';
@@ -32,6 +33,11 @@ export class GameScene extends Phaser.Scene {
   paused = false;
   timeScale = 1;
   private seed = 1;
+  private themeId: ThemeId = DEFAULT_THEME;
+
+  init(data: { theme?: ThemeId }): void {
+    if (data?.theme) this.themeId = data.theme;
+  }
 
   constructor() {
     super('Game');
@@ -261,6 +267,12 @@ export class GameScene extends Phaser.Scene {
     this.eventCleanups = [];
     this.activeEventToday = null;
     this.pendingModalQueue = [];
+    // 테마 적용 (시작 보너스 + apply)
+    const theme = THEMES[this.themeId];
+    if (theme) {
+      this.state.gold += theme.startingGoldBonus ?? 0;
+      theme.apply(this.state);
+    }
     void startingSlotsForElevator;
   }
 

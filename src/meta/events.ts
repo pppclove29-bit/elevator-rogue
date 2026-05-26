@@ -182,6 +182,93 @@ export const EVENTS: Record<string, EventEntry> = {
     trigger: (s) => { s.gold += 20; return null; },
   },
 
+  // ─────────────────────────────────────────────────────────────
+  // 보스 day (매 7일 고정. 강력 디버프 + 보너스 골드)
+  // ─────────────────────────────────────────────────────────────
+  'ev-boss-weekend-rush': {
+    id: 'ev-boss-weekend-rush', name: '🔥 보스 — 주말 대혼란',
+    desc: '하루 종일 모든 페이즈 스폰 ×1.5. 시작 보너스 +100G.',
+    severity: 'critical',
+    pinnedDays: [7],
+    trigger: (s) => {
+      s.gold += 100;
+      const u = mulSpawn(s, 0.66);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-boss-night-storm': {
+    id: 'ev-boss-night-storm', name: '🔥 보스 — 야간 폭주',
+    desc: 'NIGHT 스폰 ×5. 시작 보너스 +120G.',
+    severity: 'critical',
+    pinnedDays: [14],
+    trigger: (s) => {
+      s.gold += 120;
+      const orig = s.params.phaseSpawnMultiplier.night;
+      s.params.phaseSpawnMultiplier.night *= 0.2;
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.night = orig; },
+      };
+    },
+  },
+  'ev-boss-vip-conference': {
+    id: 'ev-boss-vip-conference', name: '🔥 보스 — VIP 컨퍼런스',
+    desc: '옥상 트래픽 ×3, 불만 누적 ×1.3. 시작 보너스 +150G.',
+    severity: 'critical',
+    pinnedDays: [21],
+    trigger: (s) => {
+      s.gold += 150;
+      const u1 = mulSpawn(s, 0.7);
+      const u2 = (() => {
+        s.params.angerWaitingPerTick *= 1.3;
+        return () => { s.params.angerWaitingPerTick /= 1.3; };
+      })();
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { u1(); u2(); },
+      };
+    },
+  },
+  'ev-boss-grand-opening': {
+    id: 'ev-boss-grand-opening', name: '🔥 보스 — 그랜드 오프닝',
+    desc: '모든 페이즈 스폰 ×2, 정원 -1. 시작 보너스 +200G.',
+    severity: 'critical',
+    pinnedDays: [28],
+    trigger: (s) => {
+      s.gold += 200;
+      const u1 = mulSpawn(s, 0.5);
+      const orig = s.building.elevators.map((e) => e.capacity);
+      for (const e of s.building.elevators) e.capacity = Math.max(1, e.capacity - 1);
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => {
+          u1();
+          for (let i = 0; i < s.building.elevators.length; i++) {
+            const o = orig[i]; if (o !== undefined) s.building.elevators[i]!.capacity = o;
+          }
+        },
+      };
+    },
+  },
+  'ev-boss-anniversary': {
+    id: 'ev-boss-anniversary', name: '🔥 보스 — 창립 기념일',
+    desc: '모든 페이즈 스폰 ×2.5, 속도 -20%. 시작 보너스 +350G.',
+    severity: 'critical',
+    pinnedDays: [35, 50, 65, 80],
+    trigger: (s) => {
+      s.gold += 350;
+      const u1 = mulSpawn(s, 0.4);
+      s.params.globalSpeedMultiplier *= 0.8;
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => {
+          u1();
+          s.params.globalSpeedMultiplier /= 0.8;
+        },
+      };
+    },
+  },
+
   'ev-subway-strike': {
     id: 'ev-subway-strike', name: '지하철 파업',
     desc: '오늘 로비 트래픽 ×1.7 (지하철 안 다녀 사람들이 1F로 몰림)',

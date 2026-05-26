@@ -152,7 +152,14 @@ export class HUDScene extends Phaser.Scene {
     const mods = game.state.activeModifiers;
     this.modifierText.setText(mods.length > 0 ? `오늘의 변수: ${mods.length}` : '');
     this.relicText.setText(game.state.ownedRelics.length > 0 ? `유물 ${game.state.ownedRelics.length}` : '');
-    this.eventText.setText(game.activeEventToday ? `⚠ ${game.activeEventToday.name}` : '');
+    if (game.activeEventToday) {
+      const isBoss = game.activeEventToday.name.includes('🔥');
+      this.eventText.setText(isBoss ? game.activeEventToday.name : `⚠ ${game.activeEventToday.name}`);
+      this.eventText.setFontSize(isBoss ? 14 : 12);
+      this.eventText.setColor(isBoss ? '#ffd700' : '#ff6a6a');
+    } else {
+      this.eventText.setText('');
+    }
 
     this.updateRepairButtons(game);
 
