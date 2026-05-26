@@ -1,6 +1,4 @@
 import type { PassengerArchetype } from './archetypes';
-import type { ActionBlockId, ConditionBlockId } from './rules/blocks';
-import type { RuleInSlot } from './rules/types';
 
 export type FloorId = number;
 export type PassengerId = number;
@@ -86,8 +84,6 @@ export const BREAKDOWN_BASE_CHANCE = 0.015;    // 정차 1회당 base (1.5%)
 export const BREAKDOWN_GRACE_TRIPS = 20;       // 처음 N회 정차는 무조건 안전
 export const REPAIR_COST = 20;
 
-export const MAX_SLOTS_PER_ELEVATOR = 5;
-
 export type PolicyParity = 'all' | 'even' | 'odd';
 export type PolicyPickup = 'any' | 'lobby-only' | 'role';
 
@@ -124,9 +120,6 @@ export interface SimState {
   ownedSkills: string[];
   skillCooldowns: Record<string, number>;
   skillTimers: Record<string, number>;
-  slotsByElevator: Record<ElevatorId, RuleInSlot[]>; // 레거시 (정책 시스템으로 대체)
-  ownedConditions: ConditionBlockId[];
-  ownedActions: ActionBlockId[];
   policiesByElevator: Record<ElevatorId, ElevatorPolicy>;
   gold: number;
   repairKits: number;

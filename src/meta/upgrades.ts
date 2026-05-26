@@ -1,4 +1,3 @@
-import { startingSlotsForElevator } from '../domain/simulation';
 import { defaultPolicy, SimState } from '../domain/types';
 
 export interface UpgradeCard {
@@ -45,7 +44,6 @@ export const UPGRADES: Record<string, UpgradeCard> = {
         state: { kind: 'idle' }, passengers: [],
         tripCount: 0,
       });
-      s.slotsByElevator[newId] = startingSlotsForElevator();
       s.policiesByElevator[newId] = defaultPolicy();
     },
   },

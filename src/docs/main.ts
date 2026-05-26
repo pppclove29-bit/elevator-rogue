@@ -8,13 +8,13 @@ import {
   dayLengthTicks,
 } from '../domain/phase';
 import { ARCHETYPES } from '../domain/archetypes';
-import { ACTION_BLOCKS, CONDITION_BLOCKS } from '../domain/rules/blocks';
 import { EVENTS, EVENT_CONFIG } from '../meta/events';
 import { MODIFIERS } from '../meta/modifiers';
 import { RELICS } from '../meta/relics';
 import { ROLE_COLOR, ROLE_SHORT } from '../domain/spawner';
-import { defaultParams, startingSlotsForElevator } from '../domain/simulation';
-import { FloorRole, MAX_SLOTS_PER_ELEVATOR } from '../domain/types';
+import { defaultParams } from '../domain/simulation';
+import { defaultPolicy, FloorRole } from '../domain/types';
+import { THEMES } from '../meta/themes';
 import { SKILLS, MAX_SKILLS } from '../meta/skills';
 import { UPGRADES, MAX_ELEVATORS } from '../meta/upgrades';
 
@@ -51,9 +51,8 @@ root.append(
       ['#sim-params', '시뮬 파라미터'],
       ['#phases', '페이즈'],
       ['#roles', '층 역할'],
-      ['#cond-blocks', '조건 블록'],
-      ['#act-blocks', '액션 블록'],
-      ['#startup-rules', '시작 룰셋'],
+      ['#policy', '운영 정책'],
+      ['#themes', '빌딩 테마'],
       ['#upgrades', '업그레이드'],
       ['#skills', '즉발 스킬'],
       ['#archetypes', '승객 아키타입'],
@@ -78,7 +77,6 @@ root.append(
       <dt>대기 anger</dt><dd>${p.angerWaitingPerTick}/tick</dd>
       <dt>탑승 anger</dt><dd>${p.angerRidingPerTick}/tick</dd>
       <dt>엘베 최대</dt><dd>${MAX_ELEVATORS}</dd>
-      <dt>엘베별 룰 슬롯</dt><dd>${MAX_SLOTS_PER_ELEVATOR}칸</dd>
       <dt>스킬 슬롯</dt><dd>${MAX_SKILLS}칸</dd>
     ` })
   );
@@ -131,60 +129,40 @@ root.append(
   root.append(section);
 }
 
-// Condition Blocks
+// Elevator Policy
 {
-  const section = el('section', { id: 'cond-blocks' });
-  const blocks = Object.values(CONDITION_BLOCKS);
+  const p = defaultPolicy();
+  const section = el('section', { id: 'policy' });
   section.append(
-    el('h2', {}, `조건 블록 (${blocks.length})`),
-    el('p', { class: 'section-desc' }, '룰의 WHEN 영역에 들어가는 매칭 블록. 모두 AND. 시작 시 전체 보유 (Step 9 골드 상점 도입 시 일부 잠금 예정).')
+    el('h2', {}, '엘리베이터 운영 정책 (기본값)'),
+    el('p', { class: 'section-desc', html: '엘베마다 4가지 form 설정. 룰 블록 조립 시스템은 폐기되고 정책 form으로 단순화됨.' }),
+    el('div', { class: 'kvs', html: `
+      <dt>운영 층 범위</dt><dd>${p.minFloor + 1}F ~ ${p.maxFloor < 0 ? '무제한' : (p.maxFloor + 1) + 'F'}</dd>
+      <dt>층 패리티</dt><dd>${p.parity} (모두 / 짝수 / 홀수)</dd>
+      <dt>픽업 대상</dt><dd>${p.pickupMode} (any / lobby-only / role)</dd>
+      <dt>정원 풀이면 즉시 하차</dt><dd>${p.prioritizeUnloadWhenFull ? 'ON' : 'OFF'}</dd>
+    ` })
   );
-  const grid = el('div', { class: 'grid' });
-  for (const b of blocks) {
-    grid.append(el('div', { class: 'card rule', html: `
-      <div class="card-tag">COND · <span class="mono">${b.id}</span></div>
-      <div class="card-name">${b.label}</div>
-      <div class="card-desc">${b.desc}</div>` }));
-  }
-  section.append(grid);
   root.append(section);
 }
 
-// Action Blocks
+// Themes
 {
-  const section = el('section', { id: 'act-blocks' });
-  const blocks = Object.values(ACTION_BLOCKS);
+  const themes = Object.values(THEMES);
+  const section = el('section', { id: 'themes' });
   section.append(
-    el('h2', {}, `액션 블록 (${blocks.length})`),
-    el('p', { class: 'section-desc' }, '룰의 THEN 영역. 룰당 1개. resolve가 null이면 룰 폴스루 (다음 룰로).')
+    el('h2', {}, `빌딩 테마 (${themes.length})`),
+    el('p', { class: 'section-desc' }, '타이틀에서 선택. 시작 골드 보너스 + 빌딩 구성/스폰 가중치 변경.')
   );
   const grid = el('div', { class: 'grid' });
-  for (const b of blocks) {
-    grid.append(el('div', { class: 'card skill', html: `
-      <div class="card-tag">ACT · <span class="mono">${b.id}</span></div>
-      <div class="card-name">${b.label}</div>
-      <div class="card-desc">${b.desc}</div>` }));
+  for (const t of themes) {
+    grid.append(el('div', { class: 'card', html: `
+      <div class="card-tag">THEME · <span class="mono">${t.id}</span></div>
+      <div class="card-name">${t.name}</div>
+      <div class="card-desc">${t.flavor}</div>
+      <div class="card-meta">${t.desc}${t.startingGoldBonus ? `<br>시작 보너스 +${t.startingGoldBonus}G` : ''}</div>` }));
   }
   section.append(grid);
-  root.append(section);
-}
-
-// Startup
-{
-  const section = el('section', { id: 'startup-rules' });
-  const slots = startingSlotsForElevator();
-  section.append(
-    el('h2', {}, '시작 시 룰셋 (각 엘베)'),
-    el('p', { class: 'section-desc' }, '엘베마다 동일하게 초기화. 새 엘베 추가 시에도 동일.'),
-    el('div', { class: 'grid' },
-      ...slots.map((r, i) => el('div', { class: 'card rule', html: `
-        <div class="card-tag">SLOT #${i + 1}</div>
-        <div class="card-name">WHEN ${r.when.join(' & ') || '(always)'}</div>
-        <div class="card-desc">THEN <span class="mono">${r.then ?? '(none)'}</span></div>
-      ` }))
-    ),
-    el('div', { class: 'callout', html: '시작 보유 블록: 조건 전체 ' + Object.keys(CONDITION_BLOCKS).length + '개, 액션 전체 ' + Object.keys(ACTION_BLOCKS).length + '개. Step 9에서 일부 잠금 + 골드 상점으로 해금 예정.' })
-  );
   root.append(section);
 }
 
@@ -318,5 +296,5 @@ root.append(
 }
 
 root.append(el('div', { class: 'callout', html: `
-  룰은 <strong>조건/액션 블록 조립</strong>. 보상 = <strong>골드 상점</strong>(매일) + <strong>Modifier 모달</strong>(매 3일) + <strong>Relic 모달</strong>(매 5일). 매 4일 층 +1. Day ${EVENT_CONFIG.startDay}부터 매일 ${EVENT_CONFIG.chancePerDay * 100}% 확률로 Random Event.
+  운영은 <strong>정책 form</strong> (엘베별 4가지 설정). 보상 = <strong>골드 상점</strong>(매일) + <strong>Modifier 모달</strong>(매 3일) + <strong>Relic 모달</strong>(매 5일). 매 4일 층 +1. Day ${EVENT_CONFIG.startDay}부터 매일 ${EVENT_CONFIG.chancePerDay * 100}% 확률로 Random Event. 공휴일/보스 day는 고정 발생.
 ` }));

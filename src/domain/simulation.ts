@@ -3,8 +3,6 @@ import { createBuilding, nearestFloor } from './building';
 import { DAY_OF_WEEK_GOLD_MUL, dayLengthTicks, dayOfWeekFor } from './phase';
 import { decide } from './policy';
 import { Rng, mulberry32 } from './rng';
-import { allActionIds, allConditionIds } from './rules/blocks';
-import { makeRuleId, RuleInSlot } from './rules/types';
 import { maybeSpawn } from './spawner';
 import { BREAKDOWN_BASE_CHANCE, BREAKDOWN_GRACE_TRIPS, defaultPolicy, Elevator, GOLD_PER_ROLE, Passenger, REPAIR_COST, SimParams, SimState } from './types';
 
@@ -36,19 +34,10 @@ export function defaultParams(): SimParams {
   };
 }
 
-export function startingSlotsForElevator(): RuleInSlot[] {
-  return [
-    { id: makeRuleId(), when: ['c-has-passengers'], then: 'a-nearest-pdest' },
-    { id: makeRuleId(), when: ['c-any-call'], then: 'a-nearest-call' },
-  ];
-}
-
 export function createSim(cfg: SimConfig): { state: SimState; rng: Rng } {
   const building = createBuilding(cfg.floorCount, cfg.elevatorCount);
-  const slotsByElevator: Record<number, RuleInSlot[]> = {};
   const policiesByElevator: Record<number, ReturnType<typeof defaultPolicy>> = {};
   for (const e of building.elevators) {
-    slotsByElevator[e.id] = startingSlotsForElevator();
     policiesByElevator[e.id] = defaultPolicy();
   }
 
@@ -67,9 +56,6 @@ export function createSim(cfg: SimConfig): { state: SimState; rng: Rng } {
       ownedSkills: [],
       skillCooldowns: {},
       skillTimers: {},
-      slotsByElevator,
-      ownedConditions: allConditionIds(),
-      ownedActions: allActionIds(),
       policiesByElevator,
       gold: 20,
       repairKits: 0,

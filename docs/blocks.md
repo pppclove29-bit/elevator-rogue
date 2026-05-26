@@ -1,4 +1,17 @@
-# Block Composition System — 설계
+# Block Composition System — DEPRECATED (폐기됨)
+
+> ⚠️ **이 시스템은 정책 form으로 대체되어 폐기되었습니다.**
+> 진입장벽 문제로 사용자 의사결정 → form 기반 단순화 (엘베별 운영 정책 설정).
+> 룰 블록 카탈로그(조건 20 / 액션 12) 및 RuleInSlot 데이터 모델은 코드에서 제거됨.
+>
+> 현행 운영 시스템: `src/domain/policy.ts` (decide 함수) + `RuleEditorScene` form UI.
+> 정책 4가지 설정: 운영 층 범위 / 패리티 / 픽업 모드 / 정원 풀 시 즉시 하차.
+>
+> 이 문서는 아카이브 목적으로만 유지.
+
+---
+
+# (원본 — 폐기된 설계)
 
 기존 "완제 룰 카드 보상" → "**블록 보상 + 직접 조립**"으로 패러다임 전환. 엘베별 룰셋 분리.
 

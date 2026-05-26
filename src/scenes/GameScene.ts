@@ -1,10 +1,8 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS } from '../config';
-import { ActionBlockId, ConditionBlockId } from '../domain/rules/blocks';
-import { makeRuleId, RuleInSlot } from '../domain/rules/types';
 import { Rng } from '../domain/rng';
-import { createSim, startingSlotsForElevator, tick } from '../domain/simulation';
-import { defaultPolicy, ElevatorId, ElevatorPolicy, MAX_SLOTS_PER_ELEVATOR, SimState } from '../domain/types';
+import { createSim, tick } from '../domain/simulation';
+import { defaultPolicy, ElevatorId, ElevatorPolicy, SimState } from '../domain/types';
 import { EventEntry, rollDailyEvent } from '../meta/events';
 import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
@@ -113,51 +111,6 @@ export class GameScene extends Phaser.Scene {
   updatePolicy(eId: ElevatorId, patch: Partial<ElevatorPolicy>): void {
     const current = this.getPolicy(eId);
     this.state.policiesByElevator[eId] = { ...current, ...patch };
-  }
-
-  // ───────── 룰 슬롯 편집 API (레거시, 사용 X) ─────────
-
-  slotsOf(eId: ElevatorId): RuleInSlot[] {
-    return this.state.slotsByElevator[eId] ?? [];
-  }
-
-  addEmptyRule(eId: ElevatorId): boolean {
-    const slots = this.slotsOf(eId);
-    if (slots.length >= MAX_SLOTS_PER_ELEVATOR) return false;
-    slots.push({ id: makeRuleId(), when: [], then: null });
-    this.state.slotsByElevator[eId] = slots;
-    return true;
-  }
-
-  removeRule(eId: ElevatorId, ruleId: string): void {
-    this.state.slotsByElevator[eId] = this.slotsOf(eId).filter((r) => r.id !== ruleId);
-  }
-
-  reorderRule(eId: ElevatorId, fromIdx: number, toIdx: number): void {
-    const slots = this.slotsOf(eId);
-    if (fromIdx < 0 || fromIdx >= slots.length) return;
-    if (toIdx < 0 || toIdx >= slots.length) return;
-    const [r] = slots.splice(fromIdx, 1);
-    if (r) slots.splice(toIdx, 0, r);
-  }
-
-  addConditionToRule(eId: ElevatorId, ruleId: string, cond: ConditionBlockId): void {
-    const rule = this.slotsOf(eId).find((r) => r.id === ruleId);
-    if (!rule) return;
-    if (rule.when.includes(cond)) return;
-    rule.when.push(cond);
-  }
-
-  removeConditionFromRule(eId: ElevatorId, ruleId: string, cond: ConditionBlockId): void {
-    const rule = this.slotsOf(eId).find((r) => r.id === ruleId);
-    if (!rule) return;
-    rule.when = rule.when.filter((c) => c !== cond);
-  }
-
-  setActionForRule(eId: ElevatorId, ruleId: string, act: ActionBlockId | null): void {
-    const rule = this.slotsOf(eId).find((r) => r.id === ruleId);
-    if (!rule) return;
-    rule.then = act;
   }
 
   // ───────── 보상/스킬 ─────────
@@ -309,7 +262,6 @@ export class GameScene extends Phaser.Scene {
       this.state.gold += theme.startingGoldBonus ?? 0;
       theme.apply(this.state);
     }
-    void startingSlotsForElevator;
   }
 
   private applyLoad(save: SaveData): void {
