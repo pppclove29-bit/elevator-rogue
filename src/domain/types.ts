@@ -57,6 +57,12 @@ export interface SimParams {
   globalSpeedMultiplier: number;
   skillCooldownMultiplier: number;
   phaseSpawnMultiplier: Record<'morning' | 'work' | 'lunch' | 'evening' | 'night', number>;
+  /** 에스컬레이터: 스폰 시 origin↔dest 거리가 이 값 이하면 엘베 안 거치고 즉시 처리. 0 = 없음 */
+  escalatorReach: number;
+  /** 지하철: lobby가 origin인 승객을 이 확률로 즉시 흡수 (스폰 스킵). 0~1 */
+  subwayAbsorbChance: number;
+  /** 헬기: rooftop이 dest인 처리 시 골드 배수 */
+  rooftopGoldMultiplier: number;
 }
 
 export interface ActiveModifier {

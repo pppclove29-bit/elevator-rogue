@@ -77,6 +77,7 @@ export class GameScene extends Phaser.Scene {
     if (this.scene.isActive('Shop')) this.scene.stop('Shop');
     if (this.scene.isActive('Modifier')) this.scene.stop('Modifier');
     if (this.scene.isActive('Relic')) this.scene.stop('Relic');
+    if (this.scene.isActive('GameOver')) this.scene.stop('GameOver');
     this.startRun(this.seed);
   }
 
@@ -300,6 +301,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   update(_time: number, delta: number): void {
+    // 게임 오버 시 GameOverScene 자동 launch (한 번만)
+    if (this.state.gameOver && !this.scene.isActive('GameOver')) {
+      this.scene.launch('GameOver');
+    }
     if (!this.paused && !this.state.gameOver && !this.pendingReward) {
       this.accumulator += delta * this.timeScale;
       while (this.accumulator >= TICK_MS) {

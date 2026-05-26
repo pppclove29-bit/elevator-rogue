@@ -27,6 +27,9 @@ export function defaultParams(): SimParams {
     globalSpeedMultiplier: 1,
     skillCooldownMultiplier: 1,
     phaseSpawnMultiplier: { morning: 1, work: 1, lunch: 1, evening: 1, night: 1 },
+    escalatorReach: 0,
+    subwayAbsorbChance: 0,
+    rooftopGoldMultiplier: 1,
   };
 }
 
@@ -199,7 +202,8 @@ function doLoadUnload(state: SimState, e: Elevator, floorId: number): { moved: n
       } else if (destRole) {
         const baseGold = GOLD_PER_ROLE[destRole];
         const fast = p.anger <= ANGER_THRESHOLD * 0.3 ? spec.fastBonus : 1;
-        state.gold += Math.round(baseGold * spec.goldMultiplier * fast);
+        const heliBonus = destRole === 'rooftop' ? state.params.rooftopGoldMultiplier : 1;
+        state.gold += Math.round(baseGold * spec.goldMultiplier * fast * heliBonus);
       }
       bonusTicks += spec.loadTickBonus;
       moved += 1;

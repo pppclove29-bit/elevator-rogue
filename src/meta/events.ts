@@ -8,6 +8,12 @@ export interface EventEntry {
   name: string;
   desc: string;
   severity: EventSeverity;
+  /** 이 day 이후만 발생 (랜덤 풀 진입 가능). 기본 0 */
+  minDay?: number;
+  /** 이 day들엔 무조건 발생 (랜덤 굴림 무시). 마일스톤/보스 day용 */
+  pinnedDays?: number[];
+  /** 매 N일마다 고정 발생 (offset day부터). minDay와 함께 적용. 예: { every: 7 } = 7,14,21,... */
+  cadence?: { every: number; offset?: number };
   /** day 시작 시 호출. 발동 여부 결정 + 즉시 효과 + cleanup 반환 (지속형) */
   trigger(state: SimState, rng: Rng, day: number): null | { durationTicks: number; cleanup: () => void };
 }
@@ -48,8 +54,9 @@ export const EVENTS: Record<string, EventEntry> = {
 
   'ev-blackout': {
     id: 'ev-blackout', name: '정전',
-    desc: '랜덤 엘베 1대 30초 정지',
+    desc: '랜덤 엘베 1대 30초 정지 (Day 4 이후)',
     severity: 'major',
+    minDay: 4,
     trigger: (s, rng) => {
       const id = setBrokenRandomElevator(s, rng);
       if (id === null) return null;
@@ -92,10 +99,11 @@ export const EVENTS: Record<string, EventEntry> = {
 
   'ev-newyear': {
     id: 'ev-newyear', name: '신년 카운트다운',
-    desc: '하루 한정 모든 처리 골드 ×1.5 (보너스 +50G 즉시)',
+    desc: '특정일 한정 — 보너스 +80G',
     severity: 'critical',
+    pinnedDays: [10, 20, 30],
     trigger: (s) => {
-      s.gold += 50;
+      s.gold += 80;
       return null;
     },
   },
@@ -123,8 +131,9 @@ export const EVENTS: Record<string, EventEntry> = {
 
   'ev-strike': {
     id: 'ev-strike', name: '엘리베이터 파업',
-    desc: '모든 엘베 30초 정지',
+    desc: '모든 엘베 30초 정지 (Day 8 이후)',
     severity: 'critical',
+    minDay: 8,
     trigger: (s) => {
       const orig = s.building.elevators.map((e) => e.state);
       for (const e of s.building.elevators) e.state = { kind: 'broken' };
@@ -147,8 +156,9 @@ export const EVENTS: Record<string, EventEntry> = {
 
   'ev-mass-evac': {
     id: 'ev-mass-evac', name: '대피 훈련',
-    desc: '시작 시 각 층 큐 +2 (dest=lobby)',
+    desc: '예정된 훈련일 — 각 층 큐 +2 (dest=로비)',
     severity: 'major',
+    cadence: { every: 7, offset: 5 }, // Day 5, 12, 19, 26 ...
     trigger: (s) => {
       for (const f of s.building.floors) {
         if (f.id === 0) continue;
@@ -171,6 +181,22 @@ export const EVENTS: Record<string, EventEntry> = {
     severity: 'mild',
     trigger: (s) => { s.gold += 20; return null; },
   },
+
+  'ev-subway-strike': {
+    id: 'ev-subway-strike', name: '지하철 파업',
+    desc: '오늘 로비 트래픽 ×1.7 (지하철 안 다녀 사람들이 1F로 몰림)',
+    severity: 'major',
+    minDay: 6,
+    trigger: (s) => {
+      const orig = s.params.subwayAbsorbChance;
+      s.params.subwayAbsorbChance = 0; // 흡수 무력화
+      const u = mulSpawn(s, 0.6);     // 전체 스폰 ↑
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.subwayAbsorbChance = orig; u(); },
+      };
+    },
+  },
 };
 
 export interface EventTriggerConfig {
@@ -184,8 +210,26 @@ export const EVENT_CONFIG: EventTriggerConfig = {
 };
 
 export function rollDailyEvent(rng: Rng, day: number): EventEntry | null {
+  const all = Object.values(EVENTS);
+
+  // 1. 고정 이벤트 (pinnedDays / cadence) — minDay 적용. 우선순위 최우선.
+  for (const ev of all) {
+    if (ev.minDay !== undefined && day < ev.minDay) continue;
+    if (ev.pinnedDays?.includes(day)) return ev;
+    if (ev.cadence) {
+      const offset = ev.cadence.offset ?? 0;
+      if (day >= offset && (day - offset) % ev.cadence.every === 0) return ev;
+    }
+  }
+
+  // 2. 랜덤 풀 (chancePerDay 확률, minDay 필터, 고정 일정 제외)
   if (day < EVENT_CONFIG.startDay) return null;
   if (rng() >= EVENT_CONFIG.chancePerDay) return null;
-  const all = Object.values(EVENTS);
-  return all[Math.floor(rng() * all.length)] ?? null;
+  const pool = all.filter((ev) => {
+    if (ev.minDay !== undefined && day < ev.minDay) return false;
+    if (ev.pinnedDays || ev.cadence) return false; // 고정 일정 이벤트는 랜덤 풀 X
+    return true;
+  });
+  if (pool.length === 0) return null;
+  return pool[Math.floor(rng() * pool.length)] ?? null;
 }

@@ -41,6 +41,18 @@ export const RELICS: Record<string, RelicEntry> = {
   'r-overtime':        { id:'r-overtime', name:'야근 수당', desc:'골드 보상 +25% 효과 (시작 즉시 +30G)', type:'tradeoff',
     apply: (s) => { s.gold += 30; /* 매번 +25%는 별도 시스템 필요 — MVP 단순화 */ } },
 
+  // 운송 수단 확장 (모디파이어로 통합)
+  'r-escalator':       { id:'r-escalator', name:'에스컬레이터', desc:'한 층 차이(±1) 이동 승객은 엘베 안 거치고 즉시 처리', type:'pure',
+    apply: (s) => { s.params.escalatorReach = Math.max(s.params.escalatorReach, 1); } },
+  'r-escalator-pro':   { id:'r-escalator-pro', name:'에스컬레이터 확장', desc:'두 층 차이(±2)까지 즉시 처리', type:'pure',
+    apply: (s) => { s.params.escalatorReach = Math.max(s.params.escalatorReach, 2); } },
+  'r-subway-line':     { id:'r-subway-line', name:'지하철 노선 개통', desc:'로비(LB) 출발 승객 30% 즉시 흡수', type:'pure',
+    apply: (s) => { s.params.subwayAbsorbChance = Math.max(s.params.subwayAbsorbChance, 0.3); } },
+  'r-subway-express':  { id:'r-subway-express', name:'지하철 급행', desc:'로비 흡수 확률 +25% (누적)', type:'tradeoff',
+    apply: (s) => { s.params.subwayAbsorbChance = Math.min(0.85, s.params.subwayAbsorbChance + 0.25); } },
+  'r-helipad':         { id:'r-helipad', name:'옥상 헬리포트', desc:'옥상(RF) 도착 골드 ×2 (영구)', type:'pure',
+    apply: (s) => { s.params.rooftopGoldMultiplier = Math.max(s.params.rooftopGoldMultiplier, 2); } },
+
   // Curse (디버프 렐릭)
   'r-old-cable':       { id:'r-old-cable', name:'노후 케이블', desc:'속도 -15% (영구)', type:'curse',
     apply: (s) => { s.params.globalSpeedMultiplier *= 0.85; } },

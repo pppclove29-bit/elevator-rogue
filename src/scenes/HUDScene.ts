@@ -18,8 +18,6 @@ export class HUDScene extends Phaser.Scene {
   private phaseText!: Phaser.GameObjects.Text;
   private phaseBarBg!: Phaser.GameObjects.Rectangle;
   private phaseBarFill!: Phaser.GameObjects.Rectangle;
-  private gameOverGroup!: Phaser.GameObjects.Container;
-  private lastGameOver = false;
   private pauseBtn!: ControlButton;
   private speedBtns: ControlButton[] = [];
   private restartBtn!: ControlButton;
@@ -78,7 +76,6 @@ export class HUDScene extends Phaser.Scene {
 
     this.buildControlBar(game);
     this.buildSkillBar(game);
-    this.buildGameOver();
     this.repairContainer = this.add.container(0, 0);
     if (import.meta.env.DEV) this.buildDevLinks();
   }
@@ -125,26 +122,6 @@ export class HUDScene extends Phaser.Scene {
     this.restartBtn = new ControlButton(this, x, y, 80, 28, '재시작', () => game.restart());
   }
 
-  private buildGameOver(): void {
-    const game = this.scene.get('Game') as GameScene;
-    this.gameOverGroup = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
-    const overlay = this.add.rectangle(0, 0, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.6).setOrigin(0.5);
-    const title = this.add.text(0, -40, '게임 오버', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '56px',
-      color: '#e74c3c',
-    }).setOrigin(0.5);
-    const hint = this.add.text(0, 20, 'R 키 또는 재시작 버튼', {
-      fontFamily: 'system-ui, sans-serif',
-      fontSize: '16px',
-      color: COLORS.textDim,
-    }).setOrigin(0.5);
-    const restartHere = new ControlButton(this, -60, 56, 120, 32, '재시작', () => game.restart(), true);
-    this.gameOverGroup.add([overlay, title, hint, restartHere.container]);
-    this.gameOverGroup.setVisible(false);
-    this.gameOverGroup.setDepth(100);
-  }
-
   update(): void {
     const game = this.scene.get('Game') as GameScene;
     if (!game?.state) return;
@@ -178,11 +155,6 @@ export class HUDScene extends Phaser.Scene {
     this.eventText.setText(game.activeEventToday ? `⚠ ${game.activeEventToday.name}` : '');
 
     this.updateRepairButtons(game);
-
-    if (game.state.gameOver !== this.lastGameOver) {
-      this.gameOverGroup.setVisible(game.state.gameOver);
-      this.lastGameOver = game.state.gameOver;
-    }
 
     for (let i = 0; i < this.skillSlots.length; i++) {
       const slotId = game.state.ownedSkills[i];
