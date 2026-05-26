@@ -53,6 +53,30 @@ export const RELICS: Record<string, RelicEntry> = {
   'r-helipad':         { id:'r-helipad', name:'옥상 헬리포트', desc:'옥상(RF) 도착 골드 ×2 (영구)', type:'pure',
     apply: (s) => { s.params.rooftopGoldMultiplier = Math.max(s.params.rooftopGoldMultiplier, 2); } },
 
+  // 인력/시설
+  'r-guard':           { id:'r-guard', name:'경비 고용', desc:'도둑 스폰 확률 -50% (영구)', type:'pure',
+    apply: (s) => { s.params.thiefSpawnMultiplier *= 0.5; } },
+  'r-guard-pro':       { id:'r-guard-pro', name:'경비 강화', desc:'도둑 스폰 확률 추가 -50%', type:'pure',
+    apply: (s) => { s.params.thiefSpawnMultiplier *= 0.5; } },
+  'r-janitor':         { id:'r-janitor', name:'청소부 고용', desc:'화장실 청결도 자동 회복 +0.3/tick', type:'pure',
+    apply: (s) => { s.params.toiletCleanRate += 0.3; } },
+  'r-janitor-pro':     { id:'r-janitor-pro', name:'청소반 확장', desc:'화장실 청결도 회복 +0.5/tick (누적)', type:'pure',
+    apply: (s) => { s.params.toiletCleanRate += 0.5; } },
+  'r-toilet-renovation':{ id:'r-toilet-renovation', name:'화장실 리모델링', desc:'모든 화장실 청결도 100으로 초기화 + 더러움 anger 가중 ×0.7', type:'pure',
+    apply: (s) => {
+      for (const f of s.building.floors) if (f.hasToilet) f.cleanliness = 100;
+      s.params.dirtyToiletAngerMultiplier *= 0.7;
+    } },
+  'r-extra-toilet':    { id:'r-extra-toilet', name:'화장실 추가 신설', desc:'화장실이 없던 층 한 곳에 화장실 신설', type:'pure',
+    apply: (s) => {
+      const candidates = s.building.floors.filter((f) => !f.hasToilet && f.role !== 'rooftop' && f.role !== 'basement');
+      if (candidates.length > 0) {
+        const target = candidates[Math.floor(Math.random() * candidates.length)]!;
+        target.hasToilet = true;
+        target.cleanliness = 100;
+      }
+    } },
+
   // Curse (디버프 렐릭)
   'r-old-cable':       { id:'r-old-cable', name:'노후 케이블', desc:'속도 -15% (영구)', type:'curse',
     apply: (s) => { s.params.globalSpeedMultiplier *= 0.85; } },

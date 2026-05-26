@@ -1,4 +1,4 @@
-import { ARCHETYPES, spaceUsed } from './archetypes';
+import { ARCHETYPES, spaceUsed, THIEF_GOLD_DAMAGE } from './archetypes';
 import { createBuilding, nearestFloor } from './building';
 import { dayLengthTicks } from './phase';
 import { decide } from './policy';
@@ -30,6 +30,9 @@ export function defaultParams(): SimParams {
     escalatorReach: 0,
     subwayAbsorbChance: 0,
     rooftopGoldMultiplier: 1,
+    thiefSpawnMultiplier: 1,
+    toiletCleanRate: 0,
+    dirtyToiletAngerMultiplier: 1.5,
   };
 }
 
@@ -197,13 +200,22 @@ function doLoadUnload(state: SimState, e: Elevator, floorId: number): { moved: n
     if (p.dest === floorId) {
       state.servedCount += 1;
       const spec = ARCHETYPES[p.archetype];
-      if (p.anger >= ANGER_THRESHOLD) {
+      // 도둑 도착 = 골드 강탈
+      if (p.archetype === 'thief') {
+        const dmg = Math.min(state.gold, THIEF_GOLD_DAMAGE);
+        state.gold -= dmg;
+        console.log(`[t=${state.tick}] 도둑 도착! 골드 -${dmg}G`);
+      } else if (p.anger >= ANGER_THRESHOLD) {
         state.angryServedCount += 1;
       } else if (destRole) {
         const baseGold = GOLD_PER_ROLE[destRole];
         const fast = p.anger <= ANGER_THRESHOLD * 0.3 ? spec.fastBonus : 1;
         const heliBonus = destRole === 'rooftop' ? state.params.rooftopGoldMultiplier : 1;
         state.gold += Math.round(baseGold * spec.goldMultiplier * fast * heliBonus);
+      }
+      // 화장실 보유 층 dest 도착 시 청결도 감소
+      if (destFloor?.hasToilet) {
+        destFloor.cleanliness = Math.max(0, destFloor.cleanliness - 4);
       }
       bonusTicks += spec.loadTickBonus;
       moved += 1;
@@ -260,11 +272,18 @@ export function repairElevator(state: SimState, eId: number): boolean {
 
 function accumulateAnger(state: SimState): void {
   for (const floor of state.building.floors) {
+    // 청소부 효과: 매 tick 청결도 회복
+    if (floor.hasToilet && state.params.toiletCleanRate > 0) {
+      floor.cleanliness = Math.min(100, floor.cleanliness + state.params.toiletCleanRate);
+    }
     const full = floor.queue.length >= state.params.floorCapacity;
-    const mult = full ? state.params.angerFloorFullMultiplier : 1;
+    const fullMult = full ? state.params.angerFloorFullMultiplier : 1;
+    // 더러운 화장실 가중
+    const dirty = floor.hasToilet && floor.cleanliness < 30;
+    const dirtyMult = dirty ? state.params.dirtyToiletAngerMultiplier : 1;
     for (const p of floor.queue) {
       const spec = ARCHETYPES[p.archetype];
-      p.anger += state.params.angerWaitingPerTick * mult * spec.angerMultiplier;
+      p.anger += state.params.angerWaitingPerTick * fullMult * dirtyMult * spec.angerMultiplier;
     }
   }
   for (const e of state.building.elevators) {

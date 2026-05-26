@@ -38,6 +38,10 @@ export interface Floor {
   id: FloorId;
   role: FloorRole;
   queue: Passenger[];
+  /** 화장실 보유 층 */
+  hasToilet: boolean;
+  /** 청결도 0~100 (hasToilet=true인 층만 의미) */
+  cleanliness: number;
 }
 
 export interface Building {
@@ -63,6 +67,12 @@ export interface SimParams {
   subwayAbsorbChance: number;
   /** 헬기: rooftop이 dest인 처리 시 골드 배수 */
   rooftopGoldMultiplier: number;
+  /** 도둑 스폰 확률 배수 (경비 효과로 ↓) */
+  thiefSpawnMultiplier: number;
+  /** 매 tick 화장실 청결도 회복 (청소부 효과) */
+  toiletCleanRate: number;
+  /** 청결도가 이 값 이하인 화장실 층 큐는 anger 가중 */
+  dirtyToiletAngerMultiplier: number;
 }
 
 export interface ActiveModifier {

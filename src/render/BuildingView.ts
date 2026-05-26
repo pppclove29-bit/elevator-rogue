@@ -143,8 +143,15 @@ export class BuildingView {
       const fl = this.floorLabels[i]!;
       fl.setPosition(x + 8, fy);
       const roleColorHex = '#' + ROLE_COLOR[floor.role].toString(16).padStart(6, '0');
-      fl.setText(`${i + 1}F ${ROLE_SHORT[floor.role]}`);
-      fl.setColor(roleColorHex);
+      // 화장실 보유면 🚻 표시 + 청결도 표기
+      let label = `${i + 1}F ${ROLE_SHORT[floor.role]}`;
+      if (floor.hasToilet) {
+        const c = Math.round(floor.cleanliness);
+        const dirty = c < 30;
+        label += dirty ? ` 🚻!${c}` : ` 🚻${c}`;
+      }
+      fl.setText(label);
+      fl.setColor(floor.hasToilet && floor.cleanliness < 30 ? '#e74c3c' : roleColorHex);
       fl.setVisible(true);
     }
     for (let i = floors.length; i < this.floorLabels.length; i++) {

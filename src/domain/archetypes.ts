@@ -2,7 +2,8 @@ import { Phase } from './phase';
 
 export type PassengerArchetype =
   | 'normal' | 'vip' | 'elderly' | 'suit'
-  | 'group' | 'baggage' | 'shady' | 'tourist' | 'staff';
+  | 'group' | 'baggage' | 'shady' | 'tourist' | 'staff'
+  | 'thief';
 
 export interface ArchetypeSpec {
   id: PassengerArchetype;
@@ -49,7 +50,13 @@ export const ARCHETYPES: Record<PassengerArchetype, ArchetypeSpec> = {
   staff:    { id:'staff',    name:'직원',         desc:'골드 0, anger ×0.5',
               color: 0x4a4a55, goldMultiplier:0.0, angerMultiplier:0.5, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
               weightByPhase: { work:3, night:1 } },
+  thief:    { id:'thief',    name:'도둑',         desc:'밤에만 1F에서 스폰. 도착 시 골드 강탈',
+              color: 0x111111, goldMultiplier:0, angerMultiplier:0.3, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
+              weightByPhase: { night:4 } },
 };
+
+/** 도둑 dest 도착 시 골드 감소량 */
+export const THIEF_GOLD_DAMAGE = 15;
 
 export function spaceUsed(passengers: { archetype: PassengerArchetype }[]): number {
   let s = 0;

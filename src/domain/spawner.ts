@@ -27,20 +27,33 @@ export function maybeSpawn(state: SimState, rng: Rng): void {
   const destFloor = pickFloorByRole(rng, floors, traffic.dest, originFloor.id);
   if (!destFloor) return;
 
-  const archetype = pickArchetype(rng, info.phase);
-  const spec = ARCHETYPES[archetype];
+  let archetype = pickArchetype(rng, info.phase);
+  let spec = ARCHETYPES[archetype];
+
+  // 도둑: thiefSpawnMultiplier로 확률 조정. 확률 미달이면 normal로 대체.
+  if (archetype === 'thief' && rng() >= state.params.thiefSpawnMultiplier) {
+    archetype = 'normal'; spec = ARCHETYPES.normal;
+  }
+  // 도둑 origin은 무조건 lobby. lobby 없으면 그냥 normal로 다운그레이드.
+  let effOrigin = originFloor;
+  if (archetype === 'thief') {
+    const lobby = state.building.floors.find((f) => f.role === 'lobby');
+    if (!lobby) { archetype = 'normal'; spec = ARCHETYPES.normal; }
+    else effOrigin = lobby;
+  }
+
   const count = spec.groupSize;
 
-  // 지하철: 로비 origin인 승객을 확률적으로 즉시 흡수 (도착 처리, 큐 안 들어감)
-  if (originFloor.role === 'lobby' && state.params.subwayAbsorbChance > 0
+  // 지하철: 로비 origin인 일반 승객 확률적 흡수 (도둑은 X)
+  if (archetype !== 'thief' && effOrigin.role === 'lobby' && state.params.subwayAbsorbChance > 0
       && rng() < state.params.subwayAbsorbChance) {
     state.servedCount += count;
     return;
   }
 
-  // 에스컬레이터: 짧은 거리 이동은 엘베 안 거치고 즉시 처리
-  const dist = Math.abs(destFloor.id - originFloor.id);
-  if (state.params.escalatorReach > 0 && dist <= state.params.escalatorReach) {
+  // 에스컬레이터: 짧은 거리 즉시 처리 (도둑은 X)
+  const dist = Math.abs(destFloor.id - effOrigin.id);
+  if (archetype !== 'thief' && state.params.escalatorReach > 0 && dist <= state.params.escalatorReach) {
     state.servedCount += count;
     return;
   }
@@ -48,13 +61,13 @@ export function maybeSpawn(state: SimState, rng: Rng): void {
   for (let i = 0; i < count; i++) {
     const p: Passenger = {
       id: state.nextPassengerId++,
-      origin: originFloor.id,
+      origin: effOrigin.id,
       dest: destFloor.id,
       spawnTick: state.tick,
       anger: 0,
       archetype,
     };
-    originFloor.queue.push(p);
+    effOrigin.queue.push(p);
   }
 }
 

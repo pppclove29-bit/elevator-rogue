@@ -112,6 +112,7 @@ export const CUSTOMERS: CustomerArchetype[] = [
   { id: 'cust-shady', name: '의심 인물', desc: '거부하면 보너스, 받으면 anger 가속', goldMod: '거부 시 +20G / 받으면 -10G', angerMod: '받으면 ×2', spawnRule: 'NIGHT 특화', status: 'idea', notes: '거부 메카닉 신규 필요' },
   { id: 'cust-tourist', name: '관광객', desc: '잘못된 층 누름. 가끔 dest 변경', goldMod: '×1.5', angerMod: '기본', spawnRule: '주말 (요일 도입 시)', status: 'done' },
   { id: 'cust-staff', name: '직원', desc: '내부 이동. 골드 X, 처리수만', goldMod: '0G', angerMod: '×0.5', spawnRule: 'WORK 활발', status: 'done' },
+  { id: 'cust-thief', name: '도둑', desc: '밤 1F 스폰. 도착 시 골드 -15G 강탈', goldMod: '-15G', angerMod: '×0.3', spawnRule: 'NIGHT 한정, 경비로 차단 가능', status: 'done' },
 ];
 
 // ─────────────────────────────────────────────────────────────
