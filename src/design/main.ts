@@ -264,8 +264,8 @@ root.append(el('div', { class: 'toc', html: `
 {
   const section = el('section', { id: 'week' });
   section.append(
-    el('h2', { html: `6. 요일 개념 <span class="status-badge idea">검토 중</span>` }),
-    el('p', { class: 'section-desc', html: '현재 게임은 day 단위 무한 반복. <strong>일주일(7일) 사이클</strong>을 추가하면 (a) 평일/주말 트래픽 패턴 분화, (b) 특정 이벤트 요일 매핑, (c) 주간 마일스톤(주말 끝 = 큰 보상/리뷰), (d) 메타 진행감.' })
+    el('h2', { html: `6. 요일 개념 <span class="status-badge done">구현됨</span>` }),
+    el('p', { class: 'section-desc', html: 'Day 1 = 월요일부터 7일 사이클. 평일/주말 트래픽·골드 분화. HUD에 <span class="mono">3일차 (수) · 출근</span> 표시. 주말 골드 ×1.2.' })
   );
 
   const grid = el('div', { class: 'day-grid' });

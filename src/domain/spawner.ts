@@ -1,16 +1,19 @@
 import { ARCHETYPES, PassengerArchetype } from './archetypes';
-import { PHASE_SPAWN_INTERVAL, PHASE_TRAFFIC, phaseAtTick, RoleWeights } from './phase';
+import { DAY_OF_WEEK_SPAWN_MUL, dayOfWeekFor, PHASE_SPAWN_INTERVAL, PHASE_TRAFFIC, phaseAtTick, RoleWeights } from './phase';
 import { Rng, pickWeighted } from './rng';
 import { Floor, FloorRole, Passenger, SimState } from './types';
 
 export function maybeSpawn(state: SimState, rng: Rng): void {
   const info = phaseAtTick(state.tick);
+  const dow = dayOfWeekFor(info.day + 1);
+  const dowMul = DAY_OF_WEEK_SPAWN_MUL[dow][info.phase] ?? 1;
   const interval = Math.max(
     2,
     Math.round(
       PHASE_SPAWN_INTERVAL[info.phase]
         * state.params.spawnIntervalMultiplier
-        * (state.params.phaseSpawnMultiplier[info.phase] ?? 1),
+        * (state.params.phaseSpawnMultiplier[info.phase] ?? 1)
+        * dowMul,
     ),
   );
 

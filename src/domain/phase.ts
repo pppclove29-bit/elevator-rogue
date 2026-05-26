@@ -64,6 +64,37 @@ export function dayLengthTicks(): number {
   return total;
 }
 
+// ─── 요일 시스템 ────────────────────────────────────────
+export type DayOfWeek = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+const WEEK_ORDER: DayOfWeek[] = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+export const DAY_OF_WEEK_LABEL: Record<DayOfWeek, string> = {
+  mon: '월', tue: '화', wed: '수', thu: '목', fri: '금', sat: '토', sun: '일',
+};
+export const WEEKEND: ReadonlySet<DayOfWeek> = new Set(['sat', 'sun']);
+
+/** day는 1부터 시작 (state.dayCompleted + 1). Day 1 = 월요일. */
+export function dayOfWeekFor(day: number): DayOfWeek {
+  return WEEK_ORDER[((day - 1) % 7 + 7) % 7]!;
+}
+
+/** 요일별 phase 스폰 간격 배수. 1보다 작으면 스폰 더 빠름. */
+export const DAY_OF_WEEK_SPAWN_MUL: Record<DayOfWeek, Partial<Record<Phase, number>>> = {
+  mon: { morning: 0.85 },               // 월요병: 출근 트래픽 +18%
+  tue: {},
+  wed: {},
+  thu: {},
+  fri: { evening: 0.7 },                // 불금: 퇴근 +43%
+  sat: { morning: 1.5, work: 1.5, lunch: 0.8, evening: 1.2 },  // 주말 사무실 한산, 점심 분주
+  sun: { morning: 2.5, work: 3.0, evening: 2.0, lunch: 1.2 },  // 일요일 거의 비어있음
+};
+
+/** 요일별 골드 배수 (처리 시 모든 골드 ×). 주말 보너스. */
+export const DAY_OF_WEEK_GOLD_MUL: Record<DayOfWeek, number> = {
+  mon: 1, tue: 1, wed: 1, thu: 1, fri: 1,
+  sat: 1.2, sun: 1.1,
+};
+
 export interface PhaseInfo {
   phase: Phase;
   day: number;

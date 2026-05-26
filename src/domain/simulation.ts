@@ -1,6 +1,6 @@
 import { ARCHETYPES, spaceUsed, THIEF_GOLD_DAMAGE } from './archetypes';
 import { createBuilding, nearestFloor } from './building';
-import { dayLengthTicks } from './phase';
+import { DAY_OF_WEEK_GOLD_MUL, dayLengthTicks, dayOfWeekFor } from './phase';
 import { decide } from './policy';
 import { Rng, mulberry32 } from './rng';
 import { allActionIds, allConditionIds } from './rules/blocks';
@@ -212,7 +212,9 @@ function doLoadUnload(state: SimState, e: Elevator, floorId: number): { moved: n
         const baseGold = GOLD_PER_ROLE[destRole];
         const fast = p.anger <= ANGER_THRESHOLD * 0.3 ? spec.fastBonus : 1;
         const heliBonus = destRole === 'rooftop' ? state.params.rooftopGoldMultiplier : 1;
-        state.gold += Math.round(baseGold * spec.goldMultiplier * fast * heliBonus);
+        const dow = dayOfWeekFor(Math.floor(state.tick / dayLengthTicks()) + 1);
+        const dowGold = DAY_OF_WEEK_GOLD_MUL[dow];
+        state.gold += Math.round(baseGold * spec.goldMultiplier * fast * heliBonus * dowGold);
       }
       // 화장실 보유 층 dest 도착 시 청결도 감소
       if (destFloor?.hasToilet) {
