@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { loadOptions } from '../meta/options';
 import { isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
 import { DEFAULT_THEME, ThemeId, THEMES } from '../meta/themes';
@@ -134,6 +135,9 @@ export class TitleScene extends Phaser.Scene {
     new Button(this, btnX, btnY, 240, 32, '조작법', () => this.scene.launch('Help'),
       { fontSize: 13 });
     btnY += 36;
+    new Button(this, btnX, btnY, 240, 32, '옵션', () => this.scene.launch('Options'),
+      { fontSize: 13 });
+    btnY += 36;
     if (import.meta.env.DEV) {
       new Button(this, btnX, btnY, 240, 26, '[DEV] 문서·디자인 페이지', () => {
         window.open('/docs.html', '_blank');
@@ -145,7 +149,8 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '10px', color: '#3a3a48',
     }).setOrigin(1, 1);
 
-    if (!localStorage.getItem(TUTORIAL_KEY)) {
+    const opt = loadOptions();
+    if (opt.showTutorialOnStart && !localStorage.getItem(TUTORIAL_KEY)) {
       this.scene.launch('Help', { firstTime: true });
       localStorage.setItem(TUTORIAL_KEY, '1');
     }

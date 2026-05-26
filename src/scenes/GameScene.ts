@@ -8,6 +8,7 @@ import { defaultPolicy, ElevatorId, ElevatorPolicy, MAX_SLOTS_PER_ELEVATOR, SimS
 import { EventEntry, rollDailyEvent } from '../meta/events';
 import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
+import { loadOptions } from '../meta/options';
 import { loadProgression, recordDayReached, saveProgression } from '../meta/progression';
 import { rollShopOffers } from '../meta/shop';
 import { readSave, SaveData, writeSave } from '../meta/save';
@@ -59,6 +60,8 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.startRun(this.seed);
     }
+    // 옵션의 기본 속도 적용
+    this.timeScale = loadOptions().defaultTimeScale;
 
     const margin = 80;
     const usableHeight = GAME_HEIGHT - margin * 2;
