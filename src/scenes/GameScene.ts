@@ -9,6 +9,7 @@ import { EventEntry, rollDailyEvent } from '../meta/events';
 import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
 import { rollShopOffers } from '../meta/shop';
+import { readSave, SaveData, writeSave } from '../meta/save';
 import { skillById } from '../meta/skills';
 import { DEFAULT_THEME, THEMES, ThemeId } from '../meta/themes';
 import { addFloor } from '../domain/building';
@@ -34,9 +35,15 @@ export class GameScene extends Phaser.Scene {
   timeScale = 1;
   private seed = 1;
   private themeId: ThemeId = DEFAULT_THEME;
+  private pendingLoad: SaveData | null = null;
 
-  init(data: { theme?: ThemeId }): void {
-    if (data?.theme) this.themeId = data.theme;
+  init(data: { theme?: ThemeId; load?: boolean }): void {
+    if (data?.load) {
+      this.pendingLoad = readSave();
+    } else {
+      this.pendingLoad = null;
+      if (data?.theme) this.themeId = data.theme;
+    }
   }
 
   constructor() {
@@ -44,7 +51,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
-    this.startRun(this.seed);
+    if (this.pendingLoad) {
+      this.applyLoad(this.pendingLoad);
+      this.pendingLoad = null;
+    } else {
+      this.startRun(this.seed);
+    }
 
     const margin = 80;
     const usableHeight = GAME_HEIGHT - margin * 2;
@@ -229,6 +241,16 @@ export class GameScene extends Phaser.Scene {
     for (const ec of this.eventCleanups) ec.cleanup();
     this.eventCleanups = [];
     this.activeEventToday = null;
+    // 미만료된 active modifier도 강제 cleanup (저장 위해 — drop)
+    for (const am of this.state.activeModifiers) {
+      const undo = this.modifierCleanups.get(am.id);
+      if (undo) undo();
+    }
+    this.modifierCleanups.clear();
+    this.state.activeModifiers = [];
+
+    // 깨끗한 상태 → 자동 저장
+    this.saveNow();
 
     // 새 day 이벤트 굴림
     this.maybeRollDailyEvent(day + 1);
@@ -274,6 +296,45 @@ export class GameScene extends Phaser.Scene {
       theme.apply(this.state);
     }
     void startingSlotsForElevator;
+  }
+
+  private applyLoad(save: SaveData): void {
+    // RNG는 seed로 재초기화 (저장 시점의 rng 내부 상태는 직렬화 X — 약간 결정성 손해, 게임플레이 영향 미미)
+    const sim = createSim({
+      floorCount: 1, elevatorCount: 1, seed: save.seed, // sim 초기화 후 state 통째로 교체
+    });
+    this.rng = sim.rng;
+    this.state = save.state;
+    this.themeId = save.themeId;
+    this.seed = save.seed;
+    this.lastRewardedDay = save.lastRewardedDay;
+    this.lastModifierDay = save.lastModifierDay;
+    this.lastRelicDay = save.lastRelicDay;
+    this.lastFloorAddedDay = save.lastFloorAddedDay;
+    this.accumulator = 0;
+    this.paused = false;
+    this.pendingReward = false;
+    this.modifierCleanups.clear();
+    this.eventCleanups = [];
+    this.activeEventToday = null;
+    this.pendingModalQueue = [];
+    // 저장은 깨끗한 상태 (activeModifiers/eventCleanups 비어있음)
+  }
+
+  /** 매 day end 시점에 호출. cleanups 다 비운 후 직렬화. */
+  private saveNow(): void {
+    const data: SaveData = {
+      version: 1,
+      state: JSON.parse(JSON.stringify(this.state)) as typeof this.state,
+      themeId: this.themeId,
+      seed: this.seed,
+      lastRewardedDay: this.lastRewardedDay,
+      lastModifierDay: this.lastModifierDay,
+      lastRelicDay: this.lastRelicDay,
+      lastFloorAddedDay: this.lastFloorAddedDay,
+      savedAt: Date.now(),
+    };
+    writeSave(data);
   }
 
   private maybeRollDailyEvent(day: number): void {

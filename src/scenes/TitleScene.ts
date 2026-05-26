@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { readSave, saveExists, summarize } from '../meta/save';
 import { DEFAULT_THEME, ThemeId, THEMES } from '../meta/themes';
 import { Button } from '../ui/Button';
 
@@ -95,12 +96,29 @@ export class TitleScene extends Phaser.Scene {
     };
     this.refreshThemeCards();
 
-    // 시작 / 조작법
+    // 시작 / 계속하기 / 조작법
     const btnX = GAME_WIDTH / 2 + 30;
     let btnY = 596;
-    new Button(this, btnX, btnY, 240, 44, '게임 시작', () => this.startGame(),
-      { fontSize: 16, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
-    btnY += 48;
+
+    const hasSave = saveExists();
+    if (hasSave) {
+      const save = readSave();
+      new Button(this, btnX, btnY, 240, 44, '계속하기', () => this.continueGame(),
+        { fontSize: 14, bg: 0x7ed957, bgHover: 0x8fea68, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+      if (save) {
+        this.add.text(btnX, btnY + 26, summarize(save), {
+          fontFamily: FONT, fontSize: '10px', color: '#0b0b10',
+        }).setOrigin(0.5);
+      }
+      btnY += 50;
+      new Button(this, btnX, btnY, 240, 36, '새 게임 시작', () => this.startGame(),
+        { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+      btnY += 40;
+    } else {
+      new Button(this, btnX, btnY, 240, 44, '게임 시작', () => this.startGame(),
+        { fontSize: 16, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+      btnY += 48;
+    }
     new Button(this, btnX, btnY, 240, 32, '조작법', () => this.scene.launch('Help'),
       { fontSize: 13 });
     btnY += 36;
@@ -128,5 +146,10 @@ export class TitleScene extends Phaser.Scene {
   private startGame(): void {
     this.scene.stop('Help');
     this.scene.start('Game', { theme: this.selectedTheme });
+  }
+
+  private continueGame(): void {
+    this.scene.stop('Help');
+    this.scene.start('Game', { load: true });
   }
 }

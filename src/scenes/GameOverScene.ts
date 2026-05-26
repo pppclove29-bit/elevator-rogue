@@ -3,6 +3,7 @@ import { COLORS, GAME_HEIGHT, GAME_WIDTH, TICK_MS } from '../config';
 import { phaseAtTick } from '../domain/phase';
 import { SimState } from '../domain/types';
 import { RELICS } from '../meta/relics';
+import { clearSave } from '../meta/save';
 import { SKILLS } from '../meta/skills';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
@@ -15,6 +16,9 @@ export class GameOverScene extends Phaser.Scene {
   create(): void {
     this.gs = this.scene.get('Game') as GameScene;
     const s = this.gs.state;
+
+    // 게임 오버 = 런 종료. 저장 삭제.
+    clearSave();
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
 
