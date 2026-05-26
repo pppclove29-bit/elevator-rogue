@@ -1,6 +1,7 @@
 const KEY = 'elevator-rogue.options.v1';
 
 export type DefaultTimeScale = 1 | 2 | 4 | 8;
+export type ZoomLevel = 1 | 1.25 | 1.5 | 2;
 
 export interface Options {
   version: 1;
@@ -10,6 +11,7 @@ export interface Options {
   defaultTimeScale: DefaultTimeScale;
   fullscreen: boolean;
   showTutorialOnStart: boolean;
+  zoom: ZoomLevel;
 }
 
 export function defaultOptions(): Options {
@@ -21,7 +23,18 @@ export function defaultOptions(): Options {
     defaultTimeScale: 1,
     fullscreen: false,
     showTutorialOnStart: true,
+    zoom: 1,
   };
+}
+
+/** canvas 또는 게임 컨테이너에 CSS transform: scale을 적용 */
+export function applyZoom(zoom: ZoomLevel): void {
+  const container = document.getElementById('game');
+  if (!container) return;
+  const canvas = container.querySelector('canvas') as HTMLCanvasElement | null;
+  if (!canvas) return;
+  canvas.style.transform = `scale(${zoom})`;
+  canvas.style.transformOrigin = 'center center';
 }
 
 export function loadOptions(): Options {

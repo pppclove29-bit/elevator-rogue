@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { getLocale, Locale, setLocale, SUPPORTED_LOCALES, t } from '../i18n/locale';
-import { clearAllGameData, DefaultTimeScale, loadOptions, Options, saveOptions } from '../meta/options';
+import { applyZoom, clearAllGameData, DefaultTimeScale, loadOptions, Options, saveOptions, ZoomLevel } from '../meta/options';
 import { Button } from '../ui/Button';
 
 const FONT = '"DotGothic16", "Press Start 2P", monospace';
@@ -70,6 +70,7 @@ export class OptionsScene extends Phaser.Scene {
 
     // 4. 화면
     y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.display'), '#7ed957');
+    y = this.drawZoomRow(panelX + 16, y, panelW - 32);
     y = this.drawFullscreenRow(panelX + 16, y, panelW - 32);
     y += rowGap;
 
@@ -171,6 +172,29 @@ export class OptionsScene extends Phaser.Scene {
       textColor: value ? '#0b0b10' : COLORS.text, textColorActive: '#0b0b10',
     });
     this.content.add(btn.container);
+    return y + h + 4;
+  }
+
+  private drawZoomRow(x: number, y: number, w: number): number {
+    const h = 28;
+    this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
+    this.content.add(this.add.text(x + 12, y + 8, t('options.zoom'), { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
+    const zooms: ZoomLevel[] = [1, 1.25, 1.5, 2];
+    let bx = x + 160;
+    for (const z of zooms) {
+      const active = this.opt.zoom === z;
+      const btn = new Button(this, bx + 38, y + h / 2, 70, 22, `${Math.round(z * 100)}%`, () => {
+        this.opt.zoom = z;
+        applyZoom(z);
+        this.rebuild();
+      }, {
+        fontSize: 11,
+        bg: active ? 0x4a90e2 : 0x222230, bgHover: active ? 0x4a90e2 : 0x2c2c3a,
+        textColor: active ? '#0b0b10' : COLORS.text, textColorActive: '#0b0b10',
+      });
+      this.content.add(btn.container);
+      bx += 76;
+    }
     return y + h + 4;
   }
 

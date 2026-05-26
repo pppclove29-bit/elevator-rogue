@@ -63,13 +63,13 @@ export class GameScene extends Phaser.Scene {
 
     const margin = 80;
     const usableHeight = GAME_HEIGHT - margin * 2;
-    const width = 320;
+    const width = 560;
     const layout = {
       x: Math.floor((GAME_WIDTH - width) / 2),
       y: margin,
       width,
       totalHeight: usableHeight,
-      shaftSpacing: 56,
+      shaftSpacing: 72,
     };
     this.view = new BuildingView(this, layout);
     this.sprites = new PassengerSprites(this, layout);
