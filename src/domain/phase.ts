@@ -73,9 +73,44 @@ export const DAY_OF_WEEK_LABEL: Record<DayOfWeek, string> = {
 };
 export const WEEKEND: ReadonlySet<DayOfWeek> = new Set(['sat', 'sun']);
 
-/** day는 1부터 시작 (state.dayCompleted + 1). Day 1 = 월요일. */
+/** day는 1부터 시작 (state.dayCompleted + 1). Day 1 = 1월 1일 = 월요일. */
 export function dayOfWeekFor(day: number): DayOfWeek {
   return WEEK_ORDER[((day - 1) % 7 + 7) % 7]!;
+}
+
+/** 평년 캘린더. Day 1 = 1월 1일. */
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+const YEAR_DAYS = 365;
+const MONTH_NAMES = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+export interface CalendarDate {
+  year: number;     // 1년차(=1), 2년차(=2), ...
+  month: number;    // 1~12
+  date: number;     // 1~31
+  monthName: string;
+  dayOfWeek: DayOfWeek;
+}
+
+export function dayToDate(day: number): CalendarDate {
+  const year = Math.floor((day - 1) / YEAR_DAYS) + 1;
+  let remaining = ((day - 1) % YEAR_DAYS) + 1;
+  let month = 1;
+  for (let m = 0; m < 12; m++) {
+    if (remaining <= MONTH_DAYS[m]!) { month = m + 1; break; }
+    remaining -= MONTH_DAYS[m]!;
+  }
+  return {
+    year, month, date: remaining,
+    monthName: MONTH_NAMES[month - 1]!,
+    dayOfWeek: dayOfWeekFor(day),
+  };
+}
+
+/** month, date → day 변환 (1년차 기준) */
+export function dateToDay(month: number, date: number): number {
+  let d = date;
+  for (let m = 0; m < month - 1; m++) d += MONTH_DAYS[m]!;
+  return d;
 }
 
 /** 요일별 phase 스폰 간격 배수. 1보다 작으면 스폰 더 빠름. */

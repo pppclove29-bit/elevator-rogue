@@ -1,3 +1,4 @@
+import { dayToDate } from '../domain/phase';
 import { Rng } from '../domain/rng';
 import { SimState } from '../domain/types';
 
@@ -14,6 +15,8 @@ export interface EventEntry {
   pinnedDays?: number[];
   /** 매 N일마다 고정 발생 (offset day부터). minDay와 함께 적용. 예: { every: 7 } = 7,14,21,... */
   cadence?: { every: number; offset?: number };
+  /** 매년 이 날짜에 무조건 발생 (캘린더 공휴일). pinnedDays/cadence보다 우선. */
+  holiday?: { month: number; date: number };
   /** day 시작 시 호출. 발동 여부 결정 + 즉시 효과 + cleanup 반환 (지속형) */
   trigger(state: SimState, rng: Rng, day: number): null | { durationTicks: number; cleanup: () => void };
 }
@@ -98,13 +101,17 @@ export const EVENTS: Record<string, EventEntry> = {
   },
 
   'ev-newyear': {
-    id: 'ev-newyear', name: '신년 카운트다운',
-    desc: '특정일 한정 — 보너스 +80G',
+    id: 'ev-newyear', name: '🎊 신정 (새해 첫날)',
+    desc: '한 해의 시작. 옥상 카운트다운 + 보너스 +80G',
     severity: 'critical',
-    pinnedDays: [10, 20, 30],
+    holiday: { month: 1, date: 1 },
     trigger: (s) => {
       s.gold += 80;
-      return null;
+      s.params.phaseSpawnMultiplier.morning *= 1.5; // 한산
+      return {
+        durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.morning /= 1.5; },
+      };
     },
   },
 
@@ -269,6 +276,142 @@ export const EVENTS: Record<string, EventEntry> = {
     },
   },
 
+  // ─────────────────────────────────────────────────────────────
+  // 공휴일 / 기념일 (캘린더 기반 매년 발생)
+  // ─────────────────────────────────────────────────────────────
+  'ev-holiday-valentine': {
+    id: 'ev-holiday-valentine', name: '💝 밸런타인데이',
+    desc: '식당가 폭주. LUNCH 스폰 ×2. 보너스 +30G',
+    severity: 'major', holiday: { month: 2, date: 14 },
+    trigger: (s) => {
+      s.gold += 30;
+      const orig = s.params.phaseSpawnMultiplier.lunch;
+      s.params.phaseSpawnMultiplier.lunch *= 0.5;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.lunch = orig; } };
+    },
+  },
+  'ev-holiday-march1': {
+    id: 'ev-holiday-march1', name: '🇰🇷 삼일절',
+    desc: '공휴일. 빌딩 한산. 골드 +20G',
+    severity: 'mild', holiday: { month: 3, date: 1 },
+    trigger: (s) => {
+      s.gold += 20;
+      const u = mulSpawn(s, 2.0); // 스폰 절반
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-childrensday': {
+    id: 'ev-holiday-childrensday', name: '🎈 어린이날',
+    desc: '가족 단체 손님 폭주. 식당/옥상 가중치 ↑. +40G',
+    severity: 'major', holiday: { month: 5, date: 5 },
+    trigger: (s) => {
+      s.gold += 40;
+      s.params.phaseSpawnMultiplier.morning *= 0.7;
+      s.params.phaseSpawnMultiplier.lunch *= 0.7;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.morning /= 0.7; s.params.phaseSpawnMultiplier.lunch /= 0.7; } };
+    },
+  },
+  'ev-holiday-memorial': {
+    id: 'ev-holiday-memorial', name: '🌹 현충일',
+    desc: '추모일. 매우 한산. 골드 +15G',
+    severity: 'mild', holiday: { month: 6, date: 6 },
+    trigger: (s) => {
+      s.gold += 15;
+      const u = mulSpawn(s, 2.5);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-liberation': {
+    id: 'ev-holiday-liberation', name: '🎌 광복절',
+    desc: '공휴일. 옥상 행사. 옥상 dest ×3 + 골드 ×1.5',
+    severity: 'major', holiday: { month: 8, date: 15 },
+    trigger: (s) => {
+      const u = (() => { s.params.rooftopGoldMultiplier *= 1.5;
+        return () => { s.params.rooftopGoldMultiplier /= 1.5; }; })();
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-chuseok': {
+    id: 'ev-holiday-chuseok', name: '🌕 추석',
+    desc: '명절 귀향. 빌딩 거의 비어있음. 골드 +50G',
+    severity: 'mild', holiday: { month: 9, date: 17 },
+    trigger: (s) => {
+      s.gold += 50;
+      const u = mulSpawn(s, 3.0);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-foundation': {
+    id: 'ev-holiday-foundation', name: '🏛️ 개천절',
+    desc: '공휴일. 한산. +20G',
+    severity: 'mild', holiday: { month: 10, date: 3 },
+    trigger: (s) => {
+      s.gold += 20;
+      const u = mulSpawn(s, 2.0);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-halloween': {
+    id: 'ev-holiday-halloween', name: '🎃 할로윈',
+    desc: '옥상 파티 + 도둑 출몰 ×2. 골드 +30G',
+    severity: 'major', holiday: { month: 10, date: 31 },
+    trigger: (s) => {
+      s.gold += 30;
+      const orig = s.params.thiefSpawnMultiplier;
+      s.params.thiefSpawnMultiplier *= 2;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.thiefSpawnMultiplier = orig; } };
+    },
+  },
+  'ev-holiday-pepero': {
+    id: 'ev-holiday-pepero', name: '🍫 빼빼로 데이',
+    desc: '식당가 폭주. LUNCH 스폰 ×2.5. +25G',
+    severity: 'major', holiday: { month: 11, date: 11 },
+    trigger: (s) => {
+      s.gold += 25;
+      const orig = s.params.phaseSpawnMultiplier.lunch;
+      s.params.phaseSpawnMultiplier.lunch *= 0.4;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.lunch = orig; } };
+    },
+  },
+  'ev-holiday-christmas-eve': {
+    id: 'ev-holiday-christmas-eve', name: '🎄 크리스마스 이브',
+    desc: '식당/옥상 트래픽 폭증. EVENING 스폰 ×2. +60G',
+    severity: 'critical', holiday: { month: 12, date: 24 },
+    trigger: (s) => {
+      s.gold += 60;
+      const orig = s.params.phaseSpawnMultiplier.evening;
+      s.params.phaseSpawnMultiplier.evening *= 0.5;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.evening = orig; } };
+    },
+  },
+  'ev-holiday-christmas': {
+    id: 'ev-holiday-christmas', name: '🎅 크리스마스',
+    desc: '공휴일. 한산. +80G',
+    severity: 'mild', holiday: { month: 12, date: 25 },
+    trigger: (s) => {
+      s.gold += 80;
+      const u = mulSpawn(s, 2.5);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-yearend': {
+    id: 'ev-holiday-yearend', name: '🎆 한 해의 마지막',
+    desc: '송년. 옥상 카운트다운. EVENING 스폰 ×3. +100G',
+    severity: 'critical', holiday: { month: 12, date: 31 },
+    trigger: (s) => {
+      s.gold += 100;
+      const orig = s.params.phaseSpawnMultiplier.evening;
+      s.params.phaseSpawnMultiplier.evening *= 0.33;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.phaseSpawnMultiplier.evening = orig; } };
+    },
+  },
+
   'ev-subway-strike': {
     id: 'ev-subway-strike', name: '지하철 파업',
     desc: '오늘 로비 트래픽 ×1.7 (지하철 안 다녀 사람들이 1F로 몰림)',
@@ -298,8 +441,14 @@ export const EVENT_CONFIG: EventTriggerConfig = {
 
 export function rollDailyEvent(rng: Rng, day: number): EventEntry | null {
   const all = Object.values(EVENTS);
+  const date = dayToDate(day);
 
-  // 1. 고정 이벤트 (pinnedDays / cadence) — minDay 적용. 우선순위 최우선.
+  // 1. 공휴일 — 가장 우선
+  for (const ev of all) {
+    if (ev.holiday && ev.holiday.month === date.month && ev.holiday.date === date.date) return ev;
+  }
+
+  // 2. 고정 이벤트 (pinnedDays / cadence) — minDay 적용
   for (const ev of all) {
     if (ev.minDay !== undefined && day < ev.minDay) continue;
     if (ev.pinnedDays?.includes(day)) return ev;
@@ -309,12 +458,12 @@ export function rollDailyEvent(rng: Rng, day: number): EventEntry | null {
     }
   }
 
-  // 2. 랜덤 풀 (chancePerDay 확률, minDay 필터, 고정 일정 제외)
+  // 3. 랜덤 풀 (chancePerDay 확률, minDay 필터, 고정/공휴일 제외)
   if (day < EVENT_CONFIG.startDay) return null;
   if (rng() >= EVENT_CONFIG.chancePerDay) return null;
   const pool = all.filter((ev) => {
     if (ev.minDay !== undefined && day < ev.minDay) return false;
-    if (ev.pinnedDays || ev.cadence) return false; // 고정 일정 이벤트는 랜덤 풀 X
+    if (ev.pinnedDays || ev.cadence || ev.holiday) return false;
     return true;
   });
   if (pool.length === 0) return null;

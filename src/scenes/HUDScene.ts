@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS } from '../config';
-import { DAY_OF_WEEK_LABEL, dayOfWeekFor, phaseAtTick, PHASE_LABEL, WEEKEND } from '../domain/phase';
+import { DAY_OF_WEEK_LABEL, dayOfWeekFor, dayToDate, phaseAtTick, PHASE_LABEL, WEEKEND } from '../domain/phase';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
 import { REPAIR_COST } from '../domain/types';
 import { MAX_SKILLS, skillById } from '../meta/skills';
@@ -133,10 +133,13 @@ export class HUDScene extends Phaser.Scene {
     this.goldText.setText(`${game.state.gold}G`);
 
     const info = phaseAtTick(game.state.tick);
-    const dow = dayOfWeekFor(info.day + 1);
+    const dayNum = info.day + 1;
+    const cal = dayToDate(dayNum);
+    const dow = dayOfWeekFor(dayNum);
     const dowLabel = DAY_OF_WEEK_LABEL[dow];
     const weekendColor = WEEKEND.has(dow) ? '#ffd700' : COLORS.text;
-    this.phaseText.setText(`${info.day + 1}일차 (${dowLabel}) · ${PHASE_LABEL[info.phase]}`);
+    const yearPrefix = cal.year > 1 ? `${cal.year}년차 ` : '';
+    this.phaseText.setText(`${yearPrefix}${cal.monthName} ${cal.date}일 (${dowLabel}) · ${PHASE_LABEL[info.phase]}`);
     this.phaseText.setColor(weekendColor);
     const ratio = info.tickInPhase / info.phaseTicks;
     const barW = this.phaseBarBg.width;
