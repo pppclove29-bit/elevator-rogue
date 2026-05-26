@@ -6,6 +6,9 @@ export const TICK_MS = 50;
 export const INITIAL_FLOORS = 5;
 export const INITIAL_ELEVATORS = 1;
 
+// 픽셀 폰트 (한글: DotGothic16, 영문/숫자: Press Start 2P fallback)
+export const FONT = '"DotGothic16", "Press Start 2P", monospace';
+
 export const COLORS = {
   bg: '#0b0b10',
   floorLine: 0x2a2a35,
@@ -14,4 +17,9 @@ export const COLORS = {
   passengerAngry: 0xe74c3c,
   text: '#f5f5f5',
   textDim: '#9aa0a6',
+  wallPattern: 0x1a1a24,
+  doorFrame: 0x6a5a3a,
+  doorPanel: 0x3a2e1a,
+  stairLine: 0x4a4a55,
+  escalator: 0x7ed957,
 } as const;

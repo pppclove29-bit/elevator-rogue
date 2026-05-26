@@ -19,21 +19,21 @@ export class ShopScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
 
     this.add.text(GAME_WIDTH / 2, 24, '상점', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '26px', color: COLORS.text,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '26px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
     this.add.text(GAME_WIDTH / 2, 58, '오늘의 매물 — 마음에 안 들면 리롤하세요. 다음 날 시작 시 매물 갱신.', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: COLORS.textDim,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
     this.goldText = this.add.text(GAME_WIDTH / 2, 86, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '22px', color: '#f5c542',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '22px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
     new Button(this, GAME_WIDTH - 100, 36, 140, 32, '다음 날 시작', () => this.closeShop(), { fontSize: 13 });
 
     this.rerollText = this.add.text(GAME_WIDTH / 2 - 80, GAME_HEIGHT - 60, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: COLORS.textDim,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
     new Button(this, GAME_WIDTH / 2 + 60, GAME_HEIGHT - 60, 140, 36, '리롤 (?G)', () => {
@@ -86,7 +86,7 @@ export class ShopScene extends Phaser.Scene {
 
     if (items.length === 0) {
       const t = this.add.text(GAME_WIDTH / 2, startY + 60, '매물 없음 — 리롤하거나 다음 날 시작', {
-        fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: COLORS.textDim,
+        fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: COLORS.textDim,
       }).setOrigin(0.5);
       this.content.add(t);
     }
@@ -102,23 +102,23 @@ export class ShopScene extends Phaser.Scene {
       .setStrokeStyle(2, affordable ? meta.accent : 0x3a3a48);
     const header = this.add.rectangle(x, y, w, 24, meta.accent, affordable ? 1 : 0.5).setOrigin(0, 0);
     const tag = this.add.text(x + 10, y + 4, meta.tag, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#0b0b10',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#0b0b10',
     });
 
     const name = this.add.text(x + 10, y + 32, meta.name, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '14px',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px',
       color: affordable ? COLORS.text : '#5a5a68',
       wordWrap: { width: w - 20 },
     });
 
     const desc = this.add.text(x + 10, y + 60, meta.desc, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px',
       color: affordable ? COLORS.textDim : '#3a3a48',
       wordWrap: { width: w - 20 },
     });
 
     const cost = this.add.text(x + 10, y + h - 36, `${meta.cost}G`, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '16px',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '16px',
       color: affordable ? '#f5c542' : '#5a5a68',
     });
 

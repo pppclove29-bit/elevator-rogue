@@ -14,11 +14,11 @@ export class RelicScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.8);
 
     this.add.text(GAME_WIDTH / 2, 60, '운명의 선택 — Relic', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '28px', color: COLORS.text,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '28px', color: COLORS.text,
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2, 96, '이번 런 동안 영구 지속. 3장 중 1택 (SKIP 가능)', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: COLORS.textDim,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
     const owned = new Set(this.gs.state.ownedRelics);
@@ -52,15 +52,15 @@ export class RelicScene extends Phaser.Scene {
 
     this.add.rectangle(x, y, w, h, 0x1c1c26, 1).setOrigin(0, 0).setStrokeStyle(2, accent);
     this.add.rectangle(x, y, w, 32, accent, 1).setOrigin(0, 0);
-    this.add.text(x + 14, y + 6, tag, { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#0b0b10' });
+    this.add.text(x + 14, y + 6, tag, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#0b0b10' });
     this.add.text(x + 14, y + 50, r.name, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '20px', color: COLORS.text, wordWrap: { width: w - 28 },
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '20px', color: COLORS.text, wordWrap: { width: w - 28 },
     });
     this.add.text(x + 14, y + 110, r.desc, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: COLORS.textDim, wordWrap: { width: w - 28 },
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim, wordWrap: { width: w - 28 },
     });
     this.add.text(x + 14, y + h - 80, '이번 런 동안 영구', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#e2a04a', fontStyle: 'italic',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e2a04a', fontStyle: 'italic',
     });
     new Button(this, x + w / 2, y + h - 36, w - 40, 40, 'TAKE', () => {
       this.gs.resolveRelic(r.id);

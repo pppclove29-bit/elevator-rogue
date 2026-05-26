@@ -20,11 +20,11 @@ export class GameOverScene extends Phaser.Scene {
 
     // 타이틀
     this.add.text(GAME_WIDTH / 2, 60, '게임 오버', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '56px', color: '#e74c3c', fontStyle: 'bold',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '56px', color: '#e74c3c', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2, 130, this.deathFlavor(s), {
-      fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: COLORS.textDim, fontStyle: 'italic',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: COLORS.textDim, fontStyle: 'italic',
     }).setOrigin(0.5);
 
     // 통계 패널
@@ -32,41 +32,41 @@ export class GameOverScene extends Phaser.Scene {
     this.add.rectangle(panelX, panelY, panelW, panelH, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
 
     this.add.text(panelX + 20, panelY + 16, '이번 런 결산', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
     });
 
     // 좌측 — 숫자 통계
     const stats = this.collectStats(s);
     let y = panelY + 56;
     for (const [label, value] of stats) {
-      this.add.text(panelX + 24, y, label, { fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: COLORS.textDim });
-      this.add.text(panelX + 280, y, value, { fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: COLORS.text });
+      this.add.text(panelX + 24, y, label, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.textDim });
+      this.add.text(panelX + 280, y, value, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: COLORS.text });
       y += 26;
     }
 
     // 우측 — 획득 카드 리스트
     const rightX = panelX + 440;
-    this.add.text(rightX, panelY + 56, '획득 유물', { fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: '#e2a04a' });
+    this.add.text(rightX, panelY + 56, '획득 유물', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#e2a04a' });
     if (s.ownedRelics.length === 0) {
-      this.add.text(rightX, panelY + 80, '— 없음', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX, panelY + 80, '— 없음', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedRelics) {
         const r = RELICS[id];
-        this.add.text(rightX, ry, `• ${r?.name ?? id}`, { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: COLORS.text });
+        this.add.text(rightX, ry, `• ${r?.name ?? id}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }
 
     const rightX2 = rightX + 200;
-    this.add.text(rightX2, panelY + 56, '보유 스킬', { fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: '#7ed957' });
+    this.add.text(rightX2, panelY + 56, '보유 스킬', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: '#7ed957' });
     if (s.ownedSkills.length === 0) {
-      this.add.text(rightX2, panelY + 80, '— 없음', { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX2, panelY + 80, '— 없음', { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedSkills) {
         const sk = SKILLS[id];
-        this.add.text(rightX2, ry, `• ${sk?.name ?? id}`, { fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: COLORS.text });
+        this.add.text(rightX2, ry, `• ${sk?.name ?? id}`, { fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }

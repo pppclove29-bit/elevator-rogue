@@ -32,37 +32,37 @@ export class HUDScene extends Phaser.Scene {
     const game = this.scene.get('Game') as GameScene;
 
     this.timeText = this.add.text(16, 12, '0:00', {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace',
       fontSize: '22px',
       color: COLORS.text,
     });
 
     this.goldText = this.add.text(120, 16, '0G', {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace',
       fontSize: '18px',
       color: '#f5c542',
     });
 
     this.dangerText = this.add.text(GAME_WIDTH - 16, 12, '', {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace',
       fontSize: '14px',
       color: COLORS.textDim,
     }).setOrigin(1, 0);
 
     this.modifierText = this.add.text(GAME_WIDTH - 16, 32, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#e74c3c',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e74c3c',
     }).setOrigin(1, 0);
 
     this.relicText = this.add.text(GAME_WIDTH - 16, 50, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#e2a04a',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e2a04a',
     }).setOrigin(1, 0);
 
     this.eventText = this.add.text(GAME_WIDTH - 16, 68, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#ff6a6a',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#ff6a6a',
     }).setOrigin(1, 0);
 
     this.phaseText = this.add.text(GAME_WIDTH / 2, 16, '', {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace',
       fontSize: '20px',
       color: COLORS.text,
     }).setOrigin(0.5, 0);
@@ -86,7 +86,7 @@ export class HUDScene extends Phaser.Scene {
     new ControlButton(this, 16, y - 14, 70, 24, 'DOCS', open('/docs.html'));
     new ControlButton(this, 92, y - 14, 80, 24, 'DESIGN', open('/design.html'));
     this.add.text(180, y - 12, '[DEV]', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '10px', color: '#5a5a68',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '10px', color: '#5a5a68',
     });
   }
 
@@ -176,7 +176,7 @@ export class HUDScene extends Phaser.Scene {
     const startY = 84;
     const titleY = startY;
     const title = this.add.text(GAME_WIDTH - 16, titleY, '긴급 수리', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '11px', color: '#e74c3c',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px', color: '#e74c3c',
     }).setOrigin(1, 0);
     this.repairContainer.add(title);
 
@@ -187,7 +187,7 @@ export class HUDScene extends Phaser.Scene {
         .setOrigin(1, 0).setStrokeStyle(1, 0x6a2c2c)
         .setInteractive({ useHandCursor: affordable });
       const txt = this.add.text(GAME_WIDTH - 16 - 75, y + 12, `🔧 E${e.id + 1} 수리 ${REPAIR_COST}G`, {
-        fontFamily: 'system-ui, sans-serif', fontSize: '11px',
+        fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '11px',
         color: affordable ? '#0b0b10' : '#7a5a5a',
       }).setOrigin(0.5);
       if (affordable) {
@@ -211,15 +211,15 @@ class SkillSlotView {
     this.container = scene.add.container(x + w / 2, y + h / 2);
     this.bg = scene.add.rectangle(0, 0, w, h, 0x1c1c26, 0.85).setStrokeStyle(1, 0x3a3a48);
     this.keyLabel = scene.add.text(-w / 2 + 8, -h / 2 + 6, key, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '12px', color: '#7ed957',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '12px', color: '#7ed957',
     });
     this.nameLabel = scene.add.text(0, -4, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '13px', color: COLORS.text,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '13px', color: COLORS.text,
       wordWrap: { width: w - 16 }, align: 'center',
     }).setOrigin(0.5);
     this.cdFill = scene.add.rectangle(-w / 2, h / 2 - 4, 0, 4, 0x7ed957, 1).setOrigin(0, 0.5);
     this.cdText = scene.add.text(0, h / 2 - 14, '', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '10px', color: COLORS.textDim,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '10px', color: COLORS.textDim,
     }).setOrigin(0.5);
     this.container.add([this.bg, this.keyLabel, this.nameLabel, this.cdFill, this.cdText]);
     this.container.setSize(w, h);
@@ -272,7 +272,7 @@ class ControlButton {
     this.container = scene.add.container(relative ? x : x + w / 2, relative ? y : y + h / 2);
     this.bg = scene.add.rectangle(0, 0, w, h, 0x222230, 1).setStrokeStyle(1, 0x3a3a48);
     this.label = scene.add.text(0, 0, text, {
-      fontFamily: 'system-ui, sans-serif',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace',
       fontSize: '13px',
       color: COLORS.text,
     }).setOrigin(0.5);

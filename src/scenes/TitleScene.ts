@@ -35,14 +35,14 @@ export class TitleScene extends Phaser.Scene {
 
     // 타이틀
     this.add.text(GAME_WIDTH / 2 + 100, 200, 'Elevator', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '72px', color: COLORS.text, fontStyle: 'bold',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '72px', color: COLORS.text, fontStyle: 'bold',
     }).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2 + 100, 280, 'Rogue', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '72px', color: '#f5c542', fontStyle: 'bold',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '72px', color: '#f5c542', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     this.add.text(GAME_WIDTH / 2 + 100, 340, '하루의 트래픽을 정책으로 받아치는 로그라이크', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '14px', color: COLORS.textDim,
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '14px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
     // 버튼
@@ -63,7 +63,7 @@ export class TitleScene extends Phaser.Scene {
 
     // 하단 버전
     this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 16, 'v0.1 alpha', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '10px', color: '#3a3a48',
+      fontFamily: '"DotGothic16", "Press Start 2P", monospace', fontSize: '10px', color: '#3a3a48',
     }).setOrigin(1, 1);
 
     // 첫 방문이면 자동으로 도움말 띄움

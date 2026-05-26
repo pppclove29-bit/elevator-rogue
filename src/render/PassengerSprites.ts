@@ -3,7 +3,7 @@ import { COLORS } from '../config';
 import { ARCHETYPES, PassengerArchetype } from '../domain/archetypes';
 import { ANGER_THRESHOLD } from '../domain/simulation';
 import { SimState } from '../domain/types';
-import { BuildingViewLayout } from './BuildingView';
+import { BuildingViewLayout, DOOR_AREA_W } from './BuildingView';
 
 type Phase = 'entering' | 'queued' | 'boarding' | 'riding' | 'alighting' | 'leaving';
 
@@ -94,7 +94,7 @@ export class PassengerSprites {
         if (!s) {
           s = {
             id: p.id, archetype: p.archetype, anger: p.anger,
-            x: x - 16, y: fy,
+            x: x - DOOR_AREA_W / 2, y: fy,
             targetX, targetY,
             phase: 'entering',
             alpha: 0, targetAlpha: 1,
@@ -157,7 +157,8 @@ export class PassengerSprites {
       if (stillAlive.has(id)) continue;
       if (s.phase === 'leaving') continue;
       s.phase = 'leaving';
-      s.targetX = s.x - 40;
+      // 좌측 문 방향으로 빠짐
+      s.targetX = (this.layout.x - DOOR_AREA_W / 2);
       s.targetAlpha = 0;
       s.delay = leavingStaggerIdx * STAGGER_MS;
       leavingStaggerIdx += 1;
@@ -170,8 +171,14 @@ export class PassengerSprites {
       const spec = ARCHETYPES[s.archetype];
       const color = s.anger >= ANGER_THRESHOLD * 0.6 ? COLORS.passengerAngry : spec.color;
       this.g.fillStyle(color, s.alpha);
-      const r = spec.spaceCost > 1 ? 5 : 4;
-      this.g.fillCircle(s.x, s.y, r);
+      // 픽셀 스프라이트: 사람 모양 (머리 + 몸)
+      const big = spec.spaceCost > 1;
+      const w = big ? 6 : 4;
+      const h = big ? 8 : 6;
+      // 몸
+      this.g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
+      // 머리 (조금 더 작은 사각형 위)
+      this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 3, w - 2, 3);
     }
   }
 }
