@@ -33,15 +33,19 @@ export function defaultRoleFor(floorId: number, floorCount: number): FloorRole {
   return 'office';
 }
 
-/** rooftop이 항상 최상층이도록 새 층은 rooftop 바로 아래에 끼움. */
-export function addFloor(building: Building, role: FloorRole = 'office'): void {
+/** 매 4일 층 추가 시 후보 풀 (rooftop/lobby/basement 제외) */
+const ADD_FLOOR_POOL: FloorRole[] = ['office', 'restaurant', 'gym', 'mall', 'hospital', 'cleanroom'];
+
+/** rooftop이 항상 최상층이도록 새 층은 rooftop 바로 아래에 끼움. role 미지정 시 풀에서 랜덤. */
+export function addFloor(building: Building, role?: FloorRole): void {
+  const pickedRole = role ?? ADD_FLOOR_POOL[Math.floor(Math.random() * ADD_FLOOR_POOL.length)]!;
   const lastIdx = building.floors.length - 1;
   const last = building.floors[lastIdx];
-  const hasToilet = role === 'office' || role === 'restaurant';
+  const hasToilet = pickedRole === 'office' || pickedRole === 'restaurant' || pickedRole === 'mall' || pickedRole === 'hospital' || pickedRole === 'gym';
   if (last && last.role === 'rooftop') {
-    building.floors.splice(lastIdx, 0, { id: lastIdx, role, queue: [], hasToilet, cleanliness: 100 });
+    building.floors.splice(lastIdx, 0, { id: lastIdx, role: pickedRole, queue: [], hasToilet, cleanliness: 100 });
   } else {
-    building.floors.push({ id: building.floors.length, role, queue: [], hasToilet, cleanliness: 100 });
+    building.floors.push({ id: building.floors.length, role: pickedRole, queue: [], hasToilet, cleanliness: 100 });
   }
   for (let i = 0; i < building.floors.length; i++) building.floors[i]!.id = i;
 }

@@ -6,7 +6,9 @@ export type FloorId = number;
 export type PassengerId = number;
 export type ElevatorId = number;
 
-export type FloorRole = 'lobby' | 'office' | 'restaurant' | 'rooftop' | 'basement';
+export type FloorRole =
+  | 'lobby' | 'office' | 'restaurant' | 'rooftop' | 'basement'
+  | 'gym' | 'mall' | 'hospital' | 'penthouse' | 'parking' | 'cleanroom';
 
 export type ElevatorState =
   | { kind: 'idle' }
@@ -150,4 +152,10 @@ export const GOLD_PER_ROLE: Record<FloorRole, number> = {
   restaurant: 3,
   rooftop: 5,
   basement: 1,
+  gym: 2,
+  mall: 4,
+  hospital: 3,
+  penthouse: 8,
+  parking: 1,
+  cleanroom: 4,
 };

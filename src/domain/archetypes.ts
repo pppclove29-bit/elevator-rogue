@@ -3,7 +3,8 @@ import { Phase } from './phase';
 export type PassengerArchetype =
   | 'normal' | 'vip' | 'elderly' | 'suit'
   | 'group' | 'baggage' | 'shady' | 'tourist' | 'staff'
-  | 'thief';
+  | 'thief'
+  | 'patient' | 'medical' | 'hotel-guest' | 'crew';
 
 export interface ArchetypeSpec {
   id: PassengerArchetype;
@@ -53,6 +54,20 @@ export const ARCHETYPES: Record<PassengerArchetype, ArchetypeSpec> = {
   thief:    { id:'thief',    name:'도둑',         desc:'밤에만 1F에서 스폰. 도착 시 골드 강탈',
               color: 0x111111, goldMultiplier:0, angerMultiplier:0.3, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
               weightByPhase: { night:4 } },
+
+  // 테마 특화 (병원/호텔/공항에서 가중치 ↑)
+  patient:  { id:'patient',  name:'환자',         desc:'느림(정차 +1). 매우 관대(anger ×0.4)',
+              color: 0xffe0e0, goldMultiplier:1.2, angerMultiplier:0.4, spaceCost:1, loadTickBonus:1, fastBonus:1.0, groupSize:1,
+              weightByPhase: { morning:1, work:2, evening:1 } },
+  medical:  { id:'medical',  name:'의료진',       desc:'빠른 처리 시 큰 보너스. 골드 ×1.3',
+              color: 0xffffff, goldMultiplier:1.3, angerMultiplier:0.8, spaceCost:1, loadTickBonus:0, fastBonus:2.0, groupSize:1,
+              weightByPhase: { morning:1, work:2, evening:1, night:1 } },
+  'hotel-guest': { id:'hotel-guest', name:'호텔 손님', desc:'캐리어 보유(정원 2칸). 골드 ×1.8',
+              color: 0xc0a86a, goldMultiplier:1.8, angerMultiplier:1.0, spaceCost:2, loadTickBonus:1, fastBonus:1.0, groupSize:1,
+              weightByPhase: { evening:2, night:3 } },
+  crew:     { id:'crew',     name:'승무원',        desc:'시간 엄수. 빠른 처리 보너스 큼, 그룹 2',
+              color: 0x4a90e2, goldMultiplier:1.4, angerMultiplier:1.5, spaceCost:1, loadTickBonus:0, fastBonus:2.5, groupSize:2,
+              weightByPhase: { morning:1, evening:1 } },
 };
 
 /** 도둑 dest 도착 시 골드 감소량 */

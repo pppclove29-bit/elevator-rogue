@@ -37,24 +37,24 @@ export interface PhaseTraffic {
 
 export const PHASE_TRAFFIC: Record<Phase, PhaseTraffic> = {
   morning: {
-    origin: { lobby: 8, basement: 2 },
-    dest: { office: 8, rooftop: 1, restaurant: 1 },
+    origin: { lobby: 8, basement: 2, parking: 3 },
+    dest: { office: 8, rooftop: 1, restaurant: 1, gym: 3, hospital: 2 },
   },
   work: {
-    origin: { office: 5, lobby: 2, restaurant: 1, rooftop: 1 },
-    dest: { office: 4, lobby: 3, restaurant: 2, rooftop: 1 },
+    origin: { office: 5, lobby: 2, restaurant: 1, rooftop: 1, hospital: 2 },
+    dest: { office: 4, lobby: 3, restaurant: 2, rooftop: 1, hospital: 2, cleanroom: 1, mall: 1 },
   },
   lunch: {
-    origin: { office: 7, lobby: 2, rooftop: 1 },
-    dest: { restaurant: 7, lobby: 2, rooftop: 1 },
+    origin: { office: 7, lobby: 2, rooftop: 1, gym: 2 },
+    dest: { restaurant: 7, lobby: 2, rooftop: 1, mall: 3 },
   },
   evening: {
-    origin: { office: 7, restaurant: 2, rooftop: 1 },
-    dest: { lobby: 9, basement: 1 },
+    origin: { office: 7, restaurant: 2, rooftop: 1, mall: 2, gym: 2 },
+    dest: { lobby: 9, basement: 1, parking: 3 },
   },
   night: {
-    origin: { office: 3, lobby: 3, restaurant: 2, rooftop: 1, basement: 1 },
-    dest: { lobby: 4, office: 2, rooftop: 2, basement: 2 },
+    origin: { office: 2, lobby: 3, restaurant: 2, rooftop: 1, basement: 1, hospital: 2, penthouse: 1 },
+    dest: { lobby: 4, office: 2, rooftop: 2, basement: 2, penthouse: 2 },
   },
 };
 

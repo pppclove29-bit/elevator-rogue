@@ -59,12 +59,12 @@ export const UPGRADES_DESIGN: UpgradeEntry[] = [
   { id: 'upgrade-add-elevator', name: '엘리베이터 +1', desc: '새 엘베 구매', category: 'capacity', effect: '엘베 1대 추가 (최대 3)', cost: '150G', status: 'done' },
 
   // 미구현 안
-  { id: 'upgrade-repair-kit', name: '응급 수리 키트', desc: '고장 시 자동 복구 1회', category: 'repair', effect: '고장 발생 시 즉시 복구, 소모성', cost: '60G', status: 'idea', notes: 'Step 9 고장 시스템 도입 시' },
-  { id: 'upgrade-durability', name: '내구성 패키지', desc: '고장 확률 감소', category: 'repair', effect: '고장 확률 -50%', cost: '80G', status: 'done' },
-  { id: 'upgrade-express-mode', name: '익스프레스 모드', desc: '5층 이상 직행 시 속도 +', category: 'stat', effect: '연속 5층 이상 이동 시 속도 ×1.5', cost: '70G', status: 'done' },
-  { id: 'upgrade-vip-line', name: 'VIP 우선 채널', desc: 'VIP 승객 보상 ↑', category: 'meta', effect: 'VIP 승객 골드 ×2', cost: '60G', status: 'idea', notes: '고객 다양성 도입 후' },
-  { id: 'upgrade-priority-bell', name: '우선 호출 벨', desc: '룰 슬롯 +1', category: 'qol', effect: 'MAX_SLOTS +1 (영구)', cost: '120G', status: 'done' },
-  { id: 'upgrade-skill-charge', name: '스킬 충전기', desc: '스킬 쿨다운 -25%', category: 'qol', effect: 'skillCooldownMultiplier ×0.75', cost: '90G', status: 'done' },
+  { id: 'upgrade-repair-kit', name: '응급 수리 키트', desc: '고장 시 자동 복구 1회', category: 'repair', effect: '고장 발생 시 즉시 복구, 소모성', cost: '60G', status: 'done' },
+  { id: 'upgrade-durability', name: '내구성 패키지', desc: '고장 확률 감소', category: 'repair', effect: '고장 확률 ×0.5 (누적)', cost: '80G', status: 'done' },
+  { id: 'upgrade-express-mode', name: '익스프레스 모드', desc: '5층 이상 직행 시 속도 +', category: 'stat', effect: '연속 5층 이상 이동 시 속도 ×1.5', cost: '70G', status: 'idea' },
+  { id: 'upgrade-vip-line', name: 'VIP 우선 채널', desc: 'VIP 승객 보상 ↑', category: 'meta', effect: 'VIP 승객 골드 ×2', cost: '60G', status: 'idea' },
+  { id: 'upgrade-priority-bell', name: '우선 호출 벨', desc: '룰 슬롯 +1 (정책 폼에선 의미 변경됨)', category: 'qol', effect: '—', cost: '—', status: 'idea' },
+  { id: 'upgrade-skill-charge', name: '스킬 충전기', desc: '스킬 쿨다운 -25%', category: 'qol', effect: 'skillCooldownMultiplier ×0.75', cost: '90G', status: 'idea' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -83,12 +83,12 @@ export const FLOOR_ROLES_DESIGN: FloorRoleEntry[] = [
   { id: 'basement', name: '지하', desc: '주차장/창고', goldOnArrive: 1, trafficNote: '낮은 가중치, NIGHT에 가끔', status: 'partial', notes: '현재 미배치 (5층 빌딩이라 슬롯 부족)' },
 
   // 미구현 (확장 안)
-  { id: 'gym', name: '피트니스', desc: '체육관/요가', goldOnArrive: 2, trafficNote: '아침/저녁에 활발', status: 'idea', notes: '새 페이즈 EARLY-MORNING 도입 시 의미' },
-  { id: 'mall', name: '상점가', desc: '쇼핑 공간', goldOnArrive: 4, trafficNote: '주말 핵심 hub (요일 도입 시)', status: 'idea' },
-  { id: 'hospital', name: '클리닉', desc: '병원 층', goldOnArrive: 3, trafficNote: '응급 이벤트 트리거 가능', status: 'idea' },
-  { id: 'penthouse', name: '펜트하우스', desc: 'VIP 전용 거주층', goldOnArrive: 8, trafficNote: 'VIP 승객만 사용. 최상층 위 별도', status: 'idea' },
-  { id: 'parking', name: '주차장', desc: '지하 N층 (-1, -2)', goldOnArrive: 1, trafficNote: '출퇴근 origin, 다층 음수 인덱스', status: 'idea' },
-  { id: 'cleanroom', name: '청정실', desc: '연구소/공장', goldOnArrive: 4, trafficNote: '특정 시간만 입장, 정원 -2 페널티', status: 'idea' },
+  { id: 'gym', name: '피트니스', desc: '체육관/요가', goldOnArrive: 2, trafficNote: '아침/저녁에 활발', status: 'done' },
+  { id: 'mall', name: '상점가', desc: '쇼핑 공간', goldOnArrive: 4, trafficNote: '주말 핵심 hub (요일 도입 시)', status: 'done' },
+  { id: 'hospital', name: '클리닉', desc: '병원 층', goldOnArrive: 3, trafficNote: '응급 이벤트 트리거 가능', status: 'done' },
+  { id: 'penthouse', name: '펜트하우스', desc: 'VIP 전용 거주층', goldOnArrive: 8, trafficNote: 'VIP 승객만 사용. 최상층 위 별도', status: 'done' },
+  { id: 'parking', name: '주차장', desc: '지하 N층 (-1, -2)', goldOnArrive: 1, trafficNote: '출퇴근 origin, 다층 음수 인덱스', status: 'done' },
+  { id: 'cleanroom', name: '청정실', desc: '연구소/공장', goldOnArrive: 4, trafficNote: '특정 시간만 입장, 정원 -2 페널티', status: 'done' },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -113,6 +113,10 @@ export const CUSTOMERS: CustomerArchetype[] = [
   { id: 'cust-tourist', name: '관광객', desc: '잘못된 층 누름. 가끔 dest 변경', goldMod: '×1.5', angerMod: '기본', spawnRule: '주말 (요일 도입 시)', status: 'done' },
   { id: 'cust-staff', name: '직원', desc: '내부 이동. 골드 X, 처리수만', goldMod: '0G', angerMod: '×0.5', spawnRule: 'WORK 활발', status: 'done' },
   { id: 'cust-thief', name: '도둑', desc: '밤 1F 스폰. 도착 시 골드 -15G 강탈', goldMod: '-15G', angerMod: '×0.3', spawnRule: 'NIGHT 한정, 경비로 차단 가능', status: 'done' },
+  { id: 'cust-patient', name: '환자', desc: '느림(정차 +1). 매우 관대', goldMod: '×1.2', angerMod: '×0.4', spawnRule: '병원 테마에서 자주', status: 'done' },
+  { id: 'cust-medical', name: '의료진', desc: '빠른 처리 시 큰 보너스 (×2 fast)', goldMod: '×1.3', angerMod: '×0.8', spawnRule: '병원 테마에서 자주', status: 'done' },
+  { id: 'cust-hotel-guest', name: '호텔 손님', desc: '캐리어 보유 (정원 2칸)', goldMod: '×1.8', angerMod: '×1', spawnRule: '호텔 테마에서 자주, EVENING/NIGHT', status: 'done' },
+  { id: 'cust-crew', name: '승무원', desc: '시간 엄수. 그룹 2명, 빠른 처리 ×2.5', goldMod: '×1.4', angerMod: '×1.5', spawnRule: '공항 테마에서 자주', status: 'done' },
 ];
 
 // ─────────────────────────────────────────────────────────────

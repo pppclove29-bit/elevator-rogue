@@ -117,6 +117,12 @@ export const ROLE_COLOR: Record<FloorRole, number> = {
   restaurant: 0xf5c542,
   rooftop: 0x7ed957,
   basement: 0x8a6cff,
+  gym: 0xff6a6a,
+  mall: 0xff9ed8,
+  hospital: 0xffffff,
+  penthouse: 0xffd700,
+  parking: 0x8a6cff,
+  cleanroom: 0x6affff,
 };
 
 export const ROLE_SHORT: Record<FloorRole, string> = {
@@ -125,4 +131,10 @@ export const ROLE_SHORT: Record<FloorRole, string> = {
   restaurant: 'RT',
   rooftop: 'RF',
   basement: 'BS',
+  gym: 'GY',
+  mall: 'ML',
+  hospital: 'HS',
+  penthouse: 'PH',
+  parking: 'PK',
+  cleanroom: 'CR',
 };
