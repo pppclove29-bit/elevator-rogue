@@ -1,3 +1,4 @@
+import { resolve } from 'path';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -8,5 +9,12 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        docs: resolve(__dirname, 'docs.html'),
+        design: resolve(__dirname, 'design.html'),
+      },
+    },
   },
 });

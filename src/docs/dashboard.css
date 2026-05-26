@@ -1,0 +1,222 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0b10;
+  --panel: #14141c;
+  --panel-2: #1c1c26;
+  --border: #2a2a35;
+  --border-strong: #3a3a48;
+  --text: #f5f5f5;
+  --text-dim: #9aa0a6;
+  --accent-rule: #4a90e2;
+  --accent-upgrade: #f5c542;
+  --accent-skill: #7ed957;
+  --accent-debuff: #e74c3c;
+  --accent-buff: #7ed957;
+  --accent-mixed: #b08cff;
+  --accent-relic: #e2a04a;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+#root {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 40px 32px 80px;
+}
+
+.dash-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 16px;
+  margin-bottom: 32px;
+}
+
+.dash-header h1 {
+  font-size: 28px;
+  margin: 0;
+}
+
+.dash-header .subtitle {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.dash-nav {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.dash-nav a {
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.dash-nav a:hover { color: var(--text); border-color: var(--border-strong); }
+
+section { margin-bottom: 48px; }
+
+section h2 {
+  font-size: 20px;
+  margin: 0 0 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+section .section-desc {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin: 0 0 16px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.card {
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
+  border-left-width: 4px;
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.card .card-tag {
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.card .card-name {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+
+.card .card-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin: 0 0 8px;
+}
+
+.card .card-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  border-top: 1px dashed var(--border);
+  padding-top: 6px;
+  margin-top: 6px;
+}
+
+.card.rule { border-left-color: var(--accent-rule); }
+.card.upgrade { border-left-color: var(--accent-upgrade); }
+.card.skill { border-left-color: var(--accent-skill); }
+.card.debuff { border-left-color: var(--accent-debuff); }
+.card.buff { border-left-color: var(--accent-buff); }
+.card.mixed { border-left-color: var(--accent-mixed); }
+.card.relic { border-left-color: var(--accent-relic); }
+
+.tag {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  margin-right: 4px;
+  background: var(--panel);
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+th, td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+th {
+  color: var(--text-dim);
+  font-weight: 500;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kvs {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  font-size: 13px;
+}
+.kvs dt { color: var(--text-dim); }
+.kvs dd { margin: 0; }
+
+.weight-bar {
+  display: inline-block;
+  height: 6px;
+  background: var(--accent-rule);
+  vertical-align: middle;
+  margin-left: 6px;
+  border-radius: 2px;
+}
+
+code, .mono {
+  font-family: 'SF Mono', Monaco, 'Cascadia Mono', Consolas, monospace;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--panel);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.callout {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent-upgrade);
+  padding: 12px 14px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.callout strong { color: var(--text); }
+
+.role-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  margin-right: 4px;
+  color: #0b0b10;
+  font-weight: 600;
+}
+.phase-pill {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+  background: var(--panel);
+  border: 1px solid var(--border-strong);
+  margin-right: 4px;
+}

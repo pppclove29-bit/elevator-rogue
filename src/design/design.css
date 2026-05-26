@@ -1,0 +1,68 @@
+/* design.html 전용 추가 스타일 (dashboard.css 위에 얹음) */
+
+.status-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+.status-badge.done    { background: #1f3d28; color: #7ed957; border: 1px solid #2d5b3a; }
+.status-badge.partial { background: #3d3617; color: #f5c542; border: 1px solid #5b4e22; }
+.status-badge.todo    { background: #3d1f1f; color: #e74c3c; border: 1px solid #5b2d2d; }
+.status-badge.idea    { background: #1f2a3d; color: #4a90e2; border: 1px solid #2d3e5b; }
+
+.compact-table { font-size: 12px; }
+.compact-table td { padding: 6px 10px; }
+
+.note {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+@media (max-width: 900px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+.day-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+.day-cell {
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
+  border-radius: 4px;
+  padding: 10px 8px;
+  font-size: 12px;
+  text-align: center;
+}
+.day-cell .day-name {
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.day-cell .day-trait { color: var(--text-dim); font-size: 11px; line-height: 1.4; }
+.day-cell.weekend { border-color: var(--accent-relic); }
+
+.toc {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 24px 0;
+}
+.toc h3 { font-size: 12px; color: var(--text-dim); margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.toc ol { margin: 0; padding-left: 18px; columns: 2; column-gap: 32px; }
+.toc a { color: var(--text); text-decoration: none; font-size: 13px; line-height: 1.8; }
+.toc a:hover { color: var(--accent-rule); }
