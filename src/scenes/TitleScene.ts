@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { t as tr } from '../i18n/locale';
 import { loadOptions } from '../meta/options';
 import { isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
@@ -41,12 +42,12 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH / 2 + 30, 200, 'Rogue', {
       fontFamily: FONT, fontSize: '64px', color: '#f5c542', fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 280, '하루의 트래픽을 정책으로 받아치는 로그라이크', {
+    this.add.text(GAME_WIDTH / 2 + 30, 280, tr('title.subtitle'), {
       fontFamily: FONT, fontSize: '13px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
     // 테마 선택
-    this.add.text(GAME_WIDTH / 2 + 30, 320, '빌딩 테마', {
+    this.add.text(GAME_WIDTH / 2 + 30, 320, tr('title.theme_section'), {
       fontFamily: FONT, fontSize: '14px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
@@ -74,7 +75,7 @@ export class TitleScene extends Phaser.Scene {
       if (!locked) bg.setInteractive({ useHandCursor: true });
 
       const nameText = this.add.text(x + 10, y + 8, locked ? `🔒 ${t.name}` : t.name, {
-        fontFamily: FONT, fontSize: '14px', color: locked ? '#5a5a68' : COLORS.text,
+        fontFamily: FONT, fontSize: '13px', color: locked ? '#5a5a68' : COLORS.text,
       });
       this.add.text(x + 10, y + 28, t.flavor, {
         fontFamily: FONT, fontSize: '10px', color: locked ? '#3a3a48' : '#f5c542',
@@ -116,7 +117,7 @@ export class TitleScene extends Phaser.Scene {
     const hasSave = saveExists();
     if (hasSave) {
       const save = readSave();
-      new Button(this, btnX, btnY, 240, 44, '계속하기', () => this.continueGame(),
+      new Button(this, btnX, btnY, 240, 44, tr('title.continue'), () => this.continueGame(),
         { fontSize: 14, bg: 0x7ed957, bgHover: 0x8fea68, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       if (save) {
         this.add.text(btnX, btnY + 26, summarize(save), {
@@ -124,18 +125,18 @@ export class TitleScene extends Phaser.Scene {
         }).setOrigin(0.5);
       }
       btnY += 50;
-      new Button(this, btnX, btnY, 240, 36, '새 게임 시작', () => this.startGame(),
+      new Button(this, btnX, btnY, 240, 36, tr('title.new_game'), () => this.startGame(),
         { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       btnY += 40;
     } else {
-      new Button(this, btnX, btnY, 240, 44, '게임 시작', () => this.startGame(),
+      new Button(this, btnX, btnY, 240, 44, tr('title.start'), () => this.startGame(),
         { fontSize: 16, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       btnY += 48;
     }
-    new Button(this, btnX, btnY, 240, 32, '조작법', () => this.scene.launch('Help'),
+    new Button(this, btnX, btnY, 240, 32, tr('title.help'), () => this.scene.launch('Help'),
       { fontSize: 13 });
     btnY += 36;
-    new Button(this, btnX, btnY, 240, 32, '옵션', () => this.scene.launch('Options'),
+    new Button(this, btnX, btnY, 240, 32, tr('title.options'), () => this.scene.launch('Options'),
       { fontSize: 13 });
     btnY += 36;
     if (import.meta.env.DEV) {

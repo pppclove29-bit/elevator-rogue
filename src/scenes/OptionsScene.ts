@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { getLocale, Locale, setLocale, SUPPORTED_LOCALES, t } from '../i18n/locale';
 import { clearAllGameData, DefaultTimeScale, loadOptions, Options, saveOptions } from '../meta/options';
 import { Button } from '../ui/Button';
 
@@ -20,11 +21,11 @@ export class OptionsScene extends Phaser.Scene {
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85);
 
-    this.add.text(GAME_WIDTH / 2, 28, '옵션', {
+    this.add.text(GAME_WIDTH / 2, 28, t('options.title'), {
       fontFamily: FONT, fontSize: '24px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    new Button(this, GAME_WIDTH - 80, 38, 100, 28, '닫기 (ESC)', () => this.close(),
+    new Button(this, GAME_WIDTH - 80, 38, 100, 28, `${t('common.close')} (ESC)`, () => this.close(),
       { fontSize: 12 });
 
     this.content = this.add.container(0, 0);
@@ -48,28 +49,55 @@ export class OptionsScene extends Phaser.Scene {
     let y = panelY + 16;
     const rowGap = 12;
 
-    // 1. 사운드 (미구현 표시)
-    y = this.drawSection(panelX + 16, y, panelW - 32, '사운드 (구현 예정)', '#9aa0a6');
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, '마스터', this.opt.masterVolume, (v) => { this.opt.masterVolume = v; }, true);
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, '효과음 (SFX)', this.opt.sfxVolume, (v) => { this.opt.sfxVolume = v; }, true);
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, '배경 음악 (BGM)', this.opt.bgmVolume, (v) => { this.opt.bgmVolume = v; }, true);
+    // 1. 사운드
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.sound'), '#9aa0a6');
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.master_volume'), this.opt.masterVolume, (v) => { this.opt.masterVolume = v; }, true);
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.sfx_volume'), this.opt.sfxVolume, (v) => { this.opt.sfxVolume = v; }, true);
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.bgm_volume'), this.opt.bgmVolume, (v) => { this.opt.bgmVolume = v; }, true);
     y += rowGap;
 
     // 2. 게임 플레이
-    y = this.drawSection(panelX + 16, y, panelW - 32, '게임 플레이', '#f5c542');
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.gameplay'), '#f5c542');
     y = this.drawSpeedRow(panelX + 16, y, panelW - 32);
-    y = this.drawToggleRow(panelX + 16, y, panelW - 32, '첫 진입 시 도움말 자동 표시',
+    y = this.drawToggleRow(panelX + 16, y, panelW - 32, t('options.show_tutorial'),
       this.opt.showTutorialOnStart, (v) => { this.opt.showTutorialOnStart = v; });
     y += rowGap;
 
-    // 3. 화면
-    y = this.drawSection(panelX + 16, y, panelW - 32, '화면', '#7ed957');
+    // 3. 언어
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.language'), '#b08cff');
+    y = this.drawLanguageRow(panelX + 16, y, panelW - 32);
+    y += rowGap;
+
+    // 4. 화면
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.display'), '#7ed957');
     y = this.drawFullscreenRow(panelX + 16, y, panelW - 32);
     y += rowGap;
 
-    // 4. 데이터
-    y = this.drawSection(panelX + 16, y, panelW - 32, '데이터', '#e74c3c');
+    // 5. 데이터
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.data'), '#e74c3c');
     y = this.drawResetRow(panelX + 16, y, panelW - 32);
+  }
+
+  private drawLanguageRow(x: number, y: number, w: number): number {
+    const h = 28;
+    this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
+    const current = getLocale();
+    let bx = x + 160;
+    for (const loc of SUPPORTED_LOCALES) {
+      const active = current === loc;
+      const label = loc === 'ko' ? t('options.language.ko') : t('options.language.en');
+      const btn = new Button(this, bx + 60, y + h / 2, 120, 22, label, () => {
+        setLocale(loc as Locale);
+        this.rebuild();
+      }, {
+        fontSize: 11,
+        bg: active ? 0x4a90e2 : 0x222230, bgHover: active ? 0x4a90e2 : 0x2c2c3a,
+        textColor: active ? '#0b0b10' : COLORS.text, textColorActive: '#0b0b10',
+      });
+      this.content.add(btn.container);
+      bx += 130;
+    }
+    return y + h + 4;
   }
 
   private drawSection(x: number, y: number, _w: number, label: string, color: string): number {
@@ -111,7 +139,7 @@ export class OptionsScene extends Phaser.Scene {
   private drawSpeedRow(x: number, y: number, w: number): number {
     const h = 28;
     this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
-    this.content.add(this.add.text(x + 12, y + 8, '기본 게임 속도', { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
+    this.content.add(this.add.text(x + 12, y + 8, t('options.default_speed'), { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
     const speeds: DefaultTimeScale[] = [1, 2, 4, 8];
     let bx = x + 160;
     for (const s of speeds) {
@@ -135,7 +163,7 @@ export class OptionsScene extends Phaser.Scene {
     const h = 28;
     this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
     this.content.add(this.add.text(x + 12, y + 8, label, { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
-    const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, value ? 'ON' : 'OFF', () => {
+    const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, value ? t('common.on') : t('common.off'), () => {
       onChange(!value); this.rebuild();
     }, {
       fontSize: 11,
@@ -149,9 +177,9 @@ export class OptionsScene extends Phaser.Scene {
   private drawFullscreenRow(x: number, y: number, w: number): number {
     const h = 28;
     this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
-    this.content.add(this.add.text(x + 12, y + 8, '풀스크린', { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
+    this.content.add(this.add.text(x + 12, y + 8, t('options.fullscreen'), { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
     const isFs = this.scale.isFullscreen;
-    const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, isFs ? 'ON' : 'OFF', () => {
+    const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, isFs ? t('common.on') : t('common.off'), () => {
       if (this.scale.isFullscreen) this.scale.stopFullscreen();
       else this.scale.startFullscreen();
       this.opt.fullscreen = !isFs;
@@ -169,21 +197,21 @@ export class OptionsScene extends Phaser.Scene {
   private drawResetRow(x: number, y: number, w: number): number {
     const h = this.confirmingReset ? 56 : 28;
     this.content.add(this.add.rectangle(x, y, w, h, ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER));
-    this.content.add(this.add.text(x + 12, y + 8, '게임 데이터 초기화', { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
-    this.content.add(this.add.text(x + 12, y + 22, '(저장된 런 + 진행도 + 해금 모두 삭제)', { fontFamily: FONT, fontSize: '10px', color: COLORS.textDim }));
+    this.content.add(this.add.text(x + 12, y + 8, t('options.reset_data'), { fontFamily: FONT, fontSize: '12px', color: COLORS.text }));
+    this.content.add(this.add.text(x + 12, y + 22, t('options.reset_desc'), { fontFamily: FONT, fontSize: '10px', color: COLORS.textDim }));
 
     if (!this.confirmingReset) {
-      const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, '초기화', () => {
+      const btn = new Button(this, x + w - 60, y + h / 2, 80, 22, t('options.reset_button'), () => {
         this.confirmingReset = true; this.rebuild();
       }, { fontSize: 11, bg: 0x4a2222, bgHover: 0x6a2c2c, textColor: '#e74c3c', textColorActive: '#ffffff' });
       this.content.add(btn.container);
     } else {
-      const yes = new Button(this, x + w - 130, y + 40, 80, 22, '확인', () => {
+      const yes = new Button(this, x + w - 130, y + 40, 80, 22, t('common.confirm'), () => {
         clearAllGameData();
         this.confirmingReset = false;
         this.rebuild();
       }, { fontSize: 11, bg: 0xe74c3c, bgHover: 0xff5a5a, textColor: '#ffffff', textColorActive: '#ffffff' });
-      const no = new Button(this, x + w - 40, y + 40, 80, 22, '취소', () => {
+      const no = new Button(this, x + w - 40, y + 40, 80, 22, t('common.cancel'), () => {
         this.confirmingReset = false; this.rebuild();
       }, { fontSize: 11 });
       this.content.add([yes.container, no.container]);
