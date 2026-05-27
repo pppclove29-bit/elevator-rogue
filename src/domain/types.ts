@@ -133,7 +133,8 @@ export interface SimState {
 /** 도메인 → 렌더로 보내는 일회성 시각 신호 (sprite 시스템에 hint) */
 export type VisualHint =
   | { kind: 'escalator'; originFloorId: number; destFloorId: number; archetype: import('./archetypes').PassengerArchetype }
-  | { kind: 'subway'; floorId: number; archetype: import('./archetypes').PassengerArchetype };
+  | { kind: 'subway'; floorId: number; archetype: import('./archetypes').PassengerArchetype }
+  | { kind: 'pathEvent'; floorId: number; passengerId: number; text: string; color: number };
 
 export const SHOP_OFFER_SIZE = 4;
 export const SHOP_REROLL_BASE_COST = 8;

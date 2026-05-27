@@ -1,5 +1,6 @@
 import { ARCHETYPES, spaceUsed, THIEF_GOLD_DAMAGE } from './archetypes';
 import { createBuilding, nearestFloor } from './building';
+import { tickPassengerEvents } from './passengerEvents';
 import { DAY_OF_WEEK_GOLD_MUL, dayLengthTicks, dayOfWeekFor } from './phase';
 import { decide } from './policy';
 import { Rng, mulberry32 } from './rng';
@@ -83,6 +84,7 @@ export function tick(state: SimState, rng: Rng): void {
     stepElevator(state, elevator, rng);
   }
 
+  tickPassengerEvents(state, rng);
   accumulateAnger(state);
   checkDayCompletion(state);
   checkGameOver(state);

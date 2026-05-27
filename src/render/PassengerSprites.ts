@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS } from '../config';
+import { COLORS, FONT } from '../config';
 import { ARCHETYPES, PassengerArchetype } from '../domain/archetypes';
 import { ANGER_THRESHOLD } from '../domain/simulation';
 import { ROLE_COLOR } from '../domain/spawner';
@@ -41,8 +41,10 @@ function approach(current: number, target: number, maxStep: number): number {
 export class PassengerSprites {
   private g: Phaser.GameObjects.Graphics;
   private map: Map<number, Sprite> = new Map();
+  private scene: Phaser.Scene;
 
   constructor(scene: Phaser.Scene, private layout: BuildingViewLayout) {
+    this.scene = scene;
     this.g = scene.add.graphics();
     this.g.setDepth(3);
   }
@@ -196,6 +198,14 @@ export class PassengerSprites {
     };
 
     for (const h of state.visualHints) {
+      if (h.kind === 'pathEvent') {
+        const sp = this.map.get(h.passengerId);
+        const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
+        const px = sp?.x ?? x + 40;
+        const py = (sp?.y ?? fy) - 14;
+        this.spawnFloatingText(px, py, h.text, h.color);
+        continue;
+      }
       if (h.kind === 'escalator') {
         const fyOrigin = y + totalHeight - h.originFloorId * floorHeight - floorHeight / 2;
         const fyDest = y + totalHeight - h.destFloorId * floorHeight - floorHeight / 2;
@@ -224,6 +234,27 @@ export class PassengerSprites {
       }
     }
     state.visualHints.length = 0;
+  }
+
+  /** 승객 위에 짧은 텍스트가 떠올랐다 사라지는 효과 (pathEvent용). */
+  private spawnFloatingText(x: number, y: number, text: string, color: number): void {
+    const hex = '#' + color.toString(16).padStart(6, '0');
+    const txt = this.scene.add.text(x, y, text, {
+      fontFamily: FONT,
+      fontSize: '11px',
+      color: hex,
+      stroke: '#000000',
+      strokeThickness: 2,
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(5);
+    this.scene.tweens.add({
+      targets: txt,
+      y: y - 18,
+      alpha: 0,
+      duration: 900,
+      ease: 'Cubic.easeOut',
+      onComplete: () => txt.destroy(),
+    });
   }
 
   private draw(): void {
