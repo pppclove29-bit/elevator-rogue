@@ -32,8 +32,9 @@ function stat(label: string, value: string): HTMLElement {
     el('div', { class: 'value' }, value));
 }
 
-const CATEGORY_ORDER: SpriteCategory[] = ['elevator', 'passenger', 'floor', 'environment', 'ui', 'decoration'];
+const CATEGORY_ORDER: SpriteCategory[] = ['character', 'elevator', 'passenger', 'floor', 'environment', 'ui', 'decoration'];
 const CATEGORY_LABEL: Record<SpriteCategory, string> = {
+  character: '캐릭터 portrait (다이얼로그)',
   elevator: '엘리베이터',
   passenger: '승객 (14 archetype)',
   floor: '층 역할 아이콘',

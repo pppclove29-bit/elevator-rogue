@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { BootScene } from './scenes/BootScene';
+import { DialogScene } from './scenes/DialogScene';
 import { GameOverScene } from './scenes/GameOverScene';
 import { GameScene } from './scenes/GameScene';
 import { HelpScene } from './scenes/HelpScene';
@@ -29,7 +30,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
-  scene: [BootScene, TitleScene, HelpScene, OptionsScene, StatsScene, GameScene, HUDScene, RuleEditorScene, ShopScene, ModifierScene, RelicScene, GameOverScene],
+  scene: [BootScene, TitleScene, HelpScene, OptionsScene, StatsScene, GameScene, HUDScene, RuleEditorScene, ShopScene, ModifierScene, RelicScene, GameOverScene, DialogScene],
 };
 
 const game = new Phaser.Game(config);

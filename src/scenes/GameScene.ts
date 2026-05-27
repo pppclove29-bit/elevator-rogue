@@ -88,6 +88,22 @@ export class GameScene extends Phaser.Scene {
 
     this.scene.launch('HUD');
     this.bindInput();
+    this.maybeShowIntro();
+  }
+
+  /** 게임 첫 실행 시 인트로 스토리. localStorage flag 로 1회만. */
+  private maybeShowIntro(): void {
+    const KEY = 'elevator-rogue.story.introShown';
+    if (this.pendingLoad) return; // 세이브 로드는 인트로 X
+    if (localStorage.getItem(KEY)) return;
+    this.pendingReward = true; // 시뮬 일시정지 (advanceModalQueue 와 동일 lock)
+    this.scene.launch('Dialog', {
+      scriptId: 'intro-opening',
+      onComplete: () => {
+        localStorage.setItem(KEY, '1');
+        this.pendingReward = false;
+      },
+    });
   }
 
   setSpeed(scale: number): void { this.timeScale = scale; }

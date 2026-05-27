@@ -17,7 +17,7 @@
  */
 import Phaser from 'phaser';
 
-export type SpriteCategory = 'elevator' | 'passenger' | 'floor' | 'environment' | 'ui' | 'decoration';
+export type SpriteCategory = 'elevator' | 'passenger' | 'floor' | 'environment' | 'ui' | 'decoration' | 'character';
 
 export interface SpriteMeta {
   key: string;
@@ -101,6 +101,16 @@ export const SPRITE_KEYS: readonly SpriteMeta[] = [
   { key: 'decor-window-lit', category: 'decoration', label: '창문 (불 켜짐)', usage: '빌딩 픽셀 디테일 점',   size: '8x12',  priority: 'nice', fallback: '노란 점' },
   { key: 'decor-window-dark', category: 'decoration', label: '창문 (꺼짐)', usage: '빌딩 픽셀 디테일 점',     size: '8x12',  priority: 'nice', fallback: '회색 점' },
   { key: 'decor-title-building', category: 'decoration', label: '타이틀 빌딩 실루엣', usage: 'TitleScene 좌측 큰 그림', size: '256x480', priority: 'nice', fallback: '도형 빌딩' },
+
+  // ── 캐릭터 portrait (다이얼로그) ──────────────
+  // 비주얼 노벨 스타일. 256x384 추천. 투명 배경 PNG.
+  // 없으면 둥근 사각형 placeholder + 이니셜.
+  { key: 'character-mentor-default', category: 'character', label: '멘토 (기본)',  usage: '튜토리얼/일상 다이얼로그', size: '256x384', priority: 'must', fallback: '회색 사각형 + 이니셜' },
+  { key: 'character-mentor-smirk',   category: 'character', label: '멘토 (시니컬)', usage: '비꼬는 대사 시',          size: '256x384', priority: 'nice', fallback: '동일' },
+  { key: 'character-owner-default',  category: 'character', label: '사장님 (기본)', usage: '압박/평가 다이얼로그',     size: '256x384', priority: 'nice', fallback: '검은 사각형 + 이니셜' },
+  { key: 'character-owner-angry',    category: 'character', label: '사장님 (화남)', usage: '실패/경고 다이얼로그',     size: '256x384', priority: 'nice', fallback: '동일' },
+  { key: 'character-player-default', category: 'character', label: '신입 매니저 (기본)', usage: '플레이어 자신 대사', size: '256x384', priority: 'nice', fallback: '베이지 사각형 + 이니셜' },
+  { key: 'character-player-worried', category: 'character', label: '신입 매니저 (걱정)', usage: '위기 상황 대사',     size: '256x384', priority: 'nice', fallback: '동일' },
 ];
 
 // ──────────────────────────────────────────────────────────
