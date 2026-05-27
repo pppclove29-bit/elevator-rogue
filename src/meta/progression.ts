@@ -7,10 +7,16 @@ export interface Progression {
   unlockedThemes: ThemeId[];
   /** 테마별 최고 도달 일자 */
   bestDayByTheme: Partial<Record<ThemeId, number>>;
-  /** 누적 처리 승객 (메타 통계) */
+  /** 누적 처리 승객 */
   totalServed: number;
+  /** 누적 골드 (한 런 종료 시 final gold 합) */
+  totalGoldEarned: number;
+  /** 누적 불만 처리 */
+  totalAngryServed: number;
   /** 게임오버 횟수 */
   totalRuns: number;
+  /** 전체 테마 통틀어 최고 일자 */
+  bestDayOverall: number;
 }
 
 /** 테마별 해금 조건 — 점진적 진행. "어느 테마든" 조건을 만족하면 해금. */
@@ -26,10 +32,20 @@ export function loadProgression(): Progression {
   if (raw) {
     try {
       const data = JSON.parse(raw) as Progression;
-      if (data.version === 1) return data;
+      if (data.version === 1) return ensureFields(data);
     } catch { /* fallthrough */ }
   }
-  return { version: 1, unlockedThemes: ['office'], bestDayByTheme: {}, totalServed: 0, totalRuns: 0 };
+  return { version: 1, unlockedThemes: ['office'], bestDayByTheme: {}, totalServed: 0, totalGoldEarned: 0, totalAngryServed: 0, totalRuns: 0, bestDayOverall: 0 };
+}
+
+/** localStorage 로드 시 옛 버전이면 누락 필드 보강 */
+function ensureFields(p: Progression): Progression {
+  return {
+    ...p,
+    totalGoldEarned: p.totalGoldEarned ?? 0,
+    totalAngryServed: p.totalAngryServed ?? 0,
+    bestDayOverall: p.bestDayOverall ?? Math.max(0, ...Object.values(p.bestDayByTheme).filter((v): v is number => typeof v === 'number')),
+  };
 }
 
 export function saveProgression(p: Progression): void {
@@ -48,6 +64,7 @@ export function unlockLabel(theme: ThemeId): string {
 export function recordDayReached(p: Progression, themeId: ThemeId, day: number): ThemeId[] {
   const prevBest = p.bestDayByTheme[themeId] ?? 0;
   if (day > prevBest) p.bestDayByTheme[themeId] = day;
+  if (day > p.bestDayOverall) p.bestDayOverall = day;
 
   const newly: ThemeId[] = [];
   for (const req of UNLOCK_REQUIREMENTS) {
@@ -67,8 +84,10 @@ export function recordDayReached(p: Progression, themeId: ThemeId, day: number):
 }
 
 /** 게임오버 시 누적 통계 + 마지막 day로 한 번 더 평가 */
-export function recordRunEnd(p: Progression, themeId: ThemeId, finalDay: number, served: number): ThemeId[] {
+export function recordRunEnd(p: Progression, themeId: ThemeId, finalDay: number, served: number, gold: number = 0, angry: number = 0): ThemeId[] {
   p.totalRuns += 1;
   p.totalServed += served;
+  p.totalGoldEarned += gold;
+  p.totalAngryServed += angry;
   return recordDayReached(p, themeId, finalDay);
 }

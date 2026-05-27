@@ -24,6 +24,20 @@ const STRINGS = {
     'title.unlock_locked_prefix': '🔒',
     'title.unlock_condition': '해금 조건: {label}',
     'title.dev_docs': '[DEV] 문서·디자인 페이지',
+    'title.stats': '통계',
+
+    'stats.title': '누적 통계',
+    'stats.runs': '총 게임오버',
+    'stats.served': '누적 처리 승객',
+    'stats.angry': '누적 불만 처리',
+    'stats.angry_rate': '불만 비율',
+    'stats.gold_earned': '누적 골드 (게임오버 시점)',
+    'stats.best_day_overall': '최고 일자 (전 테마)',
+    'stats.theme_progress': '테마별 최고 일자',
+    'stats.unlocked_themes': '해금된 테마',
+    'stats.locked': '잠금',
+    'stats.no_record': '아직 기록 없음',
+    'stats.average_day': '평균 일자',
 
     // ── 공통 ────────────────────────────
     'common.gold_suffix': 'G',
@@ -169,6 +183,20 @@ const STRINGS = {
     'title.unlock_locked_prefix': '🔒',
     'title.unlock_condition': 'Unlock: {label}',
     'title.dev_docs': '[DEV] Docs / Design',
+    'title.stats': 'Stats',
+
+    'stats.title': 'Lifetime Stats',
+    'stats.runs': 'Total Runs Ended',
+    'stats.served': 'Total Passengers Served',
+    'stats.angry': 'Total Angry Served',
+    'stats.angry_rate': 'Angry Rate',
+    'stats.gold_earned': 'Total Gold Earned',
+    'stats.best_day_overall': 'Best Day (All Themes)',
+    'stats.theme_progress': 'Best Day per Theme',
+    'stats.unlocked_themes': 'Unlocked Themes',
+    'stats.locked': 'Locked',
+    'stats.no_record': 'No record yet',
+    'stats.average_day': 'Average Day',
 
     // ── Common ─────────────────────────
     'common.gold_suffix': 'G',

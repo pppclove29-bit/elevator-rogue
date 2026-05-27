@@ -139,6 +139,9 @@ export class TitleScene extends Phaser.Scene {
     new Button(this, btnX, btnY, 240, 32, tr('title.options'), () => this.scene.launch('Options'),
       { fontSize: 13 });
     btnY += 36;
+    new Button(this, btnX, btnY, 240, 32, tr('title.stats'), () => this.scene.launch('Stats'),
+      { fontSize: 13 });
+    btnY += 36;
     if (import.meta.env.DEV) {
       new Button(this, btnX, btnY, 240, 26, '[DEV] 문서·디자인 페이지', () => {
         window.open('/docs.html', '_blank');
