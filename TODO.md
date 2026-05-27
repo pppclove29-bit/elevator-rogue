@@ -56,11 +56,16 @@ gh repo create elevator-rogue --private --source=. --remote=origin --push
 - [ ] 운영 정책 고급 옵션 (위/아래층 우선, 페이즈별 활동)
 
 ### 4순위 — 스팀 출시 준비
-- [ ] **i18n Phase 3** — Event name 다국어 (보스 day / 공휴일)
-- [ ] **Electron 래핑** — 알파 빌드 (스팀 페이지 캡쳐용)
+- [x] **i18n Phase 3** — Event name 다국어 (보스 day / 공휴일) ✅ ko/en 23종
+- [~] **Electron 래핑** — 셋업 완료 (`electron/main.cjs`, `package.json` scripts, electron-builder).
+  - `pnpm electron:dev` (vite + electron 동시) / `pnpm electron:build` (현재 OS) / `:mac` `:win` `:linux`
+  - 빌드 산출물 `release/` (.gitignored)
+  - 아이콘 / 코드사이닝 / 자동 업데이트는 별개 TODO
 - [ ] **Steamworks SDK** — 업적/클라우드 세이브 (steamworks.js)
 - [ ] **윈도우 모드** 향상 — 해상도 선택, 브라우저 줌과 함께 사용 시 충돌 점검
 - [ ] **게임패드 대응**
+- [ ] **아이콘** — electron/build/icon.{png,ico,icns}
+- [ ] **코드사이닝** — macOS Developer ID / Windows EV
 
 ### 5순위 — 폴리시
 - [ ] 픽셀 폰트 재시도 (Galmuri11 — 11px 한글 픽셀, 깔끔)

@@ -10,7 +10,7 @@
 
 - **Phaser 3** + **TypeScript (strict)** + **Vite**
 - 빌드: `pnpm dev` / `pnpm build`
-- PC 게임 출시 목표 (Steam — Electron 래핑 예정)
+- PC 게임 출시 목표 (Steam — Electron 래핑 완료, Steamworks SDK 대기)
 
 ## 코드 구조
 
@@ -87,12 +87,20 @@ src/
 ## 자주 쓰는 명령
 
 ```bash
-pnpm dev                    # 개발 서버
-pnpm build                  # 타입체크 + 빌드
+pnpm dev                    # 개발 서버 (브라우저)
+pnpm build                  # 타입체크 + 빌드 (dist/)
 npx tsc --noEmit            # 타입체크만
 
+# Electron (PC 게임)
+pnpm electron:dev           # vite + electron 동시 실행
+pnpm electron:build         # 현재 OS용 패키지 (release/)
+pnpm electron:build:mac     # macOS dmg (x64+arm64)
+pnpm electron:build:win     # Windows nsis
+pnpm electron:build:linux   # Linux AppImage
+
 # 진행도 초기화 (브라우저 콘솔)
-['save.v1','progression.v1','options.v1','tutorialShown','locale']
+['save.v1','progression.v1','options.v1','tutorialShown','locale',
+ 'tutorial.v1','story.introShown']
   .forEach(k => localStorage.removeItem(`elevator-rogue.${k}`))
 ```
 
