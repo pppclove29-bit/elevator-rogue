@@ -1,0 +1,99 @@
+.sprite-row {
+  display: grid;
+  grid-template-columns: 70px 180px 130px 1fr 90px 110px 60px;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a2a35;
+  align-items: center;
+  font-size: 12px;
+}
+.sprite-row.header {
+  background: #15151c;
+  font-weight: 600;
+  color: #f5c542;
+  border-bottom: 2px solid #3a3a48;
+  position: sticky;
+  top: 0;
+}
+.sprite-row .key-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #e2a04a;
+  font-size: 11px;
+  word-break: break-all;
+}
+.sprite-row .preview-cell {
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0e0e14;
+  border: 1px solid #2a2a35;
+  border-radius: 4px;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+.sprite-row .preview-cell img {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+.sprite-row .preview-cell .missing {
+  color: #5a5a68;
+  font-size: 10px;
+  text-align: center;
+}
+.sprite-row .size-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #9aa0a6;
+}
+.sprite-row .fallback {
+  color: #5a5a68;
+  font-size: 11px;
+  font-style: italic;
+}
+.sprite-row .cat-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.cat-tag.elevator    { background: #4a90e2; color: #0b0b10; }
+.cat-tag.passenger   { background: #f5c542; color: #0b0b10; }
+.cat-tag.floor       { background: #e2a04a; color: #0b0b10; }
+.cat-tag.environment { background: #7ed957; color: #0b0b10; }
+.cat-tag.ui          { background: #b08cff; color: #0b0b10; }
+.cat-tag.decoration  { background: #5a5a68; color: #ffffff; }
+.sprite-row .prio-must { color: #e74c3c; font-weight: 600; }
+.sprite-row .prio-nice { color: #9aa0a6; }
+.sprite-row .status-loaded { color: #7ed957; font-weight: 600; }
+.sprite-row .status-missing { color: #5a5a68; }
+.sprite-summary {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin: 16px 0 24px 0;
+}
+.sprite-summary .stat {
+  background: #1c1c26;
+  padding: 12px 16px;
+  border-left: 3px solid #f5c542;
+  border-radius: 4px;
+}
+.sprite-summary .stat .label {
+  color: #9aa0a6;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.sprite-summary .stat .value {
+  font-size: 22px;
+  color: #f5c542;
+  font-weight: 600;
+}

@@ -3,6 +3,7 @@ import { COLORS } from '../config';
 import { spaceUsed } from '../domain/archetypes';
 import { ROLE_COLOR, ROLE_SHORT } from '../domain/spawner';
 import { SimState } from '../domain/types';
+import { hasSprite } from './sprites';
 
 export interface BuildingViewLayout {
   x: number;
@@ -27,6 +28,8 @@ export class BuildingView {
   private floorLabels: Phaser.GameObjects.Text[] = [];
   private queueLabels: Phaser.GameObjects.Text[] = [];
   private elevatorLabels: Phaser.GameObjects.Text[] = [];
+  /** elevator-cab sprite 가 있을 때만 사용. 인덱스 = elevator.id */
+  private elevatorImages: (Phaser.GameObjects.Image | null)[] = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -174,24 +177,41 @@ export class BuildingView {
       this.elevatorLabels[i]!.setVisible(false);
     }
 
+    // elevator-cab sprite 가 로드되어 있으면 image 로, 없으면 도형 fallback.
+    const cabSprite = hasSprite(this.scene, 'elevator-cab');
+    const brokenSprite = hasSprite(this.scene, 'elevator-cab-broken');
+
     for (let i = 0; i < elevators.length; i++) {
       const e = elevators[i]!;
       const sx = shaftXStart + e.id * shaftSpacing;
       const ey = y + totalHeight - e.y * floorHeight - floorHeight / 2;
       const isBroken = e.state.kind === 'broken';
 
-      // 픽셀 엘베 박스 + 디테일
-      this.g.fillStyle(isBroken ? 0x4a4a55 : COLORS.elevator, 1);
-      this.g.fillRect(sx, ey - floorHeight / 2 + 4, 36, floorHeight - 8);
-      // 엘베 안 음영
-      this.g.fillStyle(0x000000, 0.25);
-      this.g.fillRect(sx + 2, ey - floorHeight / 2 + 6, 32, 4);
-      // 문 라인
-      this.g.lineStyle(1, 0x000000, 0.4);
-      this.g.lineBetween(sx + 18, ey - floorHeight / 2 + 4, sx + 18, ey + floorHeight / 2 - 4);
-      if (isBroken) {
-        this.g.lineStyle(2, 0xe74c3c, 1);
-        this.g.strokeRect(sx - 1, ey - floorHeight / 2 + 3, 38, floorHeight - 6);
+      if (cabSprite) {
+        let img = this.elevatorImages[e.id] ?? null;
+        if (!img) {
+          img = this.scene.add.image(0, 0, 'elevator-cab').setDepth(2);
+          this.elevatorImages[e.id] = img;
+        }
+        const key = isBroken && brokenSprite ? 'elevator-cab-broken' : 'elevator-cab';
+        img.setTexture(key);
+        img.setPosition(sx + 18, ey);
+        img.setDisplaySize(36, floorHeight - 8);
+        img.setVisible(true);
+        img.setTint(isBroken && !brokenSprite ? 0xff7777 : 0xffffff);
+      } else {
+        if (this.elevatorImages[e.id]) this.elevatorImages[e.id]!.setVisible(false);
+        // 픽셀 엘베 박스 + 디테일 (도형 fallback)
+        this.g.fillStyle(isBroken ? 0x4a4a55 : COLORS.elevator, 1);
+        this.g.fillRect(sx, ey - floorHeight / 2 + 4, 36, floorHeight - 8);
+        this.g.fillStyle(0x000000, 0.25);
+        this.g.fillRect(sx + 2, ey - floorHeight / 2 + 6, 32, 4);
+        this.g.lineStyle(1, 0x000000, 0.4);
+        this.g.lineBetween(sx + 18, ey - floorHeight / 2 + 4, sx + 18, ey + floorHeight / 2 - 4);
+        if (isBroken) {
+          this.g.lineStyle(2, 0xe74c3c, 1);
+          this.g.strokeRect(sx - 1, ey - floorHeight / 2 + 3, 38, floorHeight - 6);
+        }
       }
 
       const used = spaceUsed(e.passengers);

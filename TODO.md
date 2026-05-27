@@ -31,6 +31,10 @@ gh repo create elevator-rogue --private --source=. --remote=origin --push
 ## 다음 작업 우선순위
 
 ### 1순위 — 알파 마무리 (감각 임팩트)
+- [~] **스프라이트 파이프라인** — Phaser sprite key 시스템 + 카탈로그 페이지(`/sprites.html`) 구축 완료. 픽셀 아트 32~64px 스타일. `public/sprites/<key>.png` 두면 자동 적용 (없으면 도형 fallback). 첫 적용: BuildingView 엘베 cab.
+  - [ ] 우선순위 must 4개 채우기: `elevator-cab`, `passenger-normal`, `passenger-thief`, `floor-lobby`
+  - [ ] 점진적 다른 위치 sprite-aware 화: PassengerSprites, floor role, 환경(계단/엘베컬레이터/지하철), HUD 아이콘
+  - 새 키 추가: `SPRITE_KEYS` 항목 추가 → 렌더 코드에 `tryImage(scene, key, x, y, fallback)` 적용 → png 두기. 끝.
 - [~] **사운드 파이프라인** — Phaser audio key 시스템으로 전환 완료. 트리거 hook은 모두 박혀있고, `public/sounds/<key>.mp3` 파일만 채우면 즉시 들림 (없으면 silent fallback).
   - [ ] SFX 파일 채우기: `ding`, `coin`, `thief`, `alarm`, `breakdown`, `gameOver`, `click`, `purchase` (필수 8종)
   - [ ] SFX 추가: `modalOpen`, `bossDay`, `holiday` (nice-to-have)
@@ -85,6 +89,7 @@ gh repo create elevator-rogue --private --source=. --remote=origin --push
 - 코드 진실원천: `/docs.html`
 - 디자인 카탈로그: `/design.html`
 - 사운드 카탈로그: `/sounds.html`
+- 스프라이트 카탈로그: `/sprites.html`
 - 이전 디자인 안 (아카이브): `docs/blocks.md`, `docs/modifiers.md`
 - 플랜 파일: `~/.claude/plans/toasty-marinating-dawn.md`
 

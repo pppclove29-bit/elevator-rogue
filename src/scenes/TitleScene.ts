@@ -147,10 +147,11 @@ export class TitleScene extends Phaser.Scene {
       () => this.scene.launch('Stats'), { fontSize: 12 });
     btnY += 36;
     if (import.meta.env.DEV) {
-      new Button(this, btnX, btnY + 20, 280, 22, '[DEV] docs·design·sounds', () => {
+      new Button(this, btnX, btnY + 20, 280, 22, '[DEV] docs·design·sounds·sprites', () => {
         window.open('/docs.html', '_blank');
         window.open('/design.html', '_blank');
         window.open('/sounds.html', '_blank');
+        window.open('/sprites.html', '_blank');
       }, { fontSize: 10 });
     }
 

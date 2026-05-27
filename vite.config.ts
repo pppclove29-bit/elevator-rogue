@@ -15,6 +15,7 @@ export default defineConfig({
         docs: resolve(__dirname, 'docs.html'),
         design: resolve(__dirname, 'design.html'),
         sounds: resolve(__dirname, 'sounds.html'),
+        sprites: resolve(__dirname, 'sprites.html'),
       },
     },
   },
