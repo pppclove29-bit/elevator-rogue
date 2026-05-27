@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { t as tr } from '../i18n/locale';
+import { CHALLENGES, challengeById } from '../meta/challenges';
 import { loadOptions } from '../meta/options';
 import { isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
@@ -13,6 +14,9 @@ const FONT = '"DotGothic16", "Press Start 2P", monospace';
 export class TitleScene extends Phaser.Scene {
   private selectedTheme: ThemeId = DEFAULT_THEME;
   private themeRefresh: (() => void) | null = null;
+  /** 도전 모드 id. null = 일반 모드 */
+  private selectedChallenge: string | null = null;
+  private challengeLabel: Phaser.GameObjects.Text | null = null;
 
   constructor() { super('Title'); }
 
@@ -159,6 +163,16 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: FONT, fontSize: '10px', color: '#3a3a48',
     }).setOrigin(1, 1);
 
+    // 도전 모드 cycle 버튼 — 좌측 빌딩 실루엣 아래 (continue 가능성 무시: 챌린지는 새 런만)
+    this.add.text(200, 640, '도전 모드', {
+      fontFamily: FONT, fontSize: '12px', color: '#f5c542', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.challengeLabel = this.add.text(200, 660, '', {
+      fontFamily: FONT, fontSize: '13px', color: COLORS.text,
+    }).setOrigin(0.5);
+    new Button(this, 200, 690, 220, 28, '다음 ▶', () => this.cycleChallenge(), { fontSize: 12 });
+    this.refreshChallengeLabel();
+
     const opt = loadOptions();
     if (opt.showTutorialOnStart && !localStorage.getItem(TUTORIAL_KEY)) {
       this.scene.launch('Help', { firstTime: true });
@@ -172,11 +186,33 @@ export class TitleScene extends Phaser.Scene {
 
   private startGame(): void {
     this.scene.stop('Help');
-    this.scene.start('Game', { theme: this.selectedTheme });
+    this.scene.start('Game', { theme: this.selectedTheme, challenge: this.selectedChallenge });
   }
 
   private continueGame(): void {
     this.scene.stop('Help');
     this.scene.start('Game', { load: true });
+  }
+
+  /** 도전 모드 cycle — 없음 → 5종 → 없음 반복 */
+  private cycleChallenge(): void {
+    const ids = [null, ...Object.keys(CHALLENGES)];
+    const idx = ids.indexOf(this.selectedChallenge);
+    const nextIdx = (idx + 1) % ids.length;
+    this.selectedChallenge = ids[nextIdx] as string | null;
+    this.refreshChallengeLabel();
+  }
+
+  private refreshChallengeLabel(): void {
+    if (!this.challengeLabel) return;
+    if (!this.selectedChallenge) {
+      this.challengeLabel.setText('일반 (없음)');
+      this.challengeLabel.setColor(COLORS.textDim);
+      return;
+    }
+    const ch = challengeById(this.selectedChallenge);
+    if (!ch) { this.challengeLabel.setText('일반 (없음)'); return; }
+    this.challengeLabel.setText(`${ch.name} — ${ch.desc}`);
+    this.challengeLabel.setColor('#f5c542');
   }
 }

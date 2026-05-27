@@ -13,6 +13,7 @@ import { sound } from '../audio/sound';
 import { rollShopOffers } from '../meta/shop';
 import { readSave, SaveData, writeSave } from '../meta/save';
 import { skillById } from '../meta/skills';
+import { challengeById } from '../meta/challenges';
 import { DEFAULT_THEME, THEMES, ThemeId } from '../meta/themes';
 import { addFloor } from '../domain/building';
 import { BuildingView } from '../render/BuildingView';
@@ -49,14 +50,16 @@ export class GameScene extends Phaser.Scene {
   timeScale = 1;
   private seed = 1;
   private themeId: ThemeId = DEFAULT_THEME;
+  private challengeId: string | null = null;
   private pendingLoad: SaveData | null = null;
 
-  init(data: { theme?: ThemeId; load?: boolean }): void {
+  init(data: { theme?: ThemeId; load?: boolean; challenge?: string | null }): void {
     if (data?.load) {
       this.pendingLoad = readSave();
     } else {
       this.pendingLoad = null;
       if (data?.theme) this.themeId = data.theme;
+      this.challengeId = data?.challenge ?? null;
     }
   }
 
@@ -436,6 +439,11 @@ export class GameScene extends Phaser.Scene {
     if (theme) {
       this.state.gold += theme.startingGoldBonus ?? 0;
       theme.apply(this.state);
+    }
+    // 도전 모드 적용 (테마 이후)
+    if (this.challengeId) {
+      const ch = challengeById(this.challengeId);
+      if (ch) ch.apply(this.state);
     }
     // 사운드 추적 초기화
     this.prevServedCount = this.state.servedCount;

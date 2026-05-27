@@ -17,6 +17,8 @@ export interface Progression {
   totalRuns: number;
   /** 전체 테마 통틀어 최고 일자 */
   bestDayOverall: number;
+  /** 도전 모드별 최고 일자 (chal id → day) */
+  bestDayByChallenge?: Record<string, number>;
 }
 
 /** 테마별 해금 조건 — 난이도 점증. "어느 테마든" 조건 만족 시 해금. */
@@ -96,11 +98,18 @@ export function recordDayReached(p: Progression, themeId: ThemeId, day: number):
   return newly;
 }
 
-/** 게임오버 시 누적 통계 + 마지막 day로 한 번 더 평가 */
-export function recordRunEnd(p: Progression, themeId: ThemeId, finalDay: number, served: number, gold: number = 0, angry: number = 0): ThemeId[] {
+/** 게임오버 시 누적 통계 + 마지막 day로 한 번 더 평가. challengeId 있으면 별도 기록. */
+export function recordRunEnd(p: Progression, themeId: ThemeId, finalDay: number, served: number, gold: number = 0, angry: number = 0, challengeId: string | null = null): ThemeId[] {
   p.totalRuns += 1;
   p.totalServed += served;
   p.totalGoldEarned += gold;
   p.totalAngryServed += angry;
+  if (challengeId) {
+    if (!p.bestDayByChallenge) p.bestDayByChallenge = {};
+    const prev = p.bestDayByChallenge[challengeId] ?? 0;
+    if (finalDay > prev) p.bestDayByChallenge[challengeId] = finalDay;
+    // 챌린지 모드는 테마 best day 에는 영향 X — 통계용만
+    return [];
+  }
   return recordDayReached(p, themeId, finalDay);
 }

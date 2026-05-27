@@ -24,7 +24,7 @@ export class GameOverScene extends Phaser.Scene {
     // 게임 오버 = 런 종료. 저장 삭제 + 진행도 기록.
     clearSave();
     const prog = loadProgression();
-    const newUnlocks = recordRunEnd(prog, (this.gs as any).themeId ?? 'office', s.dayCompleted + 1, s.servedCount, s.gold, s.angryServedCount);
+    const newUnlocks = recordRunEnd(prog, (this.gs as any).themeId ?? 'office', s.dayCompleted + 1, s.servedCount, s.gold, s.angryServedCount, (this.gs as any).challengeId ?? null);
     saveProgression(prog);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
