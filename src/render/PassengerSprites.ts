@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS } from '../config';
 import { ARCHETYPES, PassengerArchetype } from '../domain/archetypes';
 import { ANGER_THRESHOLD } from '../domain/simulation';
+import { ROLE_COLOR } from '../domain/spawner';
 import { SimState } from '../domain/types';
 import { BuildingViewLayout, DOOR_AREA_W } from './BuildingView';
 
@@ -19,13 +20,16 @@ interface Sprite {
   done: boolean;
   /** 남은 ms. 0이 되어야 움직임/fade 시작 (stagger 처리) */
   delay: number;
+  /** 목적지 층 role 컬러 (머리 위 dot 으로 표시) */
+  destColor: number;
 }
 
 let HINT_ID_COUNTER = -1000;
 
-const LERP_SPEED = 16;
-const FADE_SPEED = 12;
-const STAGGER_MS = 90;     // 한 명씩 타고 내리는 간격
+// px/sec 단위. entering 100px → 1초, riding 짧은 이동도 충분히 인지 가능.
+const LERP_SPEED_PX_PER_SEC = 140;
+const FADE_SPEED_PER_SEC = 4;        // 0 → 1 가는 데 0.25초
+const STAGGER_MS = 140;              // 한 명씩 타고 내리는 간격 (좀 더 여유)
 
 function approach(current: number, target: number, maxStep: number): number {
   if (current === target) return current;
@@ -48,16 +52,16 @@ export class PassengerSprites {
     this.sync(state);
 
     const dt = deltaMs / 1000;
-    const moveStep = LERP_SPEED * dt;
-    const fadeStep = FADE_SPEED * dt;
+    const moveStep = LERP_SPEED_PX_PER_SEC * dt;
+    const fadeStep = FADE_SPEED_PER_SEC * dt;
 
     for (const s of this.map.values()) {
       if (s.delay > 0) {
         s.delay = Math.max(0, s.delay - deltaMs);
         continue;
       }
-      s.x = approach(s.x, s.targetX, moveStep * 60);
-      s.y = approach(s.y, s.targetY, moveStep * 60);
+      s.x = approach(s.x, s.targetX, moveStep);
+      s.y = approach(s.y, s.targetY, moveStep);
       s.alpha = approach(s.alpha, s.targetAlpha, fadeStep);
 
       if (s.phase === 'entering' && Math.abs(s.x - s.targetX) < 1 && s.alpha >= 0.95) {
@@ -85,6 +89,11 @@ export class PassengerSprites {
     const floorHeight = totalHeight / floors.length;
     const shaftXStart = x + 80;
 
+    const destColorFor = (destFloorId: number): number => {
+      const f = floors[destFloorId];
+      return f ? (ROLE_COLOR[f.role] ?? 0xffffff) : 0xffffff;
+    };
+
     const stillAlive = new Set<number>();
 
     // 큐 승객 위치
@@ -104,6 +113,7 @@ export class PassengerSprites {
             phase: 'entering',
             alpha: 0, targetAlpha: 1,
             done: false, delay: 0,
+            destColor: destColorFor(p.dest),
           };
           this.map.set(p.id, s);
         } else {
@@ -111,6 +121,7 @@ export class PassengerSprites {
           s.targetY = targetY;
           s.targetAlpha = 1;
           s.anger = p.anger;
+          s.destColor = destColorFor(p.dest);
           if (s.phase === 'riding' || s.phase === 'alighting') s.phase = 'queued';
         }
       }
@@ -133,9 +144,11 @@ export class PassengerSprites {
             id: p.id, archetype: p.archetype, anger: p.anger,
             x: targetX, y: targetY, targetX, targetY,
             phase: 'riding', alpha: 1, targetAlpha: 1, done: false, delay: 0,
+            destColor: destColorFor(p.dest),
           };
           this.map.set(p.id, s);
         } else {
+          s.destColor = destColorFor(p.dest);
           const justBoarding = s.phase === 'queued' || s.phase === 'entering';
           if (justBoarding) {
             s.phase = 'boarding';
@@ -177,6 +190,11 @@ export class PassengerSprites {
     const floorHeight = totalHeight / floors.length;
     const stairX = x + width;
 
+    const destColorFor = (destFloorId: number): number => {
+      const f = floors[destFloorId];
+      return f ? (ROLE_COLOR[f.role] ?? 0xffffff) : 0xffffff;
+    };
+
     for (const h of state.visualHints) {
       if (h.kind === 'escalator') {
         const fyOrigin = y + totalHeight - h.originFloorId * floorHeight - floorHeight / 2;
@@ -189,6 +207,7 @@ export class PassengerSprites {
           phase: 'escalator',
           alpha: 1, targetAlpha: 0,
           done: false, delay: 0,
+          destColor: destColorFor(h.destFloorId),
         });
       } else if (h.kind === 'subway') {
         const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
@@ -200,6 +219,7 @@ export class PassengerSprites {
           phase: 'subway',
           alpha: 1, targetAlpha: 0,
           done: false, delay: 0,
+          destColor: destColorFor(h.floorId),
         });
       }
     }
@@ -211,15 +231,22 @@ export class PassengerSprites {
     for (const s of this.map.values()) {
       const spec = ARCHETYPES[s.archetype];
       const color = s.anger >= ANGER_THRESHOLD * 0.6 ? COLORS.passengerAngry : spec.color;
-      this.g.fillStyle(color, s.alpha);
-      // 픽셀 스프라이트: 사람 모양 (머리 + 몸)
       const big = spec.spaceCost > 1;
       const w = big ? 6 : 4;
       const h = big ? 8 : 6;
-      // 몸
+
+      // 몸 + 머리
+      this.g.fillStyle(color, s.alpha);
       this.g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
-      // 머리 (조금 더 작은 사각형 위)
       this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 3, w - 2, 3);
+
+      // 목적지 dest 색 dot — 머리 바로 위. 어디로 가는지 한눈에.
+      // 2×2 픽셀 dot + 1px 검은 테두리로 가독성 ↑
+      const dotY = s.y - h / 2 - 6;
+      this.g.fillStyle(0x000000, s.alpha * 0.8);
+      this.g.fillRect(s.x - 2, dotY - 1, 4, 4);
+      this.g.fillStyle(s.destColor, s.alpha);
+      this.g.fillRect(s.x - 1, dotY, 2, 2);
     }
   }
 }
