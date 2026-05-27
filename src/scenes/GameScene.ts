@@ -15,6 +15,7 @@ import { skillById } from '../meta/skills';
 import { DEFAULT_THEME, THEMES, ThemeId } from '../meta/themes';
 import { addFloor } from '../domain/building';
 import { BuildingView } from '../render/BuildingView';
+import { EventFx } from '../render/EventFx';
 import { PassengerSprites } from '../render/PassengerSprites';
 
 export class GameScene extends Phaser.Scene {
@@ -38,6 +39,8 @@ export class GameScene extends Phaser.Scene {
   private rng!: Rng;
   private view!: BuildingView;
   private sprites!: PassengerSprites;
+  private fx!: EventFx;
+  private prevFxEventId: string | null = null;
   private accumulator = 0;
   paused = false;
   timeScale = 1;
@@ -80,6 +83,8 @@ export class GameScene extends Phaser.Scene {
     };
     this.view = new BuildingView(this, layout);
     this.sprites = new PassengerSprites(this, layout);
+    this.fx = new EventFx(this);
+    this.prevFxEventId = null;
 
     this.scene.launch('HUD');
     this.bindInput();
@@ -464,5 +469,17 @@ export class GameScene extends Phaser.Scene {
     }
     this.view.draw(this.state);
     this.sprites.update(this.state, delta);
+    this.updateEventFx(delta);
+  }
+
+  /** activeEventToday 의 visualFx 가 바뀌면 fx 전환. 매 frame fx.update. */
+  private updateEventFx(delta: number): void {
+    const ev = this.activeEventToday;
+    const evId = ev?.id ?? null;
+    if (evId !== this.prevFxEventId) {
+      this.fx.setFx(ev?.visualFx ?? null);
+      this.prevFxEventId = evId;
+    }
+    this.fx.update(delta);
   }
 }

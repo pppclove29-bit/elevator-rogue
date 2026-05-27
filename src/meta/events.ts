@@ -4,6 +4,9 @@ import { SimState } from '../domain/types';
 
 export type EventSeverity = 'mild' | 'major' | 'critical';
 
+/** 공휴일/이벤트 활성 동안 화면에 깔리는 시각 효과 키. */
+export type EventVisualFx = 'fireworks' | 'snowfall' | 'halloween' | 'hearts';
+
 export interface EventEntry {
   id: string;
   name: string;
@@ -17,6 +20,8 @@ export interface EventEntry {
   cadence?: { every: number; offset?: number };
   /** 매년 이 날짜에 무조건 발생 (캘린더 공휴일). pinnedDays/cadence보다 우선. */
   holiday?: { month: number; date: number };
+  /** 이벤트 활성 day 동안 화면에 깔리는 시각 효과. 공휴일 위주. */
+  visualFx?: EventVisualFx;
   /** day 시작 시 호출. 발동 여부 결정 + 즉시 효과 + cleanup 반환 (지속형) */
   trigger(state: SimState, rng: Rng, day: number): null | { durationTicks: number; cleanup: () => void };
 }
@@ -105,6 +110,7 @@ export const EVENTS: Record<string, EventEntry> = {
     desc: '한 해의 시작. 옥상 카운트다운 + 보너스 +80G',
     severity: 'critical',
     holiday: { month: 1, date: 1 },
+    visualFx: 'fireworks',
     trigger: (s) => {
       s.gold += 80;
       s.params.phaseSpawnMultiplier.morning *= 1.5; // 한산
@@ -283,6 +289,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-valentine', name: '💝 밸런타인데이',
     desc: '식당가 폭주. LUNCH 스폰 ×2. 보너스 +30G',
     severity: 'major', holiday: { month: 2, date: 14 },
+    visualFx: 'hearts',
     trigger: (s) => {
       s.gold += 30;
       const orig = s.params.phaseSpawnMultiplier.lunch;
@@ -357,6 +364,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-halloween', name: '🎃 할로윈',
     desc: '옥상 파티 + 도둑 출몰 ×2. 골드 +30G',
     severity: 'major', holiday: { month: 10, date: 31 },
+    visualFx: 'halloween',
     trigger: (s) => {
       s.gold += 30;
       const orig = s.params.thiefSpawnMultiplier;
@@ -369,6 +377,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-pepero', name: '🍫 빼빼로 데이',
     desc: '식당가 폭주. LUNCH 스폰 ×2.5. +25G',
     severity: 'major', holiday: { month: 11, date: 11 },
+    visualFx: 'hearts',
     trigger: (s) => {
       s.gold += 25;
       const orig = s.params.phaseSpawnMultiplier.lunch;
@@ -381,6 +390,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-christmas-eve', name: '🎄 크리스마스 이브',
     desc: '식당/옥상 트래픽 폭증. EVENING 스폰 ×2. +60G',
     severity: 'critical', holiday: { month: 12, date: 24 },
+    visualFx: 'snowfall',
     trigger: (s) => {
       s.gold += 60;
       const orig = s.params.phaseSpawnMultiplier.evening;
@@ -393,6 +403,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-christmas', name: '🎅 크리스마스',
     desc: '공휴일. 한산. +80G',
     severity: 'mild', holiday: { month: 12, date: 25 },
+    visualFx: 'snowfall',
     trigger: (s) => {
       s.gold += 80;
       const u = mulSpawn(s, 2.5);
@@ -403,6 +414,7 @@ export const EVENTS: Record<string, EventEntry> = {
     id: 'ev-holiday-yearend', name: '🎆 한 해의 마지막',
     desc: '송년. 옥상 카운트다운. EVENING 스폰 ×3. +100G',
     severity: 'critical', holiday: { month: 12, date: 31 },
+    visualFx: 'fireworks',
     trigger: (s) => {
       s.gold += 100;
       const orig = s.params.phaseSpawnMultiplier.evening;
