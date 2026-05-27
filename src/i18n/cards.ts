@@ -141,6 +141,66 @@ const KO: CardDict = {
   'skill.skill-clear-largest.desc': '가장 큰 대기열 즉시 모두 도착 처리',
   'skill.skill-slow-spawn.name': '한산한 시간',
   'skill.skill-slow-spawn.desc': '20초간 승객 스폰 간격 ×2',
+
+  // ── Events (랜덤/공휴일/보스) ──────────
+  'ev.ev-fire-alarm.name': '화재 경보',
+  'ev.ev-fire-alarm.desc': '모든 층 대기 승객이 1F(로비)로 dest 강제',
+  'ev.ev-blackout.name': '정전',
+  'ev.ev-blackout.desc': '랜덤 엘베 1대 30초 정지 (Day 4 이후)',
+  'ev.ev-vip-arrival.name': 'VIP 도착',
+  'ev.ev-vip-arrival.desc': '하루 종일 옥상 dest 가중치 ×5',
+  'ev.ev-protest.name': '시위',
+  'ev.ev-protest.desc': '하루 종일 lobby 호출 가중치 ×0.3',
+  'ev.ev-newyear.name': '🎊 신정 (새해 첫날)',
+  'ev.ev-newyear.desc': '한 해의 시작. 옥상 카운트다운 + 보너스 +80G',
+  'ev.ev-lunch-delivery.name': '도시락 일제 배달',
+  'ev.ev-lunch-delivery.desc': '오늘 LUNCH 스폰 ×2',
+  'ev.ev-bonus-day.name': '보너스 데이',
+  'ev.ev-bonus-day.desc': '시작 즉시 +40G',
+  'ev.ev-strike.name': '엘리베이터 파업',
+  'ev.ev-strike.desc': '모든 엘베 30초 정지 (Day 8 이후)',
+  'ev.ev-mass-evac.name': '대피 훈련',
+  'ev.ev-mass-evac.desc': '예정된 훈련일 — 각 층 큐 +2 (dest=로비)',
+  'ev.ev-restaurant-festival.name': '식당가 축제',
+  'ev.ev-restaurant-festival.desc': '오늘 RT 처리 골드 ×2 (보너스 +20G 즉시)',
+  'ev.ev-subway-strike.name': '지하철 파업',
+  'ev.ev-subway-strike.desc': '오늘 로비 트래픽 ×1.7 (지하철 안 다녀 사람들이 1F로 몰림)',
+  // 보스
+  'ev.ev-boss-weekend-rush.name': '🔥 보스 — 주말 대혼란',
+  'ev.ev-boss-weekend-rush.desc': '하루 종일 모든 페이즈 스폰 ×1.5. 시작 보너스 +100G.',
+  'ev.ev-boss-night-storm.name': '🔥 보스 — 야간 폭주',
+  'ev.ev-boss-night-storm.desc': 'NIGHT 스폰 ×5. 시작 보너스 +120G.',
+  'ev.ev-boss-vip-conference.name': '🔥 보스 — VIP 컨퍼런스',
+  'ev.ev-boss-vip-conference.desc': '옥상 트래픽 ×3, 불만 누적 ×1.3. 시작 보너스 +150G.',
+  'ev.ev-boss-grand-opening.name': '🔥 보스 — 그랜드 오프닝',
+  'ev.ev-boss-grand-opening.desc': '모든 페이즈 스폰 ×2, 정원 -1. 시작 보너스 +200G.',
+  'ev.ev-boss-anniversary.name': '🔥 보스 — 창립 기념일',
+  'ev.ev-boss-anniversary.desc': '모든 페이즈 스폰 ×2.5, 속도 -20%. 시작 보너스 +350G.',
+  // 공휴일 12종
+  'ev.ev-holiday-valentine.name': '💝 밸런타인데이',
+  'ev.ev-holiday-valentine.desc': '식당가 폭주. LUNCH 스폰 ×2. 보너스 +30G',
+  'ev.ev-holiday-march1.name': '🇰🇷 삼일절',
+  'ev.ev-holiday-march1.desc': '공휴일. 빌딩 한산. 골드 +20G',
+  'ev.ev-holiday-childrensday.name': '🎈 어린이날',
+  'ev.ev-holiday-childrensday.desc': '가족 단체 손님 폭주. 식당/옥상 가중치 ↑. +40G',
+  'ev.ev-holiday-memorial.name': '🌹 현충일',
+  'ev.ev-holiday-memorial.desc': '추모일. 매우 한산. 골드 +15G',
+  'ev.ev-holiday-liberation.name': '🎌 광복절',
+  'ev.ev-holiday-liberation.desc': '공휴일. 옥상 행사. 옥상 dest ×3 + 골드 ×1.5',
+  'ev.ev-holiday-chuseok.name': '🌕 추석',
+  'ev.ev-holiday-chuseok.desc': '명절 귀향. 빌딩 거의 비어있음. 골드 +50G',
+  'ev.ev-holiday-foundation.name': '🏛️ 개천절',
+  'ev.ev-holiday-foundation.desc': '공휴일. 한산. +20G',
+  'ev.ev-holiday-halloween.name': '🎃 할로윈',
+  'ev.ev-holiday-halloween.desc': '옥상 파티 + 도둑 출몰 ×2. 골드 +30G',
+  'ev.ev-holiday-pepero.name': '🍫 빼빼로 데이',
+  'ev.ev-holiday-pepero.desc': '식당가 폭주. LUNCH 스폰 ×2.5. +25G',
+  'ev.ev-holiday-christmas-eve.name': '🎄 크리스마스 이브',
+  'ev.ev-holiday-christmas-eve.desc': '식당/옥상 트래픽 폭증. EVENING 스폰 ×2. +60G',
+  'ev.ev-holiday-christmas.name': '🎅 크리스마스',
+  'ev.ev-holiday-christmas.desc': '공휴일. 한산. +80G',
+  'ev.ev-holiday-yearend.name': '🎆 한 해의 마지막',
+  'ev.ev-holiday-yearend.desc': '송년. 옥상 카운트다운. EVENING 스폰 ×3. +100G',
 };
 
 // ────────────────────────────────────────────────────────
@@ -272,6 +332,66 @@ const EN: CardDict = {
   'skill.skill-clear-largest.desc': 'Instantly resolve largest queue',
   'skill.skill-slow-spawn.name': 'Quiet Time',
   'skill.skill-slow-spawn.desc': 'Spawn interval ×2 for 20s',
+
+  // ── Events (random / holidays / boss) ──
+  'ev.ev-fire-alarm.name': 'Fire Alarm',
+  'ev.ev-fire-alarm.desc': 'All waiting passengers forced to lobby (1F)',
+  'ev.ev-blackout.name': 'Blackout',
+  'ev.ev-blackout.desc': 'Random elevator stops for 30s (after Day 4)',
+  'ev.ev-vip-arrival.name': 'VIP Arrival',
+  'ev.ev-vip-arrival.desc': 'Rooftop dest weight ×5 all day',
+  'ev.ev-protest.name': 'Protest',
+  'ev.ev-protest.desc': 'Lobby spawn weight ×0.3 all day',
+  'ev.ev-newyear.name': '🎊 New Year\'s Day',
+  'ev.ev-newyear.desc': 'Start of the year. Rooftop countdown + bonus +80G',
+  'ev.ev-lunch-delivery.name': 'Mass Lunch Delivery',
+  'ev.ev-lunch-delivery.desc': 'LUNCH spawn ×2 today',
+  'ev.ev-bonus-day.name': 'Bonus Day',
+  'ev.ev-bonus-day.desc': '+40G immediately',
+  'ev.ev-strike.name': 'Elevator Strike',
+  'ev.ev-strike.desc': 'All elevators stop for 30s (after Day 8)',
+  'ev.ev-mass-evac.name': 'Evacuation Drill',
+  'ev.ev-mass-evac.desc': 'Scheduled drill — +2 to each floor queue (dest=lobby)',
+  'ev.ev-restaurant-festival.name': 'Restaurant Festival',
+  'ev.ev-restaurant-festival.desc': 'Restaurant gold ×2 today (instant +20G)',
+  'ev.ev-subway-strike.name': 'Subway Strike',
+  'ev.ev-subway-strike.desc': 'Lobby traffic ×1.7 today (no trains, crowd flows to 1F)',
+  // Boss
+  'ev.ev-boss-weekend-rush.name': '🔥 BOSS — Weekend Chaos',
+  'ev.ev-boss-weekend-rush.desc': 'All phases spawn ×1.5 all day. Start bonus +100G.',
+  'ev.ev-boss-night-storm.name': '🔥 BOSS — Night Storm',
+  'ev.ev-boss-night-storm.desc': 'NIGHT spawn ×5. Start bonus +120G.',
+  'ev.ev-boss-vip-conference.name': '🔥 BOSS — VIP Conference',
+  'ev.ev-boss-vip-conference.desc': 'Rooftop traffic ×3, anger ×1.3. Start bonus +150G.',
+  'ev.ev-boss-grand-opening.name': '🔥 BOSS — Grand Opening',
+  'ev.ev-boss-grand-opening.desc': 'All phases spawn ×2, capacity -1. Start bonus +200G.',
+  'ev.ev-boss-anniversary.name': '🔥 BOSS — Founder\'s Anniversary',
+  'ev.ev-boss-anniversary.desc': 'All phases spawn ×2.5, speed -20%. Start bonus +350G.',
+  // Holidays
+  'ev.ev-holiday-valentine.name': '💝 Valentine\'s Day',
+  'ev.ev-holiday-valentine.desc': 'Restaurant rush. LUNCH spawn ×2. Bonus +30G',
+  'ev.ev-holiday-march1.name': '🇰🇷 March 1st (Korean Independence)',
+  'ev.ev-holiday-march1.desc': 'Holiday. Building quiet. +20G',
+  'ev.ev-holiday-childrensday.name': '🎈 Children\'s Day',
+  'ev.ev-holiday-childrensday.desc': 'Family crowd. Restaurant/rooftop ↑. +40G',
+  'ev.ev-holiday-memorial.name': '🌹 Memorial Day',
+  'ev.ev-holiday-memorial.desc': 'Memorial. Very quiet. +15G',
+  'ev.ev-holiday-liberation.name': '🎌 Liberation Day',
+  'ev.ev-holiday-liberation.desc': 'Holiday. Rooftop event. Rooftop dest ×3 + gold ×1.5',
+  'ev.ev-holiday-chuseok.name': '🌕 Chuseok',
+  'ev.ev-holiday-chuseok.desc': 'Mid-Autumn holiday. Building nearly empty. +50G',
+  'ev.ev-holiday-foundation.name': '🏛️ National Foundation Day',
+  'ev.ev-holiday-foundation.desc': 'Holiday. Quiet. +20G',
+  'ev.ev-holiday-halloween.name': '🎃 Halloween',
+  'ev.ev-holiday-halloween.desc': 'Rooftop party + thieves ×2. +30G',
+  'ev.ev-holiday-pepero.name': '🍫 Pepero Day',
+  'ev.ev-holiday-pepero.desc': 'Restaurant rush. LUNCH spawn ×2.5. +25G',
+  'ev.ev-holiday-christmas-eve.name': '🎄 Christmas Eve',
+  'ev.ev-holiday-christmas-eve.desc': 'Restaurant/rooftop surge. EVENING spawn ×2. +60G',
+  'ev.ev-holiday-christmas.name': '🎅 Christmas',
+  'ev.ev-holiday-christmas.desc': 'Holiday. Quiet. +80G',
+  'ev.ev-holiday-yearend.name': '🎆 New Year\'s Eve',
+  'ev.ev-holiday-yearend.desc': 'Year-end. Rooftop countdown. EVENING spawn ×3. +100G',
 };
 
 const DICTS: Record<string, CardDict> = { ko: KO, en: EN };
@@ -282,12 +402,17 @@ export function tCard(key: string): string {
   return DICTS[loc]?.[key] ?? KO[key] ?? key;
 }
 
-/** 카드 데이터 → 표시 이름 (i18n 키 우선, 없으면 card.name fallback) */
-export function localizeCard(prefix: 'mod' | 'relic' | 'up' | 'skill', card: { id: string; name: string; desc: string }): { name: string; desc: string } {
+/** 카드/이벤트 데이터 → 표시 이름 (i18n 키 우선, 없으면 card.name fallback) */
+export function localizeCard(prefix: 'mod' | 'relic' | 'up' | 'skill' | 'ev', card: { id: string; name: string; desc: string }): { name: string; desc: string } {
   const nKey = `${prefix}.${card.id}.name`;
   const dKey = `${prefix}.${card.id}.desc`;
   const loc = getLocale();
   const name = DICTS[loc]?.[nKey] ?? card.name;
   const desc = DICTS[loc]?.[dKey] ?? card.desc;
   return { name, desc };
+}
+
+/** 이벤트 전용 헬퍼 — name/desc 모두 i18n. */
+export function localizeEvent(ev: { id: string; name: string; desc: string }): { name: string; desc: string } {
+  return localizeCard('ev', ev);
 }

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS } from '../config';
 import { dayOfWeekFor, dayToDate, phaseAtTick, WEEKEND } from '../domain/phase';
+import { localizeEvent } from '../i18n/cards';
 import { t } from '../i18n/locale';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
 import { REPAIR_COST } from '../domain/types';
@@ -179,8 +180,9 @@ export class HUDScene extends Phaser.Scene {
     this.modifierText.setText(mods.length > 0 ? t('hud.modifier_count', { n: mods.length }) : '');
     this.relicText.setText(game.state.ownedRelics.length > 0 ? t('hud.relic_count', { n: game.state.ownedRelics.length }) : '');
     if (game.activeEventToday) {
-      const isBoss = game.activeEventToday.name.includes('🔥');
-      this.eventText.setText(isBoss ? game.activeEventToday.name : `⚠ ${game.activeEventToday.name}`);
+      const locName = localizeEvent(game.activeEventToday).name;
+      const isBoss = locName.includes('🔥');
+      this.eventText.setText(isBoss ? locName : `⚠ ${locName}`);
       this.eventText.setFontSize(isBoss ? 14 : 12);
       this.eventText.setColor(isBoss ? '#ffd700' : '#ff6a6a');
     } else {
