@@ -19,12 +19,20 @@ export interface Progression {
   bestDayOverall: number;
 }
 
-/** 테마별 해금 조건 — 점진적 진행. "어느 테마든" 조건을 만족하면 해금. */
-export const UNLOCK_REQUIREMENTS: Array<{ theme: ThemeId; requireDay: number; requireTheme?: ThemeId; label: string }> = [
-  { theme: 'office', requireDay: 0, label: '시작 테마' },
-  { theme: 'hotel', requireDay: 7, requireTheme: 'office', label: '오피스 빌딩에서 7일차 도달' },
+/** 테마별 해금 조건 — 난이도 점증. "어느 테마든" 조건 만족 시 해금. */
+export const UNLOCK_REQUIREMENTS: Array<{
+  theme: ThemeId;
+  requireDay: number;
+  requireTheme?: ThemeId;
+  /** 4개 기본 테마 모두 이 일자 이상 달성 시 해금 (chaos용) */
+  requireAllThemesBest?: number;
+  label: string;
+}> = [
+  { theme: 'office',   requireDay: 0,  label: '시작 테마' },
+  { theme: 'airport',  requireDay: 7,  requireTheme: 'office', label: '오피스 빌딩에서 7일차 도달' },
   { theme: 'hospital', requireDay: 14, label: '어떤 테마든 14일차 도달' },
-  { theme: 'airport', requireDay: 21, label: '어떤 테마든 21일차 도달' },
+  { theme: 'hotel',    requireDay: 21, label: '어떤 테마든 21일차 도달' },
+  { theme: 'chaos',    requireDay: 0,  requireAllThemesBest: 7, label: '오피스/공항/병원/호텔 모두 7일차 이상 도달' },
 ];
 
 export function loadProgression(): Progression {
@@ -69,13 +77,18 @@ export function recordDayReached(p: Progression, themeId: ThemeId, day: number):
   const newly: ThemeId[] = [];
   for (const req of UNLOCK_REQUIREMENTS) {
     if (p.unlockedThemes.includes(req.theme)) continue;
+    // 4테마 모두 N일 이상 조건 (chaos용)
+    if (req.requireAllThemesBest !== undefined) {
+      const base: ThemeId[] = ['office', 'airport', 'hospital', 'hotel'];
+      const allOK = base.every((tid) => (p.bestDayByTheme[tid] ?? 0) >= req.requireAllThemesBest!);
+      if (allOK) { p.unlockedThemes.push(req.theme); newly.push(req.theme); }
+      continue;
+    }
     if (req.requireDay <= 0) continue;
-    // requireTheme이 지정되면 그 테마에서만 카운트
     if (req.requireTheme) {
       const best = p.bestDayByTheme[req.requireTheme] ?? 0;
       if (best >= req.requireDay) { p.unlockedThemes.push(req.theme); newly.push(req.theme); }
     } else {
-      // 어느 테마든 best 중 최대값 사용
       const maxBest = Math.max(0, ...Object.values(p.bestDayByTheme).filter((v): v is number => typeof v === 'number'));
       if (maxBest >= req.requireDay) { p.unlockedThemes.push(req.theme); newly.push(req.theme); }
     }
