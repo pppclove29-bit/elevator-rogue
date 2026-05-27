@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sound } from '../audio/sound';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { getLocale, Locale, setLocale, SUPPORTED_LOCALES, t } from '../i18n/locale';
 import { applyZoom, clearAllGameData, DefaultTimeScale, loadOptions, Options, saveOptions, ZoomLevel } from '../meta/options';
@@ -50,10 +51,16 @@ export class OptionsScene extends Phaser.Scene {
     const rowGap = 12;
 
     // 1. 사운드
-    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.sound'), '#9aa0a6');
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.master_volume'), this.opt.masterVolume, (v) => { this.opt.masterVolume = v; }, true);
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.sfx_volume'), this.opt.sfxVolume, (v) => { this.opt.sfxVolume = v; }, true);
-    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.bgm_volume'), this.opt.bgmVolume, (v) => { this.opt.bgmVolume = v; }, true);
+    y = this.drawSection(panelX + 16, y, panelW - 32, t('options.section.sound'), '#7ed957');
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.master_volume'), this.opt.masterVolume, (v) => {
+      this.opt.masterVolume = v; sound.setMasterVolume(v); sound.click();
+    }, false);
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.sfx_volume'), this.opt.sfxVolume, (v) => {
+      this.opt.sfxVolume = v; sound.setSfxVolume(v); sound.ding();
+    }, false);
+    y = this.drawSliderRow(panelX + 16, y, panelW - 32, t('options.bgm_volume'), this.opt.bgmVolume, (v) => {
+      this.opt.bgmVolume = v; sound.setBgmVolume(v);
+    }, true);  // BGM은 미구현
     y += rowGap;
 
     // 2. 게임 플레이

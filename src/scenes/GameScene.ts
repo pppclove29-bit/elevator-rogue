@@ -8,6 +8,7 @@ import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
 import { loadOptions } from '../meta/options';
 import { loadProgression, recordDayReached, saveProgression } from '../meta/progression';
+import { sound } from '../audio/sound';
 import { rollShopOffers } from '../meta/shop';
 import { readSave, SaveData, writeSave } from '../meta/save';
 import { skillById } from '../meta/skills';
@@ -28,6 +29,12 @@ export class GameScene extends Phaser.Scene {
   activeEventToday: EventEntry | null = null;
   pendingModalQueue: Array<'Shop' | 'Modifier' | 'Relic'> = [];
   recentUnlocks: ThemeId[] = []; // HUD가 잠시 표시할 새 해금
+  private prevServedCount = 0;
+  private prevGold = 0;
+  private prevAngryCount = 0;
+  private prevBrokenIds = new Set<number>();
+  private prevEventName: string | null = null;
+  private prevGameOver = false;
   private rng!: Rng;
   private view!: BuildingView;
   private sprites!: PassengerSprites;
@@ -135,6 +142,51 @@ export class GameScene extends Phaser.Scene {
   useSkillSlot(slot: number): void {
     const id = this.state.ownedSkills[slot];
     if (id) this.useSkill(id);
+  }
+
+  /** 매 frame 호출. SimState 변화를 감지해 효과음 재생. */
+  private detectSoundEvents(): void {
+    if (!this.state) return;
+
+    // 골드 변화: + = coin, - = thief (도둑 강탈만 골드 감소)
+    if (this.state.gold !== this.prevGold) {
+      const delta = this.state.gold - this.prevGold;
+      if (delta > 0) sound.coin(delta);
+      else if (delta < -5) sound.thief();
+      this.prevGold = this.state.gold;
+    }
+
+    // 처리 승객 증가 = ding (스폰 즉시 처리 흡수 케이스는 너무 잦아서 큰 변화만)
+    if (this.state.servedCount > this.prevServedCount) {
+      const delta = this.state.servedCount - this.prevServedCount;
+      if (delta >= 1 && delta < 20) sound.ding();  // 큰 폭(스킬 비상 처리)은 별도 처리
+      this.prevServedCount = this.state.servedCount;
+    }
+
+    // 불만 임계 도달 = alarm (한 번만)
+    let angry = 0;
+    for (const f of this.state.building.floors) for (const p of f.queue) if (p.anger >= 100) angry++;
+    for (const e of this.state.building.elevators) for (const p of e.passengers) if (p.anger >= 100) angry++;
+    if (angry > this.prevAngryCount) sound.alarm();
+    this.prevAngryCount = angry;
+
+    // 엘베 고장 = breakdown
+    const broken = new Set<number>();
+    for (const e of this.state.building.elevators) if (e.state.kind === 'broken') broken.add(e.id);
+    for (const id of broken) if (!this.prevBrokenIds.has(id)) sound.breakdown();
+    this.prevBrokenIds = broken;
+
+    // 보스/공휴일 이벤트 시작 = 인트로
+    const evName = this.activeEventToday?.name ?? null;
+    if (evName && evName !== this.prevEventName) {
+      if (evName.includes('🔥')) sound.bossDay();
+      else sound.holiday();
+    }
+    this.prevEventName = evName;
+
+    // 게임 오버
+    if (this.state.gameOver && !this.prevGameOver) sound.gameOver();
+    this.prevGameOver = this.state.gameOver;
   }
 
   resolveShop(): void { this.advanceModalQueue(); }
@@ -262,6 +314,13 @@ export class GameScene extends Phaser.Scene {
       this.state.gold += theme.startingGoldBonus ?? 0;
       theme.apply(this.state);
     }
+    // 사운드 추적 초기화
+    this.prevServedCount = this.state.servedCount;
+    this.prevGold = this.state.gold;
+    this.prevAngryCount = 0;
+    this.prevBrokenIds = new Set();
+    this.prevEventName = null;
+    this.prevGameOver = false;
   }
 
   private applyLoad(save: SaveData): void {
@@ -344,6 +403,7 @@ export class GameScene extends Phaser.Scene {
     if (this.state.gameOver && !this.scene.isActive('GameOver')) {
       this.scene.launch('GameOver');
     }
+    this.detectSoundEvents();
     if (!this.paused && !this.state.gameOver && !this.pendingReward) {
       this.accumulator += delta * this.timeScale;
       while (this.accumulator >= TICK_MS) {

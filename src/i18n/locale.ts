@@ -146,7 +146,7 @@ const STRINGS = {
 
     // ── 옵션 ────────────────────────────
     'options.title': '옵션',
-    'options.section.sound': '사운드 (구현 예정)',
+    'options.section.sound': '사운드 (BGM은 구현 예정)',
     'options.section.gameplay': '게임 플레이',
     'options.section.display': '화면',
     'options.section.data': '데이터',
@@ -305,7 +305,7 @@ const STRINGS = {
 
     // ── Options ────────────────────────
     'options.title': 'Options',
-    'options.section.sound': 'Sound (TBD)',
+    'options.section.sound': 'Sound (BGM TBD)',
     'options.section.gameplay': 'Gameplay',
     'options.section.display': 'Display',
     'options.section.data': 'Data',

@@ -32,10 +32,16 @@ const config: Phaser.Types.Core.GameConfig = {
 
 const game = new Phaser.Game(config);
 
-// 옵션의 zoom을 부팅 시 자동 적용 (canvas 생성 후)
+// 옵션의 zoom + 볼륨을 부팅 시 자동 적용 (canvas 생성 후)
 import('./meta/options').then(({ applyZoom, loadOptions }) => {
-  game.events.once(Phaser.Core.Events.READY, () => {
-    applyZoom(loadOptions().zoom);
+  import('./audio/sound').then(({ sound }) => {
+    game.events.once(Phaser.Core.Events.READY, () => {
+      const opt = loadOptions();
+      applyZoom(opt.zoom);
+      sound.setMasterVolume(opt.masterVolume);
+      sound.setSfxVolume(opt.sfxVolume);
+      sound.setBgmVolume(opt.bgmVolume);
+    });
   });
 });
 

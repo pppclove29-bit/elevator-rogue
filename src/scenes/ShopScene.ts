@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { sound } from '../audio/sound';
 import { repairElevator } from '../domain/simulation';
 import { localizeCard } from '../i18n/cards';
 import { t } from '../i18n/locale';
@@ -17,6 +18,7 @@ export class ShopScene extends Phaser.Scene {
 
   create(): void {
     this.gs = this.scene.get('Game') as GameScene;
+    sound.modalOpen();
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
 
@@ -157,6 +159,7 @@ export class ShopScene extends Phaser.Scene {
 
   private purchase(item: ShopItem): void {
     const s = this.gs.state;
+    sound.purchase();
     switch (item.kind) {
       case 'upgrade':
         s.gold -= item.card.cost;

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sound } from '../audio/sound';
 import { COLORS } from '../config';
 
 export interface ButtonStyle {
@@ -51,7 +52,7 @@ export class Button {
     this.container.add([this.bg, this.label]);
     this.container.setSize(w, h);
     this.container.setInteractive({ useHandCursor: true });
-    this.container.on('pointerdown', onClick);
+    this.container.on('pointerdown', () => { sound.click(); onClick(); });
     this.container.on('pointerover', () => {
       if (!this.currentlyActive) this.bg.setFillStyle(this.style.bgHover, 1);
     });

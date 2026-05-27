@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { sound } from '../audio/sound';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { localizeCard } from '../i18n/cards';
 import { t } from '../i18n/locale';
@@ -13,6 +14,7 @@ export class ModifierScene extends Phaser.Scene {
 
   create(): void {
     this.gs = this.scene.get('Game') as GameScene;
+    sound.modalOpen();
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
 
     this.add.text(GAME_WIDTH / 2, 60, t('modifier.title'), {
