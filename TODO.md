@@ -1,6 +1,6 @@
 # TODO — 다음 작업
 
-마지막 업데이트: 2026-05-26
+마지막 업데이트: 2026-05-27
 현재 git 위치: `main` 브랜치 (remote 없음 — push 안 됨)
 
 ## 즉시 (집에서 처음 켜면)
@@ -31,10 +31,12 @@ gh repo create elevator-rogue --private --source=. --remote=origin --push
 ## 다음 작업 우선순위
 
 ### 1순위 — 알파 마무리 (감각 임팩트)
-- [ ] **사운드 효과** — Web Audio API
-  - 엘베 도착 `ding`, 골드 +N 팝업/효과음, anger 알람, 도둑 경고
-  - 보스 day 인트로, 공휴일 효과음 (신년 카운트다운, 크리스마스 등)
-  - 게임오버 효과음
+- [~] **사운드 파이프라인** — Phaser audio key 시스템으로 전환 완료. 트리거 hook은 모두 박혀있고, `public/sounds/<key>.mp3` 파일만 채우면 즉시 들림 (없으면 silent fallback).
+  - [ ] SFX 파일 채우기: `ding`, `coin`, `thief`, `alarm`, `breakdown`, `gameOver`, `click`, `purchase` (필수 8종)
+  - [ ] SFX 추가: `modalOpen`, `bossDay`, `holiday` (nice-to-have)
+  - [ ] BGM: `bgm-title`, `bgm-game`, `bgm-shop`, `bgm-gameover` (모두 nice)
+  - 카탈로그/로드 상태/미리듣기: `/sounds.html` (단일 진실원 = `src/audio/sound.ts` `SOUND_KEYS`)
+  - 새 키 추가: `SOUND_KEYS` 에 항목 추가 → `SoundManager` 메서드 추가 → 게임에서 호출. 끝.
 - [ ] **이펙트** — 골드 획득 시 `+N` 플로팅 텍스트, anger 임계 도달 시 화면 깜빡임
 - [ ] **공휴일 시각 효과** — 신년 폭죽, 할로윈 어둠, 크리스마스 트리 도트
 
@@ -82,6 +84,7 @@ gh repo create elevator-rogue --private --source=. --remote=origin --push
 
 - 코드 진실원천: `/docs.html`
 - 디자인 카탈로그: `/design.html`
+- 사운드 카탈로그: `/sounds.html`
 - 이전 디자인 안 (아카이브): `docs/blocks.md`, `docs/modifiers.md`
 - 플랜 파일: `~/.claude/plans/toasty-marinating-dawn.md`
 

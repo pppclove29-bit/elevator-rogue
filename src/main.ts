@@ -36,6 +36,7 @@ const game = new Phaser.Game(config);
 import('./meta/options').then(({ applyZoom, loadOptions }) => {
   import('./audio/sound').then(({ sound }) => {
     game.events.once(Phaser.Core.Events.READY, () => {
+      sound.attach(game);
       const opt = loadOptions();
       applyZoom(opt.zoom);
       sound.setMasterVolume(opt.masterVolume);

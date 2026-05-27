@@ -50,6 +50,9 @@ src/
 ├── render/
 │   ├── BuildingView.ts     # 빌딩 박스 + 문 + 계단 + 픽셀 디테일
 │   └── PassengerSprites.ts # 승객 sprite 보간 (입구→큐→엘베→방문)
+├── audio/
+│   └── sound.ts            # SOUND_KEYS 카탈로그 + Phaser 기반 SoundManager (파일 없으면 silent)
+├── sounds/                  # /sounds.html 페이지 (사운드 작업 카탈로그)
 └── ui/
     └── Button.ts           # 공용 Phaser 버튼
 ```
@@ -63,6 +66,7 @@ src/
 - **캘린더**: Day 1 = 1년차 1월 1일 월요일. 평년 365일 × N년 무한.
 - **공휴일 12종** + **보스 day 5종** 모두 매년 / 매 7일 자동 발동.
 - **i18n**: 한국어/영어 둘 다 지원. 카드 desc 포함 거의 모든 UI 다국어.
+- **사운드**: Phaser preload + 키 시스템. 단일 진실원 = `src/audio/sound.ts` `SOUND_KEYS`. 파일은 `public/sounds/<key>.mp3` (없으면 silent fallback — 게임은 무음으로 동작 가능). 작업 카탈로그는 `/sounds.html`.
 
 ## 빠른 게임 흐름
 
@@ -93,4 +97,5 @@ npx tsc --noEmit            # 타입체크만
 - 게임: `http://localhost:5173/`
 - 코드 진실원천 대시보드: `http://localhost:5173/docs.html`
 - 디자인 카탈로그 (기획자용): `http://localhost:5173/design.html`
+- 사운드 작업 카탈로그: `http://localhost:5173/sounds.html`
 - 게임 화면 좌하단에 DEV 버튼 (개발 모드만)
