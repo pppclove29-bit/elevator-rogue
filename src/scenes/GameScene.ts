@@ -144,15 +144,22 @@ export class GameScene extends Phaser.Scene {
     if (id) this.useSkill(id);
   }
 
-  /** 매 frame 호출. SimState 변화를 감지해 효과음 재생. */
+  /** 매 frame 호출. SimState 변화를 감지해 효과음 + 시각 이펙트 트리거. */
   private detectSoundEvents(): void {
     if (!this.state) return;
 
-    // 골드 변화: + = coin, - = thief (도둑 강탈만 골드 감소)
+    // 골드 변화: + = coin + 플로팅 +NG, - = thief + 빨간 -NG
     if (this.state.gold !== this.prevGold) {
       const delta = this.state.gold - this.prevGold;
-      if (delta > 0) sound.coin(delta);
-      else if (delta < -5) sound.thief();
+      if (delta > 0) {
+        sound.coin(delta);
+        this.spawnFloatingText(`+${delta}G`, '#f5c542');
+      } else if (delta < -5) {
+        sound.thief();
+        this.spawnFloatingText(`${delta}G`, '#e74c3c');
+      } else if (delta < 0) {
+        this.spawnFloatingText(`${delta}G`, '#e74c3c');
+      }
       this.prevGold = this.state.gold;
     }
 
@@ -163,11 +170,14 @@ export class GameScene extends Phaser.Scene {
       this.prevServedCount = this.state.servedCount;
     }
 
-    // 불만 임계 도달 = alarm (한 번만)
+    // 불만 임계 도달 = alarm + 빨간 화면 깜빡임 (한 번만)
     let angry = 0;
     for (const f of this.state.building.floors) for (const p of f.queue) if (p.anger >= 100) angry++;
     for (const e of this.state.building.elevators) for (const p of e.passengers) if (p.anger >= 100) angry++;
-    if (angry > this.prevAngryCount) sound.alarm();
+    if (angry > this.prevAngryCount) {
+      sound.alarm();
+      this.flashAngryOverlay();
+    }
     this.prevAngryCount = angry;
 
     // 엘베 고장 = breakdown
@@ -382,6 +392,41 @@ export class GameScene extends Phaser.Scene {
       else remaining.push(ec);
     }
     this.eventCleanups = remaining;
+  }
+
+  /** 상단 중앙에서 위로 부유하면서 페이드아웃 되는 텍스트. */
+  private spawnFloatingText(text: string, color: string): void {
+    const x = GAME_WIDTH / 2 + (Math.random() - 0.5) * 80;
+    const y = 100;
+    const txt = this.add.text(x, y, text, {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '22px',
+      color,
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(1000);
+    this.tweens.add({
+      targets: txt,
+      y: y - 50,
+      alpha: 0,
+      duration: 900,
+      ease: 'Cubic.easeOut',
+      onComplete: () => txt.destroy(),
+    });
+  }
+
+  /** angry 임계 도달 시 화면 가장자리에 빨간 vignette 플래시 (1회). */
+  private flashAngryOverlay(): void {
+    const flash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xe74c3c, 0.35)
+      .setDepth(999);
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 350,
+      ease: 'Cubic.easeOut',
+      onComplete: () => flash.destroy(),
+    });
   }
 
   private bindInput(): void {
