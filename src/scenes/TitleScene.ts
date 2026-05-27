@@ -36,25 +36,25 @@ export class TitleScene extends Phaser.Scene {
     }
 
     // 타이틀
-    this.add.text(GAME_WIDTH / 2 + 30, 140, 'Elevator', {
-      fontFamily: FONT, fontSize: '64px', color: COLORS.text, fontStyle: 'bold',
+    this.add.text(GAME_WIDTH / 2 + 30, 116, 'Elevator', {
+      fontFamily: FONT, fontSize: '58px', color: COLORS.text, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 200, 'Rogue', {
-      fontFamily: FONT, fontSize: '64px', color: '#f5c542', fontStyle: 'bold',
+    this.add.text(GAME_WIDTH / 2 + 30, 174, 'Rogue', {
+      fontFamily: FONT, fontSize: '58px', color: '#f5c542', fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 280, tr('title.subtitle'), {
+    this.add.text(GAME_WIDTH / 2 + 30, 246, tr('title.subtitle'), {
       fontFamily: FONT, fontSize: '13px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
     // 테마 선택
-    this.add.text(GAME_WIDTH / 2 + 30, 320, tr('title.theme_section'), {
+    this.add.text(GAME_WIDTH / 2 + 30, 286, tr('title.theme_section'), {
       fontFamily: FONT, fontSize: '14px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
     const themes = Object.values(THEMES);
-    const cardW = 200, cardH = 110, gap = 8;
+    const cardW = 200, cardH = 70, gap = 6;
     const startX = GAME_WIDTH / 2 + 30 - (cardW * 2 + gap) / 2;
-    const themeY = 348;
+    const themeY = 312;
     const prog = loadProgression();
 
     const cardElements: Array<{ id: ThemeId; locked: boolean; bg: Phaser.GameObjects.Rectangle; nameText: Phaser.GameObjects.Text; descText: Phaser.GameObjects.Text }> = [];
@@ -74,18 +74,18 @@ export class TitleScene extends Phaser.Scene {
         .setStrokeStyle(2, locked ? 0x2a2a35 : 0x3a3a48);
       if (!locked) bg.setInteractive({ useHandCursor: true });
 
-      const nameText = this.add.text(x + 10, y + 8, locked ? `🔒 ${t.name}` : t.name, {
-        fontFamily: FONT, fontSize: '13px', color: locked ? '#5a5a68' : COLORS.text,
+      const nameText = this.add.text(x + 10, y + 6, locked ? `🔒 ${t.name}` : t.name, {
+        fontFamily: FONT, fontSize: '12px', color: locked ? '#5a5a68' : COLORS.text,
       });
-      this.add.text(x + 10, y + 28, t.flavor, {
+      this.add.text(x + 10, y + 24, t.flavor, {
         fontFamily: FONT, fontSize: '10px', color: locked ? '#3a3a48' : '#f5c542',
       });
-      const descText = this.add.text(x + 10, y + 46, locked ? `해금 조건: ${unlockLabel(t.id)}` : t.desc, {
+      const descText = this.add.text(x + 10, y + 42, locked ? `해금: ${unlockLabel(t.id)}` : t.desc, {
         fontFamily: FONT, fontSize: '10px', color: locked ? '#5a5a68' : COLORS.textDim,
         wordWrap: { width: cardW - 20 },
       });
       if (t.startingGoldBonus && !locked) {
-        this.add.text(x + cardW - 10, y + 8, `+${t.startingGoldBonus}G`, {
+        this.add.text(x + cardW - 10, y + 6, `+${t.startingGoldBonus}G`, {
           fontFamily: FONT, fontSize: '11px', color: '#f5c542',
         }).setOrigin(1, 0);
       }
@@ -112,41 +112,46 @@ export class TitleScene extends Phaser.Scene {
 
     // 시작 / 계속하기 / 조작법
     const btnX = GAME_WIDTH / 2 + 30;
-    let btnY = 596;
+    const themeRows = Math.ceil(themes.length / 2);
+    const gridBottom = themeY + themeRows * cardH + (themeRows - 1) * gap;
+    let btnY = gridBottom + 14;
 
     const hasSave = saveExists();
     if (hasSave) {
       const save = readSave();
-      new Button(this, btnX, btnY, 240, 44, tr('title.continue'), () => this.continueGame(),
+      new Button(this, btnX, btnY, 280, 42, tr('title.continue'), () => this.continueGame(),
         { fontSize: 14, bg: 0x7ed957, bgHover: 0x8fea68, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       if (save) {
-        this.add.text(btnX, btnY + 26, summarize(save), {
+        this.add.text(btnX, btnY + 24, summarize(save), {
           fontFamily: FONT, fontSize: '10px', color: '#0b0b10',
         }).setOrigin(0.5);
       }
-      btnY += 50;
-      new Button(this, btnX, btnY, 240, 36, tr('title.new_game'), () => this.startGame(),
-        { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
-      btnY += 40;
+      btnY += 48;
+      new Button(this, btnX, btnY, 280, 34, tr('title.new_game'), () => this.startGame(),
+        { fontSize: 13, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+      btnY += 38;
     } else {
-      new Button(this, btnX, btnY, 240, 44, tr('title.start'), () => this.startGame(),
+      new Button(this, btnX, btnY, 280, 42, tr('title.start'), () => this.startGame(),
         { fontSize: 16, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       btnY += 48;
     }
-    new Button(this, btnX, btnY, 240, 32, tr('title.help'), () => this.scene.launch('Help'),
-      { fontSize: 13 });
-    btnY += 36;
-    new Button(this, btnX, btnY, 240, 32, tr('title.options'), () => this.scene.launch('Options'),
-      { fontSize: 13 });
-    btnY += 36;
-    new Button(this, btnX, btnY, 240, 32, tr('title.stats'), () => this.scene.launch('Stats'),
-      { fontSize: 13 });
+    // 보조 버튼은 가로 row 1줄로 압축 (Help / Options / Stats)
+    const subW = 90, subGap = 4;
+    const subTotalW = subW * 3 + subGap * 2;
+    const subStartX = btnX - subTotalW / 2 + subW / 2;
+    new Button(this, subStartX, btnY + 16, subW, 30, tr('title.help'),
+      () => this.scene.launch('Help'), { fontSize: 12 });
+    new Button(this, subStartX + (subW + subGap), btnY + 16, subW, 30, tr('title.options'),
+      () => this.scene.launch('Options'), { fontSize: 12 });
+    new Button(this, subStartX + 2 * (subW + subGap), btnY + 16, subW, 30, tr('title.stats'),
+      () => this.scene.launch('Stats'), { fontSize: 12 });
     btnY += 36;
     if (import.meta.env.DEV) {
-      new Button(this, btnX, btnY, 240, 26, '[DEV] 문서·디자인 페이지', () => {
+      new Button(this, btnX, btnY + 20, 280, 22, '[DEV] docs·design·sounds', () => {
         window.open('/docs.html', '_blank');
         window.open('/design.html', '_blank');
-      }, { fontSize: 11 });
+        window.open('/sounds.html', '_blank');
+      }, { fontSize: 10 });
     }
 
     this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 16, 'v0.2 alpha', {

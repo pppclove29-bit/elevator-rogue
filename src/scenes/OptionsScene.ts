@@ -202,7 +202,11 @@ export class OptionsScene extends Phaser.Scene {
       this.content.add(btn.container);
       bx += 76;
     }
-    return y + h + 4;
+    // 줌 > 100% 시 pan 단축키 안내
+    this.content.add(this.add.text(x + 12, y + h + 4,
+      '확대 시: 우클릭 드래그 또는 화살표 키로 화면 이동',
+      { fontFamily: FONT, fontSize: '10px', color: COLORS.textDim }));
+    return y + h + 22;
   }
 
   private drawFullscreenRow(x: number, y: number, w: number): number {

@@ -71,5 +71,49 @@ window.addEventListener('keydown', (e) => {
       const opt = loadOptions();
       opt.zoom = 1; saveOptions(opt); applyZoom(opt.zoom);
     });
+  } else if (e.key.startsWith('Arrow')) {
+    // zoom > 1 시 화살표 키 pan (60px step)
+    import('./meta/options').then(({ pan, getZoom }) => {
+      if (getZoom() <= 1) return;
+      const step = 60;
+      if (e.key === 'ArrowLeft') pan(step, 0);
+      else if (e.key === 'ArrowRight') pan(-step, 0);
+      else if (e.key === 'ArrowUp') pan(0, step);
+      else if (e.key === 'ArrowDown') pan(0, -step);
+      e.preventDefault();
+    });
   }
 });
+
+// ── 우클릭 드래그로 pan (zoom > 1 시) ──
+// canvas 우클릭 메뉴 비활성화 + 드래그 동안 translate.
+(() => {
+  let dragging = false;
+  let lastX = 0, lastY = 0;
+  const container = document.getElementById('game');
+  if (!container) return;
+  container.addEventListener('contextmenu', (e) => e.preventDefault());
+  container.addEventListener('mousedown', (e) => {
+    if (e.button !== 2) return; // 우클릭만
+    import('./meta/options').then(({ getZoom }) => {
+      if (getZoom() <= 1) return;
+      dragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+      document.body.style.cursor = 'grabbing';
+    });
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    import('./meta/options').then(({ pan }) => pan(dx, dy));
+  });
+  window.addEventListener('mouseup', (e) => {
+    if (e.button !== 2 || !dragging) return;
+    dragging = false;
+    document.body.style.cursor = '';
+  });
+})();

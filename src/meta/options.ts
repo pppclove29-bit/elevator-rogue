@@ -27,15 +27,60 @@ export function defaultOptions(): Options {
   };
 }
 
-/** canvas 또는 게임 컨테이너에 CSS transform: scale을 적용 */
-export function applyZoom(zoom: ZoomLevel): void {
+/**
+ * Canvas zoom + pan 적용 (CSS transform).
+ * zoom > 1 일 때 pan 가능 (우클릭 드래그 / 화살표 키 — main.ts 에서 wiring).
+ * zoom=1 로 돌아가면 pan 자동 리셋.
+ */
+let _zoom: number = 1;
+let _panX = 0;
+let _panY = 0;
+
+function getCanvas(): HTMLCanvasElement | null {
   const container = document.getElementById('game');
-  if (!container) return;
-  const canvas = container.querySelector('canvas') as HTMLCanvasElement | null;
-  if (!canvas) return;
-  canvas.style.transform = `scale(${zoom})`;
-  canvas.style.transformOrigin = 'center center';
+  if (!container) return null;
+  return container.querySelector('canvas') as HTMLCanvasElement | null;
 }
+
+function applyTransform(): void {
+  const canvas = getCanvas();
+  if (!canvas) return;
+  // translate 가 scale 앞에 오면 화면 좌표계 기준 이동. 직관적.
+  canvas.style.transform = `translate(${_panX}px, ${_panY}px) scale(${_zoom})`;
+  canvas.style.transformOrigin = 'center center';
+  canvas.style.cursor = _zoom > 1 ? 'grab' : '';
+}
+
+function clampPan(): void {
+  // viewport 기준으로 canvas 가 잘리는 만큼 = pan 한계.
+  const canvas = getCanvas();
+  if (!canvas) return;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  const maxX = Math.max(0, (w * (_zoom - 1)) / 2);
+  const maxY = Math.max(0, (h * (_zoom - 1)) / 2);
+  if (_panX > maxX) _panX = maxX;
+  if (_panX < -maxX) _panX = -maxX;
+  if (_panY > maxY) _panY = maxY;
+  if (_panY < -maxY) _panY = -maxY;
+}
+
+export function applyZoom(zoom: ZoomLevel): void {
+  _zoom = zoom;
+  if (zoom === 1) { _panX = 0; _panY = 0; }
+  else clampPan();
+  applyTransform();
+}
+
+/** 우클릭 드래그 / 화살표 키에서 호출. zoom 1 이면 no-op. */
+export function pan(dx: number, dy: number): void {
+  if (_zoom <= 1) return;
+  _panX += dx;
+  _panY += dy;
+  clampPan();
+  applyTransform();
+}
+
+export function getZoom(): number { return _zoom; }
 
 export function loadOptions(): Options {
   const raw = localStorage.getItem(KEY);
