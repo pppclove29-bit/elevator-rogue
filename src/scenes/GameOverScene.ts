@@ -4,6 +4,7 @@ import { phaseAtTick } from '../domain/phase';
 import { SimState } from '../domain/types';
 import { localizeCard } from '../i18n/cards';
 import { t } from '../i18n/locale';
+import { recordDailyRun } from '../meta/daily';
 import { loadProgression, recordRunEnd, saveProgression, unlockLabel } from '../meta/progression';
 import { RELICS } from '../meta/relics';
 import { clearSave } from '../meta/save';
@@ -26,6 +27,9 @@ export class GameOverScene extends Phaser.Scene {
     const prog = loadProgression();
     const newUnlocks = recordRunEnd(prog, (this.gs as any).themeId ?? 'office', s.dayCompleted + 1, s.servedCount, s.gold, s.angryServedCount, (this.gs as any).challengeId ?? null);
     saveProgression(prog);
+    // 일일 챌린지 런이면 별도 기록
+    const dailySeed = (this.gs as any).dailySeed as number | null | undefined;
+    if (dailySeed) recordDailyRun(dailySeed, s.dayCompleted + 1);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
 

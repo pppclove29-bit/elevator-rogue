@@ -51,15 +51,19 @@ export class GameScene extends Phaser.Scene {
   private seed = 1;
   private themeId: ThemeId = DEFAULT_THEME;
   private challengeId: string | null = null;
+  /** 일일 챌린지 시드. 있으면 seed 강제 + recordDailyRun 호출. */
+  private dailySeed: number | null = null;
   private pendingLoad: SaveData | null = null;
 
-  init(data: { theme?: ThemeId; load?: boolean; challenge?: string | null }): void {
+  init(data: { theme?: ThemeId; load?: boolean; challenge?: string | null; dailySeed?: number }): void {
     if (data?.load) {
       this.pendingLoad = readSave();
     } else {
       this.pendingLoad = null;
       if (data?.theme) this.themeId = data.theme;
       this.challengeId = data?.challenge ?? null;
+      this.dailySeed = data?.dailySeed ?? null;
+      if (this.dailySeed !== null) this.seed = this.dailySeed;
     }
   }
 
@@ -211,7 +215,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   restart(): void {
-    this.seed += 1;
+    // 일일 챌린지면 시드 유지 (같은 챌린지 재시도). 일반 모드는 +1.
+    if (this.dailySeed === null) this.seed += 1;
     if (this.scene.isActive('RuleEditor')) this.scene.stop('RuleEditor');
     if (this.scene.isActive('Shop')) this.scene.stop('Shop');
     if (this.scene.isActive('Modifier')) this.scene.stop('Modifier');

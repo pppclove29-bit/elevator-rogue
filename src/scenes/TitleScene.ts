@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { t as tr } from '../i18n/locale';
 import { CHALLENGES, challengeById } from '../meta/challenges';
+import { todayBestDay, todayDaily } from '../meta/daily';
 import { loadOptions } from '../meta/options';
 import { isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
@@ -164,14 +165,35 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(1, 1);
 
     // 도전 모드 cycle 버튼 — 좌측 빌딩 실루엣 아래 (continue 가능성 무시: 챌린지는 새 런만)
-    this.add.text(200, 640, '도전 모드', {
-      fontFamily: FONT, fontSize: '12px', color: '#f5c542', fontStyle: 'bold',
+    this.add.text(110, 640, '도전 모드', {
+      fontFamily: FONT, fontSize: '11px', color: '#f5c542', fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.challengeLabel = this.add.text(200, 660, '', {
-      fontFamily: FONT, fontSize: '13px', color: COLORS.text,
-    }).setOrigin(0.5);
-    new Button(this, 200, 690, 220, 28, '다음 ▶', () => this.cycleChallenge(), { fontSize: 12 });
+    this.challengeLabel = this.add.text(110, 656, '', {
+      fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+      wordWrap: { width: 200 }, align: 'center',
+    }).setOrigin(0.5, 0);
+    new Button(this, 110, 700, 200, 26, '다음 ▶', () => this.cycleChallenge(), { fontSize: 11 });
     this.refreshChallengeLabel();
+
+    // 일일 챌린지 카드 — 우측 (빌딩 옆)
+    const dx = 290;
+    const daily = todayDaily();
+    const dailyBest = todayBestDay();
+    this.add.text(dx, 640, '오늘의 일일 챌린지', {
+      fontFamily: FONT, fontSize: '11px', color: '#7ed957', fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    this.add.text(dx, 656, `${daily.dateString}`, {
+      fontFamily: FONT, fontSize: '10px', color: COLORS.textDim,
+    });
+    const dailyCh = challengeById(daily.challengeId);
+    this.add.text(dx, 670, `${dailyCh?.name ?? '?'} (${daily.themeId})`, {
+      fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+    });
+    this.add.text(dx, 684, dailyBest > 0 ? `오늘 최고: ${dailyBest}일차` : '도전 안 함', {
+      fontFamily: FONT, fontSize: '10px', color: dailyBest > 0 ? '#f5c542' : COLORS.textDim,
+    });
+    new Button(this, dx + 80, 706, 160, 24, '일일 도전 시작', () => this.startDaily(),
+      { fontSize: 11, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10' });
 
     const opt = loadOptions();
     if (opt.showTutorialOnStart && !localStorage.getItem(TUTORIAL_KEY)) {
@@ -192,6 +214,13 @@ export class TitleScene extends Phaser.Scene {
   private continueGame(): void {
     this.scene.stop('Help');
     this.scene.start('Game', { load: true });
+  }
+
+  /** 일일 챌린지 시작 — 시드/테마/챌린지 모두 오늘 날짜로 고정 */
+  private startDaily(): void {
+    const d = todayDaily();
+    this.scene.stop('Help');
+    this.scene.start('Game', { theme: d.themeId, challenge: d.challengeId, dailySeed: d.seed });
   }
 
   /** 도전 모드 cycle — 없음 → 5종 → 없음 반복 */
