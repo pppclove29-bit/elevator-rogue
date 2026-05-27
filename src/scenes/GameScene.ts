@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS } from '../config';
 import { Rng } from '../domain/rng';
+import { phaseAtTick, Phase } from '../domain/phase';
 import { createSim, tick } from '../domain/simulation';
 import { defaultPolicy, ElevatorId, ElevatorPolicy, SimState } from '../domain/types';
 import { EventEntry, rollDailyEvent } from '../meta/events';
@@ -41,6 +42,8 @@ export class GameScene extends Phaser.Scene {
   private sprites!: PassengerSprites;
   private fx!: EventFx;
   private prevFxEventId: string | null = null;
+  private prevPhase: Phase | null = null;
+  private tutorial: { pause: boolean; anger: boolean; shop: boolean; end: boolean } = { pause: false, anger: false, shop: false, end: false };
   private accumulator = 0;
   paused = false;
   timeScale = 1;
@@ -94,16 +97,100 @@ export class GameScene extends Phaser.Scene {
   /** 게임 첫 실행 시 인트로 스토리. localStorage flag 로 1회만. */
   private maybeShowIntro(): void {
     const KEY = 'elevator-rogue.story.introShown';
+    this.loadTutorialFlags();
     if (this.pendingLoad) return; // 세이브 로드는 인트로 X
     if (localStorage.getItem(KEY)) return;
-    this.pendingReward = true; // 시뮬 일시정지 (advanceModalQueue 와 동일 lock)
+    this.playDialog('intro-opening', () => {
+      localStorage.setItem(KEY, '1');
+    });
+  }
+
+  // ───────── 튜토리얼 ─────────
+
+  private loadTutorialFlags(): void {
+    try {
+      const raw = localStorage.getItem('elevator-rogue.tutorial.v1');
+      if (raw) this.tutorial = { ...this.tutorial, ...JSON.parse(raw) };
+    } catch { /* ignore */ }
+  }
+
+  private saveTutorialFlags(): void {
+    try {
+      localStorage.setItem('elevator-rogue.tutorial.v1', JSON.stringify(this.tutorial));
+    } catch { /* ignore */ }
+  }
+
+  /** Dialog 모달 띄우고 시뮬 멈춤. onDone 후 시뮬 재개. */
+  private playDialog(scriptId: string, onDone?: () => void): void {
+    this.pendingReward = true;
     this.scene.launch('Dialog', {
-      scriptId: 'intro-opening',
+      scriptId,
       onComplete: () => {
-        localStorage.setItem(KEY, '1');
         this.pendingReward = false;
+        if (onDone) onDone();
       },
     });
+  }
+
+  /** day 1 + 활성 모달 없음일 때만 트리거 가능 */
+  private canTutorialFire(): boolean {
+    if (this.pendingReward) return false;
+    if (this.state.gameOver) return false;
+    if (this.state.dayCompleted > 0 && this.state.tick > 0 && Math.floor(this.state.tick / 1) >= 0) {
+      // day 1 진행 중 = dayCompleted === 0 인 동안만 (Day 1 종료 후 트리거인 shop/end 는 별도)
+    }
+    return true;
+  }
+
+  private isDayOne(): boolean {
+    return this.state.dayCompleted === 0;
+  }
+
+  /** 매 update tick 마다 호출. phase 전환 / 첫 anger 감지. */
+  private checkTutorialDuringPlay(): void {
+    if (!this.isDayOne()) return;
+    if (!this.canTutorialFire()) return;
+
+    // 1) tutorial-pause: morning → work 첫 전환 시
+    const info = phaseAtTick(this.state.tick);
+    if (this.prevPhase !== null && this.prevPhase === 'morning' && info.phase === 'work' && !this.tutorial.pause) {
+      this.tutorial.pause = true;
+      this.saveTutorialFlags();
+      this.playDialog('tutorial-pause');
+      this.prevPhase = info.phase;
+      return;
+    }
+    this.prevPhase = info.phase;
+  }
+
+  /** 첫 angry 발생 시. detectSoundEvents 에서 호출. */
+  private maybeTriggerAngerTutorial(): void {
+    if (!this.isDayOne()) return;
+    if (this.tutorial.anger) return;
+    if (!this.canTutorialFire()) return;
+    this.tutorial.anger = true;
+    this.saveTutorialFlags();
+    this.playDialog('tutorial-anger');
+  }
+
+  /** Shop 모달 launch 직전 — day 1 한정. */
+  private maybeTriggerShopTutorial(onAfter: () => void): boolean {
+    if (this.state.dayCompleted !== 1) return false;
+    if (this.tutorial.shop) return false;
+    this.tutorial.shop = true;
+    this.saveTutorialFlags();
+    this.playDialog('tutorial-shop', onAfter);
+    return true;
+  }
+
+  /** 모든 day1 모달(상점/모디파이어/렐릭) 닫힌 후 — 마지막 마무리. */
+  private maybeTriggerDay1EndTutorial(): void {
+    if (this.state.dayCompleted !== 1) return;
+    if (this.tutorial.end) return;
+    if (this.pendingReward) return;
+    this.tutorial.end = true;
+    this.saveTutorialFlags();
+    this.playDialog('tutorial-day1-end');
   }
 
   setSpeed(scale: number): void { this.timeScale = scale; }
@@ -198,6 +285,7 @@ export class GameScene extends Phaser.Scene {
     if (angry > this.prevAngryCount) {
       sound.alarm();
       this.flashAngryOverlay();
+      this.maybeTriggerAngerTutorial();
     }
     this.prevAngryCount = angry;
 
@@ -264,6 +352,8 @@ export class GameScene extends Phaser.Scene {
     const next = this.pendingModalQueue.shift();
     if (!next) {
       this.pendingReward = false;
+      // Day 1 의 마지막 모달까지 닫혔으면 마무리 다이얼로그
+      this.maybeTriggerDay1EndTutorial();
       return;
     }
     this.pendingReward = true;
@@ -316,6 +406,8 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.pendingModalQueue = queue;
+    // Day 1 첫 상점 진입 전 튜토리얼 다이얼로그 1회
+    if (this.maybeTriggerShopTutorial(() => this.advanceModalQueue())) return;
     this.advanceModalQueue();
   }
 
@@ -352,6 +444,7 @@ export class GameScene extends Phaser.Scene {
     this.prevBrokenIds = new Set();
     this.prevEventName = null;
     this.prevGameOver = false;
+    this.prevPhase = null;
   }
 
   private applyLoad(save: SaveData): void {
@@ -470,6 +563,7 @@ export class GameScene extends Phaser.Scene {
       this.scene.launch('GameOver');
     }
     this.detectSoundEvents();
+    this.checkTutorialDuringPlay();
     if (!this.paused && !this.state.gameOver && !this.pendingReward) {
       this.accumulator += delta * this.timeScale;
       while (this.accumulator >= TICK_MS) {
