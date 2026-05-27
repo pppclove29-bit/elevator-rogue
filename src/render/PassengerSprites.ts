@@ -5,6 +5,7 @@ import { ANGER_THRESHOLD } from '../domain/simulation';
 import { ROLE_COLOR } from '../domain/spawner';
 import { SimState } from '../domain/types';
 import { BuildingViewLayout, DOOR_AREA_W } from './BuildingView';
+import { hasSprite } from './sprites';
 
 type Phase = 'entering' | 'queued' | 'boarding' | 'riding' | 'alighting' | 'leaving' | 'escalator' | 'subway';
 
@@ -42,6 +43,8 @@ export class PassengerSprites {
   private g: Phaser.GameObjects.Graphics;
   private map: Map<number, Sprite> = new Map();
   private scene: Phaser.Scene;
+  /** archetype sprite 가 있을 때 사용. id → Image. 미사용 시 setVisible(false). */
+  private images: Map<number, Phaser.GameObjects.Image> = new Map();
 
   constructor(scene: Phaser.Scene, private layout: BuildingViewLayout) {
     this.scene = scene;
@@ -76,9 +79,13 @@ export class PassengerSprites {
           && s.alpha <= 0.01) s.done = true;
     }
 
-    // 제거
+    // 제거 + image 객체 같이 정리
     for (const [id, s] of this.map) {
-      if (s.done) this.map.delete(id);
+      if (s.done) {
+        this.map.delete(id);
+        const img = this.images.get(id);
+        if (img) { img.destroy(); this.images.delete(id); }
+      }
     }
 
     this.draw();
@@ -266,14 +273,39 @@ export class PassengerSprites {
       const w = big ? 6 : 4;
       const h = big ? 8 : 6;
 
-      // 몸 + 머리
-      this.g.fillStyle(color, s.alpha);
-      this.g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
-      this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 3, w - 2, 3);
+      // archetype 별 sprite 가 있으면 image 로, 없으면 도형 fallback.
+      const spriteKey = `passenger-${s.archetype}`;
+      const useSprite = hasSprite(this.scene, spriteKey);
+      let bodyTopY: number;
 
-      // 목적지 dest 색 dot — 머리 바로 위. 어디로 가는지 한눈에.
-      // 2×2 픽셀 dot + 1px 검은 테두리로 가독성 ↑
-      const dotY = s.y - h / 2 - 6;
+      if (useSprite) {
+        let img = this.images.get(s.id) ?? null;
+        if (!img) {
+          img = this.scene.add.image(0, 0, spriteKey).setDepth(3);
+          this.images.set(s.id, img);
+        }
+        img.setTexture(spriteKey);
+        img.setPosition(s.x, s.y);
+        img.setAlpha(s.alpha);
+        // 16×24(또는 baggage 20×28) 권장 — 도형 사이즈와 비슷한 작은 크기로 표시
+        const dispW = big ? 12 : 10;
+        const dispH = big ? 18 : 14;
+        img.setDisplaySize(dispW, dispH);
+        img.setTint(s.anger >= ANGER_THRESHOLD * 0.6 ? 0xff5555 : 0xffffff);
+        img.setVisible(true);
+        bodyTopY = s.y - dispH / 2;
+      } else {
+        const img = this.images.get(s.id);
+        if (img) img.setVisible(false);
+        // 도형 fallback (몸 + 머리)
+        this.g.fillStyle(color, s.alpha);
+        this.g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
+        this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 3, w - 2, 3);
+        bodyTopY = s.y - h / 2 - 3;
+      }
+
+      // 목적지 dest 색 dot — 몸 위. sprite 사용 여부와 무관하게 항상 표시.
+      const dotY = bodyTopY - 3;
       this.g.fillStyle(0x000000, s.alpha * 0.8);
       this.g.fillRect(s.x - 2, dotY - 1, 4, 4);
       this.g.fillStyle(s.destColor, s.alpha);

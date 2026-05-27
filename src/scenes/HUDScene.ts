@@ -5,6 +5,7 @@ import { t } from '../i18n/locale';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
 import { REPAIR_COST } from '../domain/types';
 import { MAX_SKILLS, skillById } from '../meta/skills';
+import { hasSprite } from '../render/sprites';
 import { GameScene } from './GameScene';
 
 const SPEEDS = [1, 2, 4, 8] as const;
@@ -32,13 +33,22 @@ export class HUDScene extends Phaser.Scene {
   create(): void {
     const game = this.scene.get('Game') as GameScene;
 
-    this.timeText = this.add.text(16, 12, '0:00', {
+    // 좌측 시계 아이콘 (sprite 있을 때만 visible). 텍스트 자리 약간 우측으로.
+    if (hasSprite(this, 'ui-icon-clock')) {
+      this.add.image(20, 23, 'ui-icon-clock').setDisplaySize(16, 16).setOrigin(0.5);
+    }
+    const timeX = hasSprite(this, 'ui-icon-clock') ? 34 : 16;
+    this.timeText = this.add.text(timeX, 12, '0:00', {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
       fontSize: '22px',
       color: COLORS.text,
     });
 
-    this.goldText = this.add.text(120, 16, '0G', {
+    if (hasSprite(this, 'ui-icon-gold')) {
+      this.add.image(124, 25, 'ui-icon-gold').setDisplaySize(16, 16).setOrigin(0.5);
+    }
+    const goldX = hasSprite(this, 'ui-icon-gold') ? 138 : 120;
+    this.goldText = this.add.text(goldX, 16, '0G', {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
       fontSize: '18px',
       color: '#f5c542',
@@ -49,6 +59,11 @@ export class HUDScene extends Phaser.Scene {
       fontSize: '14px',
       color: COLORS.textDim,
     }).setOrigin(1, 0);
+    if (hasSprite(this, 'ui-icon-anger')) {
+      // dangerText 는 우측 정렬 — 텍스트 좌측에 아이콘 두려면 update 시 텍스트 width 알아야 함.
+      // 단순화: 우측 모서리에서 적당히 안쪽에 고정 배치 (텍스트는 자동으로 왼쪽으로 밀려서 그려짐).
+      this.add.image(GAME_WIDTH - 120, 22, 'ui-icon-anger').setDisplaySize(16, 16).setOrigin(0.5);
+    }
 
     this.modifierText = this.add.text(GAME_WIDTH - 16, 32, '', {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#e74c3c',

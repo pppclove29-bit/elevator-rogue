@@ -30,6 +30,8 @@ export class BuildingView {
   private elevatorLabels: Phaser.GameObjects.Text[] = [];
   /** elevator-cab sprite 가 있을 때만 사용. 인덱스 = elevator.id */
   private elevatorImages: (Phaser.GameObjects.Image | null)[] = [];
+  /** floor-<role> sprite 가 있을 때 라벨 왼쪽에 표시. 인덱스 = floor.id */
+  private floorIcons: Phaser.GameObjects.Image[] = [];
 
   constructor(
     private scene: Phaser.Scene,
@@ -239,13 +241,29 @@ export class BuildingView {
         .text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: COLORS.textDim })
         .setOrigin(1, 0.5).setDepth(1);
       this.queueLabels.push(ql);
+      // floor role 아이콘 (선택). 없으면 setVisible(false).
+      const fi = this.scene.add.image(0, 0, '__missing__')
+        .setOrigin(0.5).setDepth(1).setVisible(false);
+      this.floorIcons.push(fi);
     }
 
     for (let i = 0; i < floors.length; i++) {
       const fy = y + totalHeight - i * floorHeight - floorHeight / 2;
       const floor = floors[i]!;
       const fl = this.floorLabels[i]!;
-      fl.setPosition(x + 8, fy);
+      const fi = this.floorIcons[i]!;
+      // floor-<role> sprite 가 있으면 라벨 왼쪽에 16x16 아이콘, 텍스트 우측으로.
+      const iconKey = `floor-${floor.role}`;
+      if (hasSprite(this.scene, iconKey)) {
+        fi.setTexture(iconKey);
+        fi.setDisplaySize(14, 14);
+        fi.setPosition(x + 14, fy);
+        fi.setVisible(true);
+        fl.setPosition(x + 26, fy);
+      } else {
+        fi.setVisible(false);
+        fl.setPosition(x + 8, fy);
+      }
       const roleColorHex = '#' + ROLE_COLOR[floor.role].toString(16).padStart(6, '0');
       let label = `${i + 1}F ${ROLE_SHORT[floor.role]}`;
       if (floor.hasToilet) {
@@ -260,6 +278,7 @@ export class BuildingView {
     for (let i = floors.length; i < this.floorLabels.length; i++) {
       this.floorLabels[i]!.setVisible(false);
       this.queueLabels[i]!.setVisible(false);
+      this.floorIcons[i]?.setVisible(false);
     }
   }
 }
