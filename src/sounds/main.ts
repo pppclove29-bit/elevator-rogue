@@ -1,4 +1,5 @@
-import { SOUND_KEYS, SoundMeta } from '../audio/sound';
+import { SOUND_KEYS } from '../audio/sound';
+import { deleteAsset, loadAllStoredAssets, saveAsset } from '../assets/storage';
 
 const root = document.getElementById('root')!;
 root.innerHTML = '';
@@ -14,29 +15,39 @@ function el(tag: string, props: Record<string, any> = {}, ...children: (Node | s
   return e;
 }
 
-// ──────────── Loaded 여부 검사 ────────────
-// public/sounds/<key>.{mp3,ogg,wav} 중 하나라도 200 응답이면 loaded.
-type LoadStatus = 'loaded' | 'missing';
+type LoadStatus = 'loaded-public' | 'loaded-upload' | 'missing';
 const status: Record<string, LoadStatus> = {};
 const loadedUrl: Record<string, string | null> = {};
+let storedKeys = new Set<string>();
 
-async function checkOne(meta: SoundMeta): Promise<void> {
-  const exts = ['mp3', 'ogg', 'wav'];
-  for (const ext of exts) {
-    const url = `sounds/${meta.key}.${ext}`;
-    try {
-      const res = await fetch(url, { method: 'HEAD' });
-      if (res.ok) {
-        status[meta.key] = 'loaded';
-        loadedUrl[meta.key] = url;
-        return;
-      }
-    } catch {
-      // ignore
-    }
+const SOUND_KEY_SET = new Set(SOUND_KEYS.map((s) => s.key));
+
+async function refreshStatuses(): Promise<void> {
+  // 1) IndexedDB 우선
+  const stored = await loadAllStoredAssets();
+  storedKeys = new Set<string>();
+  for (const [storageKey, asset] of stored) {
+    if (!storageKey.startsWith('sounds/')) continue;
+    const key = storageKey.slice('sounds/'.length);
+    if (!SOUND_KEY_SET.has(key)) continue;
+    status[key] = 'loaded-upload';
+    if (loadedUrl[key]) URL.revokeObjectURL(loadedUrl[key]!);
+    loadedUrl[key] = URL.createObjectURL(asset.blob);
+    storedKeys.add(key);
   }
-  status[meta.key] = 'missing';
-  loadedUrl[meta.key] = null;
+  // 2) public/ HEAD 시도 (IndexedDB 없는 키만)
+  await Promise.all(SOUND_KEYS.filter((m) => !storedKeys.has(m.key)).map(async (meta) => {
+    const exts = ['mp3', 'ogg', 'wav'];
+    for (const ext of exts) {
+      const url = `sounds/${meta.key}.${ext}`;
+      try {
+        const res = await fetch(url, { method: 'HEAD' });
+        if (res.ok) { status[meta.key] = 'loaded-public'; loadedUrl[meta.key] = url; return; }
+      } catch { /* ignore */ }
+    }
+    status[meta.key] = 'missing';
+    loadedUrl[meta.key] = null;
+  }));
 }
 
 function stat(label: string, value: string): HTMLElement {
@@ -45,65 +56,88 @@ function stat(label: string, value: string): HTMLElement {
     el('div', { class: 'value' }, value));
 }
 
+async function handleFiles(files: FileList | File[]): Promise<void> {
+  const accepted: string[] = [];
+  const rejected: string[] = [];
+  for (const file of Array.from(files)) {
+    const base = file.name.replace(/\.(mp3|ogg|wav)$/i, '');
+    if (!SOUND_KEY_SET.has(base)) {
+      rejected.push(file.name);
+      continue;
+    }
+    await saveAsset(`sounds/${base}`, file);
+    accepted.push(base);
+  }
+  if (rejected.length > 0) {
+    alert(`인식 못한 파일 (이름이 <key>.mp3 형식이어야 함):\n${rejected.join('\n')}\n\n허용된 key 목록은 표 참고.`);
+  }
+  if (accepted.length > 0) {
+    await refreshStatuses();
+    render();
+  }
+}
+
+async function clearKey(key: string): Promise<void> {
+  await deleteAsset(`sounds/${key}`);
+  await refreshStatuses();
+  render();
+}
+
 function render(): void {
   root.innerHTML = '';
 
-  // Header
   root.append(
     el('div', { class: 'dash-header' },
       el('h1', {}, 'Elevator Rogue — Sound Catalog'),
       el('div', { class: 'subtitle' }, '사운드 작업 레퍼런스 · ',
         el('a', { href: '/' }, '게임'), ' · ',
         el('a', { href: '/docs.html' }, '코드 대시보드'), ' · ',
-        el('a', { href: '/design.html' }, '디자인 카탈로그'))
+        el('a', { href: '/design.html' }, '디자인 카탈로그'), ' · ',
+        el('a', { href: '/sprites.html' }, '스프라이트 카탈로그'))
     ),
   );
 
-  // Intro
   root.append(el('div', { class: 'callout', html: `
-    <strong>이 페이지의 역할</strong>: 사운드 파일 작업/구매 시 참고용 카탈로그.
-    단일 진실원천: <span class="mono">src/audio/sound.ts</span> 의 <span class="mono">SOUND_KEYS</span>.<br>
-    파일을 <span class="mono">public/sounds/&lt;key&gt;.mp3</span> 에 넣으면 게임이 자동 로드 (없으면 silent fallback).
-    <br>새로고침 하면 로드 상태가 갱신됨. 미리듣기 ▶ 버튼은 로드된 파일만 활성.
+    <strong>이 페이지의 역할</strong>: 사운드 파일을 게임에 적용. 단일 진실원천:
+    <span class="mono">src/audio/sound.ts</span> 의 <span class="mono">SOUND_KEYS</span>.<br>
+    <strong>파일 적용 방법 — 둘 중 아무거나</strong><br>
+    1) 아래 드래그앤드롭에 <span class="mono">&lt;key&gt;.mp3</span> 파일 (브라우저에 저장, 즉시 게임 적용)<br>
+    2) <span class="mono">public/sounds/&lt;key&gt;.mp3</span> 폴더에 직접 두기 (개발 환경)<br>
+    저장된 파일은 <strong>📤 upload</strong> 표시. 없으면 silent fallback (도형/무음).
   ` }));
 
-  // Summary
+  // Drop zone
+  const dropZone = el('div', {
+    class: 'drop-zone',
+    style: 'border: 2px dashed #4a90e2; padding: 22px; text-align: center; border-radius: 8px; margin: 16px 0; background: #14141c; cursor: pointer; color: #9aa0a6;',
+  });
+  dropZone.innerHTML = `<strong>여기에 사운드 파일 드래그</strong><br><span style="font-size: 12px;">파일명이 <span style="color:#e2a04a">&lt;key&gt;.mp3</span> 형식이면 자동 매칭 (예: ding.mp3, coin.mp3)</span>`;
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#1c1c26'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.background = '#14141c'; });
+  dropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dropZone.style.background = '#14141c';
+    if (e.dataTransfer?.files) await handleFiles(e.dataTransfer.files);
+  });
+  // 클릭 시 파일 선택기
+  const fileInput = el('input', { type: 'file', multiple: 'multiple', accept: '.mp3,.ogg,.wav', style: 'display:none' }) as HTMLInputElement;
+  fileInput.onchange = async () => { if (fileInput.files) await handleFiles(fileInput.files); fileInput.value = ''; };
+  dropZone.addEventListener('click', () => fileInput.click());
+  root.append(dropZone, fileInput);
+
   const total = SOUND_KEYS.length;
-  const loaded = SOUND_KEYS.filter((s) => status[s.key] === 'loaded').length;
+  const loaded = SOUND_KEYS.filter((s) => status[s.key]?.startsWith('loaded')).length;
+  const uploaded = SOUND_KEYS.filter((s) => status[s.key] === 'loaded-upload').length;
   const must = SOUND_KEYS.filter((s) => s.priority === 'must');
-  const mustLoaded = must.filter((s) => status[s.key] === 'loaded').length;
-  const sfxCount = SOUND_KEYS.filter((s) => s.category === 'sfx').length;
-  const bgmCount = SOUND_KEYS.filter((s) => s.category === 'bgm').length;
+  const mustLoaded = must.filter((s) => status[s.key]?.startsWith('loaded')).length;
 
   const summary = el('div', { class: 'sound-summary' });
   summary.append(stat('전체 키', `${loaded} / ${total}`));
+  summary.append(stat('업로드', `${uploaded}`));
   summary.append(stat('필수 (must)', `${mustLoaded} / ${must.length}`));
-  summary.append(stat('SFX / BGM', `${sfxCount} / ${bgmCount}`));
   summary.append(stat('진행률', `${total === 0 ? 0 : Math.round((loaded / total) * 100)}%`));
   root.append(summary);
 
-  // 권장 소스
-  {
-    const section = el('section');
-    section.append(
-      el('h2', {}, '권장 사운드 소스 (CC0 / CC-BY)'),
-      el('ul', { html: `
-        <li><a href="https://freesound.org" target="_blank" rel="noopener">freesound.org</a> — SFX 풍부, CC0/BY 필터 가능</li>
-        <li><a href="https://pixabay.com/sound-effects/" target="_blank" rel="noopener">pixabay.com/sound-effects</a> — CC0, 가입 불필요</li>
-        <li><a href="https://opengameart.org" target="_blank" rel="noopener">opengameart.org</a> — 게임 음악·SFX, 라이선스 명시</li>
-        <li><a href="https://itch.io/game-assets/free/tag-music" target="_blank" rel="noopener">itch.io free music</a> — 인디 게임용 BGM</li>
-        <li><a href="https://zapsplat.com" target="_blank" rel="noopener">zapsplat.com</a> — 가입 후 무료, 출처 표기 필요</li>
-      ` }),
-      el('div', { class: 'callout', html: `
-        <strong>포맷 권장</strong>: <span class="mono">.mp3</span> 96–128 kbps (SFX는 더 낮춰도 OK).
-        Phaser audio loader는 <span class="mono">[mp3, ogg, wav]</span> 순으로 시도.<br>
-        <strong>볼륨 정규화</strong>: 모든 SFX를 -12 dBFS 정도로 normalize 권장 (개별 볼륨 cap은 SOUND_KEYS 의 <span class="mono">volume</span> 필드로 조정).
-      ` }),
-    );
-    root.append(section);
-  }
-
-  // SFX / BGM 표
   for (const category of ['sfx', 'bgm'] as const) {
     const section = el('section');
     const items = SOUND_KEYS.filter((s) => s.category === category);
@@ -117,15 +151,16 @@ function render(): void {
       el('div', {}, '트리거'),
       el('div', {}, '추천 톤'),
       el('div', {}, '우선순위'),
-      el('div', {}, '상태 / 듣기'),
+      el('div', {}, '상태 / 듣기 / 교체'),
     );
     section.append(header);
 
     for (const meta of items) {
       const row = el('div', { class: 'sound-row' });
       const st = status[meta.key] ?? 'missing';
-      const playBtn = el('button', { class: 'play-btn' }, '▶ 듣기') as HTMLButtonElement;
-      playBtn.disabled = st !== 'loaded';
+
+      const playBtn = el('button', { class: 'play-btn' }, '▶') as HTMLButtonElement;
+      playBtn.disabled = !st.startsWith('loaded');
       playBtn.onclick = () => {
         const url = loadedUrl[meta.key];
         if (!url) return;
@@ -134,12 +169,23 @@ function render(): void {
         audio.play().catch(() => { /* ignore */ });
       };
 
-      const statusLabel = st === 'loaded'
-        ? el('span', { class: 'status-loaded' }, '✅ loaded')
-        : el('span', { class: 'status-missing' }, '❌ missing');
+      const replaceBtn = el('button', { class: 'play-btn', title: 'IndexedDB 에 업로드' }, '📤') as HTMLButtonElement;
+      const replaceInput = el('input', { type: 'file', accept: '.mp3,.ogg,.wav', style: 'display:none' }) as HTMLInputElement;
+      replaceInput.onchange = async () => { if (replaceInput.files?.[0]) await handleFiles([replaceInput.files[0]]); };
+      replaceBtn.onclick = () => { replaceInput.click(); };
 
-      const right = el('div', { style: 'display:flex; gap:8px; align-items:center;' });
-      right.append(statusLabel, playBtn);
+      const deleteBtn = el('button', { class: 'play-btn', title: '업로드 삭제' }, '🗑️') as HTMLButtonElement;
+      deleteBtn.disabled = st !== 'loaded-upload';
+      deleteBtn.onclick = () => { if (confirm(`${meta.key} 업로드 삭제?`)) clearKey(meta.key); };
+
+      const statusLabel = st === 'loaded-upload'
+        ? el('span', { class: 'status-loaded' }, '📤 upload')
+        : st === 'loaded-public'
+          ? el('span', { class: 'status-loaded' }, '✅ public')
+          : el('span', { class: 'status-missing' }, '❌ missing');
+
+      const right = el('div', { style: 'display:flex; gap:6px; align-items:center;' });
+      right.append(statusLabel, playBtn, replaceBtn, deleteBtn, replaceInput);
 
       row.append(
         el('div', { class: 'key-mono' }, meta.key),
@@ -154,32 +200,28 @@ function render(): void {
     root.append(section);
   }
 
-  // 새 키 추가
+  // 권장 소스
   {
     const section = el('section');
     section.append(
-      el('h2', {}, '새 사운드 키 추가하기'),
-      el('ol', { html: `
-        <li><span class="mono">src/audio/sound.ts</span> 의 <span class="mono">SOUND_KEYS</span> 배열에 <span class="mono">{ key, category, label, trigger, suggest, priority, volume? }</span> 항목 추가.</li>
-        <li>필요 시 <span class="mono">SoundManager</span> 클래스에 헬퍼 메서드 (예: <span class="mono">mySound() { this.playSfx('mySound'); }</span>).</li>
-        <li>해당 메서드를 게임 코드에서 호출.</li>
-        <li><span class="mono">public/sounds/&lt;key&gt;.mp3</span> 파일 두기 (선택 — 나중에 둬도 OK).</li>
-        <li>이 페이지 새로고침 — 자동으로 표에 노출.</li>
+      el('h2', {}, '권장 사운드 소스 (CC0 / CC-BY)'),
+      el('ul', { html: `
+        <li><a href="https://freesound.org" target="_blank" rel="noopener">freesound.org</a> — SFX 풍부</li>
+        <li><a href="https://pixabay.com/sound-effects/" target="_blank" rel="noopener">pixabay.com/sound-effects</a> — CC0</li>
+        <li><a href="https://opengameart.org" target="_blank" rel="noopener">opengameart.org</a></li>
+        <li><a href="https://itch.io/game-assets/free/tag-music" target="_blank" rel="noopener">itch.io free music</a></li>
       ` }),
     );
     root.append(section);
   }
 
-  // Footer
   root.append(el('div', { class: 'callout', html: `
-    <strong>주의</strong>: 사운드 파일이 없어도 게임은 동작한다. 로드 실패는 silent fallback.
-    <br>즉, 사운드 작업은 게임 본 개발과 독립적으로 진행 가능.
+    <strong>주의</strong>: 업로드 파일은 브라우저 IndexedDB 에 저장 (origin 별). 다른 브라우저/머신에선 다시 업로드 필요.
+    배포 빌드 시 게임에 포함하려면 <span class="mono">public/sounds/</span> 폴더에 두기.
   ` }));
 }
 
-// 첫 로딩: "검사 중" 상태로 일단 렌더 (사용자 즉시 피드백)
+// 초기 missing 상태로 렌더 → 비동기 체크 후 재렌더
 for (const meta of SOUND_KEYS) status[meta.key] = 'missing';
 render();
-
-// 비동기 체크 끝나면 한 번 다시 그림
-Promise.all(SOUND_KEYS.map(checkOne)).then(() => render());
+refreshStatuses().then(() => render());

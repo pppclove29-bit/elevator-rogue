@@ -8,21 +8,33 @@ export class BootScene extends Phaser.Scene {
   }
 
   preload(): void {
-    // 모든 사운드/스프라이트 키를 시도 로드.
-    // 파일이 없으면 loaderror 가 발생하지만, 콜백에서 흡수해 silent fallback 으로 처리한다.
     const knownSounds = new Set(SOUND_KEYS.map((s) => s.key));
     const knownSprites = new Set(SPRITE_KEYS.map((s) => s.key));
     this.load.on('loaderror', (file: Phaser.Loader.File) => {
-      // 카탈로그에 정의된 키의 누락은 silent (sound.has() / hasSprite() 에서 미존재 처리)
-      // 그 외 파일은 콘솔 경고
       if (!knownSounds.has(file.key) && !knownSprites.has(file.key)) {
         // eslint-disable-next-line no-console
         console.warn('[Boot] asset load failed:', file.key, file.url);
       }
     });
 
+    // 1) 사용자 업로드 (IndexedDB) 우선 로드. 같은 key 가 있으면 public/ 시도 skip.
+    const booted = globalThis.__bootedAssets ?? { sounds: new Map(), sprites: new Map() };
+    const overriddenSounds = new Set<string>();
+    const overriddenSprites = new Set<string>();
+    for (const [key, asset] of booted.sounds) {
+      const url = URL.createObjectURL(asset.blob);
+      this.load.audio(key, [url]);
+      overriddenSounds.add(key);
+    }
+    for (const [key, asset] of booted.sprites) {
+      const url = URL.createObjectURL(asset.blob);
+      this.load.image(key, url);
+      overriddenSprites.add(key);
+    }
+
+    // 2) public/ fallback — 사용자 업로드가 없는 키만 시도.
     for (const meta of SOUND_KEYS) {
-      // mp3 → ogg → wav 순으로 시도.
+      if (overriddenSounds.has(meta.key)) continue;
       this.load.audio(meta.key, [
         `sounds/${meta.key}.mp3`,
         `sounds/${meta.key}.ogg`,
@@ -30,6 +42,7 @@ export class BootScene extends Phaser.Scene {
       ]);
     }
     for (const meta of SPRITE_KEYS) {
+      if (overriddenSprites.has(meta.key)) continue;
       this.load.image(meta.key, `sprites/${meta.key}.png`);
     }
   }

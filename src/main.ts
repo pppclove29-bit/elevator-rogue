@@ -16,6 +16,15 @@ import { TitleScene } from './scenes/TitleScene';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from './config';
 import { applyZoom, getZoom, loadOptions, pan, saveOptions, ZoomLevel } from './meta/options';
 import { sound } from './audio/sound';
+import { loadBootedAssets } from './assets/storage';
+
+// 사용자 업로드 에셋 (IndexedDB) 을 부팅 전에 로드. BootScene 이 동기 사용.
+// top-level await — ES2022. 실패 시에도 게임은 시작 (빈 Map fallback).
+try {
+  globalThis.__bootedAssets = await loadBootedAssets();
+} catch {
+  globalThis.__bootedAssets = { sounds: new Map(), sprites: new Map() };
+}
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,

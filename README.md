@@ -56,7 +56,16 @@ pnpm electron:build:linux   # Linux AppImage
 
 ## 에셋 시스템
 
-게임 비주얼은 도형 fallback + 옵션 이미지. 외부 자산을 두면 자동 적용 (없어도 동작):
+게임 비주얼/사운드는 모두 도형/무음 fallback. 외부 자산을 두면 자동 적용. **두 가지 방법:**
+
+**A. HTML 카탈로그 페이지에서 드래그앤드롭** (비개발자 친화)
+- `/sounds.html` / `/sprites.html` 페이지에서 파일을 드래그
+- 파일명이 `<key>.mp3` 또는 `<key>.png` 형식이면 자동 매칭 → IndexedDB 저장
+- 즉시 게임 적용 (새로고침 한 번)
+- 행마다 📤 버튼으로 개별 교체, 🗑️ 로 삭제
+
+**B. public/ 폴더에 직접 두기** (개발자/빌드 포함)
+- 빌드에 번들링 됨 — 배포 시 모든 사용자에게 동일하게 적용
 
 | 폴더 | 형식 | 가이드 |
 |---|---|---|
@@ -64,6 +73,9 @@ pnpm electron:build:linux   # Linux AppImage
 | `public/sprites/` | `.png` (픽셀 32~64px) | [README](public/sprites/README.md) + [/sprites.html](http://localhost:5173/sprites.html) |
 | `public/fonts/` | `Galmuri11.woff2` | [README](public/fonts/README.md) — 픽셀 폰트 자동 적용 |
 | `electron/build/` | `icon.{png,icns,ico}` | [README](electron/build/README.md) — 데스크톱 빌드 아이콘 |
+
+로딩 우선순위: **IndexedDB (업로드) > public/ (번들) > 도형 fallback**.
+업로드 파일은 브라우저 origin 별로 저장 — 다른 머신/브라우저에서 다시 업로드 필요.
 
 ## 페이지
 

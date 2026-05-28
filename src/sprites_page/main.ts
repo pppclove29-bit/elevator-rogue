@@ -1,4 +1,5 @@
-import { SPRITE_KEYS, SpriteCategory, SpriteMeta } from '../render/sprites';
+import { SPRITE_KEYS, SpriteCategory } from '../render/sprites';
+import { deleteAsset, loadAllStoredAssets, saveAsset } from '../assets/storage';
 
 const root = document.getElementById('root')!;
 root.innerHTML = '';
@@ -14,22 +15,69 @@ function el(tag: string, props: Record<string, any> = {}, ...children: (Node | s
   return e;
 }
 
-type LoadStatus = 'loaded' | 'missing';
+type LoadStatus = 'loaded-public' | 'loaded-upload' | 'missing';
 const status: Record<string, LoadStatus> = {};
+const previewUrl: Record<string, string | null> = {};
+let storedKeys = new Set<string>();
 
-async function checkOne(meta: SpriteMeta): Promise<void> {
-  try {
-    const res = await fetch(`sprites/${meta.key}.png`, { method: 'HEAD' });
-    status[meta.key] = res.ok ? 'loaded' : 'missing';
-  } catch {
-    status[meta.key] = 'missing';
+const SPRITE_KEY_SET = new Set(SPRITE_KEYS.map((s) => s.key));
+
+async function refreshStatuses(): Promise<void> {
+  // 기존 ObjectURL revoke
+  for (const k of Object.keys(previewUrl)) {
+    const url = previewUrl[k];
+    if (url && url.startsWith('blob:')) URL.revokeObjectURL(url);
   }
+  storedKeys = new Set<string>();
+
+  const stored = await loadAllStoredAssets();
+  for (const [storageKey, asset] of stored) {
+    if (!storageKey.startsWith('sprites/')) continue;
+    const key = storageKey.slice('sprites/'.length);
+    if (!SPRITE_KEY_SET.has(key)) continue;
+    status[key] = 'loaded-upload';
+    previewUrl[key] = URL.createObjectURL(asset.blob);
+    storedKeys.add(key);
+  }
+
+  await Promise.all(SPRITE_KEYS.filter((m) => !storedKeys.has(m.key)).map(async (meta) => {
+    try {
+      const res = await fetch(`sprites/${meta.key}.png`, { method: 'HEAD' });
+      if (res.ok) { status[meta.key] = 'loaded-public'; previewUrl[meta.key] = `sprites/${meta.key}.png`; return; }
+    } catch { /* ignore */ }
+    status[meta.key] = 'missing';
+    previewUrl[meta.key] = null;
+  }));
 }
 
 function stat(label: string, value: string): HTMLElement {
   return el('div', { class: 'stat' },
     el('div', { class: 'label' }, label),
     el('div', { class: 'value' }, value));
+}
+
+async function handleFiles(files: FileList | File[]): Promise<void> {
+  const rejected: string[] = [];
+  const accepted: string[] = [];
+  for (const file of Array.from(files)) {
+    const base = file.name.replace(/\.(png|jpg|jpeg|webp)$/i, '');
+    if (!SPRITE_KEY_SET.has(base)) { rejected.push(file.name); continue; }
+    await saveAsset(`sprites/${base}`, file);
+    accepted.push(base);
+  }
+  if (rejected.length > 0) {
+    alert(`인식 못한 파일 (이름이 <key>.png 형식이어야 함):\n${rejected.join('\n')}\n\n허용된 key 목록은 표 참고.`);
+  }
+  if (accepted.length > 0) {
+    await refreshStatuses();
+    render();
+  }
+}
+
+async function clearKey(key: string): Promise<void> {
+  await deleteAsset(`sprites/${key}`);
+  await refreshStatuses();
+  render();
 }
 
 const CATEGORY_ORDER: SpriteCategory[] = ['character', 'elevator', 'passenger', 'floor', 'environment', 'ui', 'decoration'];
@@ -58,40 +106,45 @@ function render(): void {
   );
 
   root.append(el('div', { class: 'callout', html: `
-    <strong>이 페이지의 역할</strong>: 스프라이트 작업/구매 시 참고용 카탈로그.
-    단일 진실원: <span class="mono">src/render/sprites.ts</span> 의 <span class="mono">SPRITE_KEYS</span>.<br>
-    파일을 <span class="mono">public/sprites/&lt;key&gt;.png</span> 에 넣으면 게임이 자동 로드 (없으면 도형 fallback).
-    <br><strong>스타일</strong>: 픽셀 아트 32~64px, 색 8~16 팔레트, 투명 배경.
+    <strong>이 페이지의 역할</strong>: 스프라이트 파일을 게임에 적용. 단일 진실원천:
+    <span class="mono">src/render/sprites.ts</span> 의 <span class="mono">SPRITE_KEYS</span>.<br>
+    <strong>파일 적용 방법 — 둘 중 아무거나</strong><br>
+    1) 아래 드래그앤드롭에 <span class="mono">&lt;key&gt;.png</span> 파일 (브라우저에 저장, 즉시 게임 적용)<br>
+    2) <span class="mono">public/sprites/&lt;key&gt;.png</span> 폴더에 직접 두기 (개발 환경)<br>
+    <strong>스타일</strong>: 픽셀 아트 32~64px, 색 8~16 팔레트, 투명 배경.
   ` }));
 
+  // Drop zone
+  const dropZone = el('div', {
+    class: 'drop-zone',
+    style: 'border: 2px dashed #4a90e2; padding: 22px; text-align: center; border-radius: 8px; margin: 16px 0; background: #14141c; cursor: pointer; color: #9aa0a6;',
+  });
+  dropZone.innerHTML = `<strong>여기에 스프라이트 파일 드래그 (PNG 권장)</strong><br><span style="font-size: 12px;">파일명이 <span style="color:#e2a04a">&lt;key&gt;.png</span> 형식이면 자동 매칭 (예: elevator-cab.png)</span>`;
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.background = '#1c1c26'; });
+  dropZone.addEventListener('dragleave', () => { dropZone.style.background = '#14141c'; });
+  dropZone.addEventListener('drop', async (e) => {
+    e.preventDefault();
+    dropZone.style.background = '#14141c';
+    if (e.dataTransfer?.files) await handleFiles(e.dataTransfer.files);
+  });
+  const fileInput = el('input', { type: 'file', multiple: 'multiple', accept: '.png,.jpg,.jpeg,.webp', style: 'display:none' }) as HTMLInputElement;
+  fileInput.onchange = async () => { if (fileInput.files) await handleFiles(fileInput.files); fileInput.value = ''; };
+  dropZone.addEventListener('click', () => fileInput.click());
+  root.append(dropZone, fileInput);
+
   const total = SPRITE_KEYS.length;
-  const loaded = SPRITE_KEYS.filter((s) => status[s.key] === 'loaded').length;
+  const loaded = SPRITE_KEYS.filter((s) => status[s.key]?.startsWith('loaded')).length;
+  const uploaded = SPRITE_KEYS.filter((s) => status[s.key] === 'loaded-upload').length;
   const must = SPRITE_KEYS.filter((s) => s.priority === 'must');
-  const mustLoaded = must.filter((s) => status[s.key] === 'loaded').length;
+  const mustLoaded = must.filter((s) => status[s.key]?.startsWith('loaded')).length;
 
   const summary = el('div', { class: 'sprite-summary' });
   summary.append(stat('전체 키', `${loaded} / ${total}`));
+  summary.append(stat('업로드', `${uploaded}`));
   summary.append(stat('필수 (must)', `${mustLoaded} / ${must.length}`));
   summary.append(stat('진행률', `${total === 0 ? 0 : Math.round((loaded / total) * 100)}%`));
   root.append(summary);
 
-  // 권장 소스 callout
-  {
-    const section = el('section');
-    section.append(
-      el('h2', {}, '권장 소스 (CC0 / CC-BY)'),
-      el('ul', { html: `
-        <li><a href="https://opengameart.org" target="_blank" rel="noopener">opengameart.org</a> — 게임용 픽셀 아트 풍부</li>
-        <li><a href="https://itch.io/game-assets/free/tag-pixel-art" target="_blank" rel="noopener">itch.io free pixel art</a> — 인디 픽셀 아트 팩</li>
-        <li><a href="https://kenney.nl/assets" target="_blank" rel="noopener">kenney.nl</a> — CC0 대량</li>
-        <li><a href="https://craftpix.net/freebies/" target="_blank" rel="noopener">craftpix.net</a> — 무료 픽셀 셋</li>
-        <li>본인 작업: <a href="https://www.aseprite.org/" target="_blank" rel="noopener">Aseprite</a> (유료, 인디 도구 표준) / <a href="https://www.piskelapp.com/" target="_blank" rel="noopener">Piskel</a> (무료)</li>
-      ` }),
-    );
-    root.append(section);
-  }
-
-  // 카테고리별 테이블
   for (const cat of CATEGORY_ORDER) {
     const items = SPRITE_KEYS.filter((s) => s.category === cat);
     if (items.length === 0) continue;
@@ -106,7 +159,7 @@ function render(): void {
       el('div', {}, '용도'),
       el('div', {}, '사이즈'),
       el('div', {}, 'Fallback'),
-      el('div', {}, '상태'),
+      el('div', {}, '상태 / 교체'),
     );
     section.append(header);
 
@@ -114,14 +167,29 @@ function render(): void {
       const row = el('div', { class: 'sprite-row' });
       const st = status[meta.key] ?? 'missing';
 
-      // preview cell
       const preview = el('div', { class: 'preview-cell' });
-      if (st === 'loaded') {
-        const img = el('img', { src: `sprites/${meta.key}.png`, alt: meta.key });
-        preview.append(img);
-      } else {
-        preview.append(el('div', { class: 'missing' }, 'no png'));
-      }
+      const url = previewUrl[meta.key];
+      if (url) preview.append(el('img', { src: url, alt: meta.key }));
+      else preview.append(el('div', { class: 'missing' }, 'no img'));
+
+      const replaceBtn = el('button', { class: 'play-btn', title: '업로드' }, '📤') as HTMLButtonElement;
+      const replaceInput = el('input', { type: 'file', accept: '.png,.jpg,.jpeg,.webp', style: 'display:none' }) as HTMLInputElement;
+      replaceInput.onchange = async () => { if (replaceInput.files?.[0]) await handleFiles([replaceInput.files[0]]); };
+      replaceBtn.onclick = () => replaceInput.click();
+
+      const deleteBtn = el('button', { class: 'play-btn', title: '업로드 삭제' }, '🗑️') as HTMLButtonElement;
+      deleteBtn.disabled = st !== 'loaded-upload';
+      deleteBtn.onclick = () => { if (confirm(`${meta.key} 업로드 삭제?`)) clearKey(meta.key); };
+
+      const statusLabel = st === 'loaded-upload'
+        ? el('span', { class: 'status-loaded' }, '📤')
+        : st === 'loaded-public' ? el('span', { class: 'status-loaded' }, '✅')
+          : el('span', { class: 'status-missing' }, '❌');
+
+      const right = el('div', { style: 'display:flex; gap:4px; align-items:center; flex-direction:column;' });
+      const r1 = el('div', { style: 'display:flex; gap:4px; align-items:center;' });
+      r1.append(statusLabel, replaceBtn, deleteBtn, replaceInput);
+      right.append(el('span', { class: `prio-${meta.priority}` }, meta.priority === 'must' ? '🔴 MUST' : '⚪'), r1);
 
       row.append(
         preview,
@@ -130,40 +198,19 @@ function render(): void {
         el('div', {}, meta.usage),
         el('div', { class: 'size-mono' }, meta.size),
         el('div', { class: 'fallback' }, meta.fallback ?? ''),
-        el('div', { class: `prio-${meta.priority}` },
-          meta.priority === 'must' ? '🔴 MUST' : '⚪ NICE',
-          document.createElement('br'),
-          el('span', { class: st === 'loaded' ? 'status-loaded' : 'status-missing' },
-            st === 'loaded' ? '✅' : '❌'),
-        ),
+        right,
       );
       section.append(row);
     }
     root.append(section);
   }
 
-  // 새 키 추가
-  {
-    const section = el('section');
-    section.append(
-      el('h2', {}, '새 스프라이트 키 추가하기'),
-      el('ol', { html: `
-        <li><span class="mono">src/render/sprites.ts</span> 의 <span class="mono">SPRITE_KEYS</span> 에 항목 추가.</li>
-        <li>해당 렌더 코드에 <span class="mono">tryImage(scene, key, x, y, () =&gt; fallbackShape)</span> 패턴 적용.</li>
-        <li><span class="mono">public/sprites/&lt;key&gt;.png</span> 두기 (선택).</li>
-        <li>이 페이지 새로고침 — 자동으로 표에 노출.</li>
-      ` }),
-    );
-    root.append(section);
-  }
-
   root.append(el('div', { class: 'callout', html: `
-    <strong>주의</strong>: 스프라이트 파일이 없어도 게임은 동작한다 (도형 fallback).
-    <br>스프라이트 작업은 게임 본 개발과 독립적.
+    <strong>주의</strong>: 업로드 파일은 브라우저 IndexedDB 에 저장 (origin 별). 다른 브라우저/머신에선 다시 업로드 필요.
+    배포 빌드 시 게임에 포함하려면 <span class="mono">public/sprites/</span> 폴더에 두기.
   ` }));
 }
 
-// 초기 missing 상태로 1회 렌더 → 비동기 체크 후 재렌더
 for (const meta of SPRITE_KEYS) status[meta.key] = 'missing';
 render();
-Promise.all(SPRITE_KEYS.map(checkOne)).then(() => render());
+refreshStatuses().then(() => render());
