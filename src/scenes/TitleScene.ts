@@ -192,6 +192,11 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(GAME_WIDTH - 16, GAME_HEIGHT - 16, 'v0.2 alpha', {
       fontFamily: FONT, fontSize: '10px', color: '#3a3a48',
     }).setOrigin(1, 1);
+    // Credits 작은 링크 — 우하단 v 옆
+    this.add.text(GAME_WIDTH - 90, GAME_HEIGHT - 16, 'Credits', {
+      fontFamily: FONT, fontSize: '10px', color: '#5a5a68',
+    }).setOrigin(1, 1).setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.scene.launch('Credits'));
 
     // 도전 모드 cycle 버튼 — 좌측 빌딩 실루엣 아래 (continue 가능성 무시: 챌린지는 새 런만)
     this.add.text(110, 640, '도전 모드', {
