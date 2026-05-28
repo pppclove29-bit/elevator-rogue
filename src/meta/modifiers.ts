@@ -1,4 +1,24 @@
+/**
+ * 모디파이어 카드. 데이터는 data/modifiers.json, 효과는 effectId+params → 함수 매핑.
+ * CMS (/cms.html) 에서 name/desc/type/effectId/params 편집 가능.
+ *
+ * effectId 종류:
+ *   phase-spawn-mul    { phase, factor }   특정 페이즈 스폰 간격 곱
+ *   anger-all-mul      { factor }          waiting/riding anger 전체 곱
+ *   speed-mul          { factor }          엘베 속도 곱
+ *   load-tick-add      { delta }           정차 시간 가감
+ *   capacity-add       { delta, min }      엘베 정원 가감
+ *   spawn-global-mul   { factor }          전체 스폰 간격 곱
+ *   skill-cd-mul       { factor }          스킬 쿨다운 곱
+ *   floor-capacity-add { delta }           층 큐 상한 가감
+ *   fire-drill         { }                 화재 대피 (랜덤 큐 +4 즉시)
+ *   rush-rewards       { factor, gold }    스폰 곱 + 즉시 골드
+ *   marathon           { spawnFactor, angerFactor }
+ *   vip-protocol       { speedFactor, capDelta, capMin }
+ */
+import { Phase } from '../domain/phase';
 import { SimState } from '../domain/types';
+import modifierData from '../../data/modifiers.json';
 
 export type ModifierType = 'debuff' | 'buff' | 'mixed';
 
@@ -11,103 +31,104 @@ export interface ModifierEntry {
   apply(state: SimState): () => void;
 }
 
-function mulRecord<K extends string>(obj: Record<K, number>, key: K, factor: number): () => void {
+interface JsonModifier {
+  name: string;
+  desc: string;
+  type: ModifierType;
+  effectId: string;
+  params?: Record<string, unknown>;
+}
+
+function mulField(obj: any, key: string, factor: number): () => void {
+  obj[key] *= factor;
+  return () => { obj[key] /= factor; };
+}
+function addField(obj: any, key: string, delta: number): () => void {
+  obj[key] += delta;
+  return () => { obj[key] -= delta; };
+}
+function mulRecord(obj: any, key: string, factor: number): () => void {
   obj[key] *= factor;
   return () => { obj[key] /= factor; };
 }
 
-function mulField<T extends object, K extends keyof T>(obj: T, key: K, factor: number): () => void {
-  (obj[key] as unknown as number) *= factor;
-  return () => { (obj[key] as unknown as number) /= factor; };
-}
-
-function addField<T extends object, K extends keyof T>(obj: T, key: K, delta: number): () => void {
-  (obj[key] as unknown as number) += delta;
-  return () => { (obj[key] as unknown as number) -= delta; };
-}
-
-export const MODIFIERS: Record<string, ModifierEntry> = {
-  // ─ Debuff ─────────────────────────────────────────
-  'dm-traffic-jam-morning': { id:'dm-traffic-jam-morning', name:'출근길 정체', desc:'출근 스폰 ×1.7 (간격 ×0.6)', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'morning', 0.6) },
-  'dm-lunch-rush': { id:'dm-lunch-rush', name:'점심 광풍', desc:'점심 스폰 ×1.7', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'lunch', 0.6) },
-  'dm-evening-rush': { id:'dm-evening-rush', name:'퇴근 러시', desc:'퇴근 스폰 ×1.7', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'evening', 0.6) },
-  'dm-bad-mood': { id:'dm-bad-mood', name:'짜증의 날', desc:'오늘 불만 누적 ×1.4', type:'debuff',
-    apply: (s) => {
-      const u1 = mulField(s.params, 'angerWaitingPerTick', 1.4);
-      const u2 = mulField(s.params, 'angerRidingPerTick', 1.4);
-      return () => { u1(); u2(); };
-    } },
-  'dm-power-dip': { id:'dm-power-dip', name:'정전 경고', desc:'오늘 엘베 속도 ×0.7', type:'debuff',
-    apply: (s) => mulField(s.params, 'globalSpeedMultiplier', 0.7) },
-  'dm-heavy-load': { id:'dm-heavy-load', name:'무거운 짐', desc:'정차 시간 +4 tick', type:'debuff',
-    apply: (s) => addField(s.params, 'baseLoadTicks', 4) },
-  'dm-narrow-door': { id:'dm-narrow-door', name:'좁은 문', desc:'엘베 정원 -2 (최소 2)', type:'debuff',
-    apply: (s) => {
-      const orig = s.building.elevators.map((e) => e.capacity);
-      for (const e of s.building.elevators) e.capacity = Math.max(2, e.capacity - 2);
-      return () => { for (let i = 0; i < s.building.elevators.length; i++) {
-        const o = orig[i]; if (o !== undefined) s.building.elevators[i]!.capacity = o; } };
-    } },
-  'dm-restaurant-fest': { id:'dm-restaurant-fest', name:'식당가 축제', desc:'점심 식당 트래픽 폭증', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'lunch', 0.5) }, // 단순화: lunch 스폰 ×2
-  'dm-vip-day': { id:'dm-vip-day', name:'VIP 방문', desc:'근무 스폰 ×1.5', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'work', 0.66) },
-  'dm-night-shift': { id:'dm-night-shift', name:'야간 근무', desc:'야간 스폰 ×3.3', type:'debuff',
-    apply: (s) => mulRecord(s.params.phaseSpawnMultiplier, 'night', 0.3) },
-  'dm-fire-drill': { id:'dm-fire-drill', name:'화재 대피', desc:'시작 시 랜덤 층 큐 +4 (즉시)', type:'debuff',
-    apply: (s) => {
-      const idx = Math.floor(Math.random() * s.building.floors.length); // 일회성 모디파이어 — RNG 결정성 외
-      const floor = s.building.floors[idx];
-      if (!floor) return () => {};
-      for (let i = 0; i < 4; i++) {
-        const dest = (idx + 1 + Math.floor(Math.random() * (s.building.floors.length - 1))) % s.building.floors.length;
-        floor.queue.push({ id: s.nextPassengerId++, origin: floor.id, dest, spawnTick: s.tick, anger: 0, archetype: 'normal' });
+/** effectId → (state, params) => cleanup */
+const MODIFIER_EFFECTS: Record<string, (s: SimState, p: any) => () => void> = {
+  'phase-spawn-mul': (s, p) => mulRecord(s.params.phaseSpawnMultiplier, p.phase as Phase, p.factor),
+  'anger-all-mul': (s, p) => {
+    const u1 = mulField(s.params, 'angerWaitingPerTick', p.factor);
+    const u2 = mulField(s.params, 'angerRidingPerTick', p.factor);
+    return () => { u1(); u2(); };
+  },
+  'speed-mul': (s, p) => mulField(s.params, 'globalSpeedMultiplier', p.factor),
+  'load-tick-add': (s, p) => addField(s.params, 'baseLoadTicks', p.delta),
+  'capacity-add': (s, p) => {
+    const orig = s.building.elevators.map((e) => e.capacity);
+    const min = p.min ?? 1;
+    for (const e of s.building.elevators) e.capacity = Math.max(min, e.capacity + p.delta);
+    return () => {
+      for (let i = 0; i < s.building.elevators.length; i++) {
+        const o = orig[i]; if (o !== undefined) s.building.elevators[i]!.capacity = o;
       }
-      return () => {};
-    } },
-
-  // ─ Buff ───────────────────────────────────────────
-  'dm-calm-day': { id:'dm-calm-day', name:'명상의 날', desc:'오늘 불만 누적 ×0.7', type:'buff',
-    apply: (s) => {
-      const u1 = mulField(s.params, 'angerWaitingPerTick', 0.7);
-      const u2 = mulField(s.params, 'angerRidingPerTick', 0.7);
-      return () => { u1(); u2(); };
-    } },
-  'dm-smooth-ops': { id:'dm-smooth-ops', name:'효율 운영', desc:'정차 시간 -2 tick', type:'buff',
-    apply: (s) => addField(s.params, 'baseLoadTicks', -2) },
-  'dm-quiet-day': { id:'dm-quiet-day', name:'한산한 하루', desc:'모든 페이즈 스폰 ×0.7', type:'buff',
-    apply: (s) => mulField(s.params, 'spawnIntervalMultiplier', 1.4) },
-  'dm-fast-motors': { id:'dm-fast-motors', name:'신속 모터', desc:'엘베 속도 ×1.2', type:'buff',
-    apply: (s) => mulField(s.params, 'globalSpeedMultiplier', 1.2) },
-  'dm-skill-prime': { id:'dm-skill-prime', name:'즉발 풀가동', desc:'스킬 쿨다운 ×0.5', type:'buff',
-    apply: (s) => mulField(s.params, 'skillCooldownMultiplier', 0.5) },
-  'dm-free-coffee': { id:'dm-free-coffee', name:'무료 커피', desc:'층 큐 상한 +3', type:'buff',
-    apply: (s) => addField(s.params, 'floorCapacity', 3) },
-
-  // ─ Mixed ──────────────────────────────────────────
-  'dm-rush-rewards': { id:'dm-rush-rewards', name:'위기는 곧 기회', desc:'스폰 ×1.5, 보상으로 +30G', type:'mixed',
-    apply: (s) => {
-      s.gold += 30;
-      return mulField(s.params, 'spawnIntervalMultiplier', 0.66);
-    } },
-  'dm-marathon': { id:'dm-marathon', name:'마라톤 데이', desc:'스폰 ×0.7, 불만 ×0.8 (한산하지만 길게)', type:'mixed',
-    apply: (s) => {
-      const u1 = mulField(s.params, 'spawnIntervalMultiplier', 1.4);
-      const u2 = mulField(s.params, 'angerWaitingPerTick', 0.8);
-      return () => { u1(); u2(); };
-    } },
-  'dm-vip-protocol': { id:'dm-vip-protocol', name:'VIP 의전', desc:'엘베 속도 +20%, 정원 -1', type:'mixed',
-    apply: (s) => {
-      const u1 = mulField(s.params, 'globalSpeedMultiplier', 1.2);
-      const orig = s.building.elevators.map((e) => e.capacity);
-      for (const e of s.building.elevators) e.capacity = Math.max(1, e.capacity - 1);
-      return () => { u1(); for (let i = 0; i < s.building.elevators.length; i++) {
-        const o = orig[i]; if (o !== undefined) s.building.elevators[i]!.capacity = o; } };
-    } },
+    };
+  },
+  'spawn-global-mul': (s, p) => mulField(s.params, 'spawnIntervalMultiplier', p.factor),
+  'skill-cd-mul': (s, p) => mulField(s.params, 'skillCooldownMultiplier', p.factor),
+  'floor-capacity-add': (s, p) => addField(s.params, 'floorCapacity', p.delta),
+  'fire-drill': (s) => {
+    const idx = Math.floor(Math.random() * s.building.floors.length);
+    const floor = s.building.floors[idx];
+    if (!floor) return () => {};
+    for (let i = 0; i < 4; i++) {
+      const dest = (idx + 1 + Math.floor(Math.random() * (s.building.floors.length - 1))) % s.building.floors.length;
+      floor.queue.push({ id: s.nextPassengerId++, origin: floor.id, dest, spawnTick: s.tick, anger: 0, archetype: 'normal' });
+    }
+    return () => {};
+  },
+  'rush-rewards': (s, p) => {
+    s.gold += p.gold;
+    return mulField(s.params, 'spawnIntervalMultiplier', p.factor);
+  },
+  'marathon': (s, p) => {
+    const u1 = mulField(s.params, 'spawnIntervalMultiplier', p.spawnFactor);
+    const u2 = mulField(s.params, 'angerWaitingPerTick', p.angerFactor);
+    return () => { u1(); u2(); };
+  },
+  'vip-protocol': (s, p) => {
+    const u1 = mulField(s.params, 'globalSpeedMultiplier', p.speedFactor);
+    const orig = s.building.elevators.map((e) => e.capacity);
+    const min = p.capMin ?? 1;
+    for (const e of s.building.elevators) e.capacity = Math.max(min, e.capacity + p.capDelta);
+    return () => {
+      u1();
+      for (let i = 0; i < s.building.elevators.length; i++) {
+        const o = orig[i]; if (o !== undefined) s.building.elevators[i]!.capacity = o;
+      }
+    };
+  },
 };
+
+function build(): Record<string, ModifierEntry> {
+  const json = modifierData as Record<string, JsonModifier>;
+  const out: Record<string, ModifierEntry> = {};
+  for (const [id, spec] of Object.entries(json)) {
+    const effect = MODIFIER_EFFECTS[spec.effectId];
+    if (!effect) {
+      console.error(`[modifiers] unknown effectId="${spec.effectId}" for "${id}"`);
+      continue;
+    }
+    out[id] = {
+      id, name: spec.name, desc: spec.desc, type: spec.type,
+      apply: (s) => effect(s, spec.params ?? {}),
+    };
+  }
+  return out;
+}
+
+export const MODIFIERS: Record<string, ModifierEntry> = build();
+
+/** CMS effectId 드롭다운용 */
+export const MODIFIER_EFFECT_IDS: string[] = Object.keys(MODIFIER_EFFECTS);
 
 export function modifierById(id: string): ModifierEntry {
   const m = MODIFIERS[id]; if (!m) throw new Error(`unknown modifier: ${id}`); return m;

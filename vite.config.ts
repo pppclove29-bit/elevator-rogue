@@ -1,7 +1,9 @@
 import { resolve } from 'path';
 import { defineConfig } from 'vite';
+import { assetSavePlugin } from './vite-plugin-asset-save';
 
 export default defineConfig({
+  plugins: [assetSavePlugin()],
   // Electron 패키지에서 file:// 로 dist/index.html 로드 시 상대경로 필요.
   // 브라우저 배포에서도 무해.
   base: './',
@@ -19,6 +21,7 @@ export default defineConfig({
         design: resolve(__dirname, 'design.html'),
         sounds: resolve(__dirname, 'sounds.html'),
         sprites: resolve(__dirname, 'sprites.html'),
+        cms: resolve(__dirname, 'cms.html'),
       },
     },
   },

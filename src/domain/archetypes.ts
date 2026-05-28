@@ -1,4 +1,14 @@
+/**
+ * 승객 아키타입 메타데이터. 데이터는 data/archetypes.json 에 있음.
+ * CMS (/cms.html) 에서 편집 가능.
+ *
+ * 새 archetype 추가하려면:
+ *   1) data/archetypes.json 에 키 추가
+ *   2) PassengerArchetype union type 에 키 추가 (TypeScript)
+ *   3) 필요하면 스폰 로직(spawner.ts) 조건 추가
+ */
 import { Phase } from './phase';
+import archetypeData from '../../data/archetypes.json';
 
 export type PassengerArchetype =
   | 'normal' | 'vip' | 'elderly' | 'suit'
@@ -13,62 +23,53 @@ export interface ArchetypeSpec {
   color: number;
   goldMultiplier: number;
   angerMultiplier: number;
-  spaceCost: number;           // 정원 차지
-  loadTickBonus: number;       // 정차 시간 추가
-  /** 빠른 처리 보너스 (anger 0~30% 도달 전 처리 시 골드 배수) */
+  spaceCost: number;
+  loadTickBonus: number;
   fastBonus: number;
-  /** 페이즈별 스폰 가중치 (기본 1) */
   weightByPhase: Partial<Record<Phase, number>>;
-  /** 그룹 스폰 인원 (1 = 단일, N = 동시에 N명 같은 origin/dest) */
   groupSize: number;
 }
 
-export const ARCHETYPES: Record<PassengerArchetype, ArchetypeSpec> = {
-  normal:   { id:'normal',   name:'일반',         desc:'기본 손님',
-              color: 0xf5f5f5, goldMultiplier:1.0, angerMultiplier:1.0, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
-              weightByPhase: { morning:6, work:5, lunch:5, evening:6, night:3 } },
-  vip:      { id:'vip',      name:'VIP',          desc:'중요 인사. 빠르면 거액',
-              color: 0xffd700, goldMultiplier:1.5, angerMultiplier:2.0, spaceCost:1, loadTickBonus:0, fastBonus:3.0, groupSize:1,
-              weightByPhase: { morning:1, work:1, evening:1 } },
-  elderly:  { id:'elderly',  name:'노약자',       desc:'느린 승객. 정차 시간 +1, anger 관대',
-              color: 0xb08cff, goldMultiplier:1.0, angerMultiplier:0.7, spaceCost:1, loadTickBonus:1, fastBonus:1.0, groupSize:1,
-              weightByPhase: { morning:2, work:2, lunch:2, evening:2, night:2 } },
-  suit:     { id:'suit',     name:'비즈니스',     desc:'시간이 돈. 골드 ↑ anger ↑',
-              color: 0x4a90e2, goldMultiplier:1.5, angerMultiplier:1.3, spaceCost:1, loadTickBonus:0, fastBonus:1.5, groupSize:1,
-              weightByPhase: { morning:3, lunch:2, evening:3 } },
-  group:    { id:'group',    name:'단체',         desc:'3명 동시 등장. 같은 dest',
-              color: 0xe67e22, goldMultiplier:1.0, angerMultiplier:1.0, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:3,
-              weightByPhase: { lunch:2 } },
-  baggage:  { id:'baggage',  name:'짐꾼',         desc:'정원 2칸 차지, 골드 ×2',
-              color: 0xc0a000, goldMultiplier:2.0, angerMultiplier:1.0, spaceCost:2, loadTickBonus:1, fastBonus:1.0, groupSize:1,
-              weightByPhase: { morning:1, evening:1 } },
-  shady:    { id:'shady',    name:'의심 인물',    desc:'받으면 anger ×2, 골드 절반',
-              color: 0x6a3d3d, goldMultiplier:0.5, angerMultiplier:2.0, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
-              weightByPhase: { night:3 } },
-  tourist:  { id:'tourist',  name:'관광객',       desc:'골드 ×1.5',
-              color: 0x7ed957, goldMultiplier:1.5, angerMultiplier:1.0, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
-              weightByPhase: { lunch:1, evening:1 } },
-  staff:    { id:'staff',    name:'직원',         desc:'골드 0, anger ×0.5',
-              color: 0x4a4a55, goldMultiplier:0.0, angerMultiplier:0.5, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
-              weightByPhase: { work:3, night:1 } },
-  thief:    { id:'thief',    name:'도둑',         desc:'밤에만 1F에서 스폰. 도착 시 골드 강탈',
-              color: 0x111111, goldMultiplier:0, angerMultiplier:0.3, spaceCost:1, loadTickBonus:0, fastBonus:1.0, groupSize:1,
-              weightByPhase: { night:4 } },
+interface JsonArchetype {
+  name: string;
+  desc: string;
+  color: string;        // "#rrggbb"
+  goldMultiplier: number;
+  angerMultiplier: number;
+  spaceCost: number;
+  loadTickBonus: number;
+  fastBonus: number;
+  weightByPhase: Partial<Record<Phase, number>>;
+  groupSize: number;
+}
 
-  // 테마 특화 (병원/호텔/공항에서 가중치 ↑)
-  patient:  { id:'patient',  name:'환자',         desc:'느림(정차 +1). 매우 관대(anger ×0.4)',
-              color: 0xffe0e0, goldMultiplier:1.2, angerMultiplier:0.4, spaceCost:1, loadTickBonus:1, fastBonus:1.0, groupSize:1,
-              weightByPhase: { morning:1, work:2, evening:1 } },
-  medical:  { id:'medical',  name:'의료진',       desc:'빠른 처리 시 큰 보너스. 골드 ×1.3',
-              color: 0xffffff, goldMultiplier:1.3, angerMultiplier:0.8, spaceCost:1, loadTickBonus:0, fastBonus:2.0, groupSize:1,
-              weightByPhase: { morning:1, work:2, evening:1, night:1 } },
-  'hotel-guest': { id:'hotel-guest', name:'호텔 손님', desc:'캐리어 보유(정원 2칸). 골드 ×1.8',
-              color: 0xc0a86a, goldMultiplier:1.8, angerMultiplier:1.0, spaceCost:2, loadTickBonus:1, fastBonus:1.0, groupSize:1,
-              weightByPhase: { evening:2, night:3 } },
-  crew:     { id:'crew',     name:'승무원',        desc:'시간 엄수. 빠른 처리 보너스 큼, 그룹 2',
-              color: 0x4a90e2, goldMultiplier:1.4, angerMultiplier:1.5, spaceCost:1, loadTickBonus:0, fastBonus:2.5, groupSize:2,
-              weightByPhase: { morning:1, evening:1 } },
-};
+function hexToNumber(hex: string): number {
+  const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+  return parseInt(clean, 16);
+}
+
+function build(): Record<PassengerArchetype, ArchetypeSpec> {
+  const json = archetypeData as Record<string, JsonArchetype>;
+  const out: Record<string, ArchetypeSpec> = {};
+  for (const [id, spec] of Object.entries(json)) {
+    out[id] = {
+      id: id as PassengerArchetype,
+      name: spec.name,
+      desc: spec.desc,
+      color: hexToNumber(spec.color),
+      goldMultiplier: spec.goldMultiplier,
+      angerMultiplier: spec.angerMultiplier,
+      spaceCost: spec.spaceCost,
+      loadTickBonus: spec.loadTickBonus,
+      fastBonus: spec.fastBonus,
+      weightByPhase: spec.weightByPhase,
+      groupSize: spec.groupSize,
+    };
+  }
+  return out as Record<PassengerArchetype, ArchetypeSpec>;
+}
+
+export const ARCHETYPES: Record<PassengerArchetype, ArchetypeSpec> = build();
 
 /** 도둑 dest 도착 시 골드 감소량 */
 export const THIEF_GOLD_DAMAGE = 15;

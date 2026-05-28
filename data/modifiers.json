@@ -1,0 +1,24 @@
+{
+  "dm-traffic-jam-morning": { "name": "출근길 정체",   "desc": "출근 스폰 ×1.7 (간격 ×0.6)", "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "morning", "factor": 0.6 } },
+  "dm-lunch-rush":          { "name": "점심 광풍",     "desc": "점심 스폰 ×1.7",              "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "lunch",   "factor": 0.6 } },
+  "dm-evening-rush":        { "name": "퇴근 러시",     "desc": "퇴근 스폰 ×1.7",              "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "evening", "factor": 0.6 } },
+  "dm-bad-mood":            { "name": "짜증의 날",     "desc": "오늘 불만 누적 ×1.4",         "type": "debuff", "effectId": "anger-all-mul",   "params": { "factor": 1.4 } },
+  "dm-power-dip":           { "name": "정전 경고",     "desc": "오늘 엘베 속도 ×0.7",         "type": "debuff", "effectId": "speed-mul",       "params": { "factor": 0.7 } },
+  "dm-heavy-load":          { "name": "무거운 짐",     "desc": "정차 시간 +4 tick",           "type": "debuff", "effectId": "load-tick-add",   "params": { "delta": 4 } },
+  "dm-narrow-door":         { "name": "좁은 문",       "desc": "엘베 정원 -2 (최소 2)",       "type": "debuff", "effectId": "capacity-add",    "params": { "delta": -2, "min": 2 } },
+  "dm-restaurant-fest":     { "name": "식당가 축제",   "desc": "점심 식당 트래픽 폭증",       "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "lunch",   "factor": 0.5 } },
+  "dm-vip-day":             { "name": "VIP 방문",      "desc": "근무 스폰 ×1.5",              "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "work",    "factor": 0.66 } },
+  "dm-night-shift":         { "name": "야간 근무",     "desc": "야간 스폰 ×3.3",              "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "night",   "factor": 0.3 } },
+  "dm-fire-drill":          { "name": "화재 대피",     "desc": "시작 시 랜덤 층 큐 +4 (즉시)","type": "debuff", "effectId": "fire-drill",      "params": {} },
+
+  "dm-calm-day":            { "name": "명상의 날",     "desc": "오늘 불만 누적 ×0.7",         "type": "buff",   "effectId": "anger-all-mul",   "params": { "factor": 0.7 } },
+  "dm-smooth-ops":          { "name": "효율 운영",     "desc": "정차 시간 -2 tick",           "type": "buff",   "effectId": "load-tick-add",   "params": { "delta": -2 } },
+  "dm-quiet-day":           { "name": "한산한 하루",   "desc": "모든 페이즈 스폰 ×0.7",       "type": "buff",   "effectId": "spawn-global-mul","params": { "factor": 1.4 } },
+  "dm-fast-motors":         { "name": "신속 모터",     "desc": "엘베 속도 ×1.2",              "type": "buff",   "effectId": "speed-mul",       "params": { "factor": 1.2 } },
+  "dm-skill-prime":         { "name": "즉발 풀가동",   "desc": "스킬 쿨다운 ×0.5",            "type": "buff",   "effectId": "skill-cd-mul",    "params": { "factor": 0.5 } },
+  "dm-free-coffee":         { "name": "무료 커피",     "desc": "층 큐 상한 +3",               "type": "buff",   "effectId": "floor-capacity-add", "params": { "delta": 3 } },
+
+  "dm-rush-rewards":        { "name": "위기는 곧 기회","desc": "스폰 ×1.5, 보상으로 +30G",   "type": "mixed",  "effectId": "rush-rewards",   "params": { "factor": 0.66, "gold": 30 } },
+  "dm-marathon":            { "name": "마라톤 데이",   "desc": "스폰 ×0.7, 불만 ×0.8",        "type": "mixed",  "effectId": "marathon",       "params": { "spawnFactor": 1.4, "angerFactor": 0.8 } },
+  "dm-vip-protocol":        { "name": "VIP 의전",      "desc": "엘베 속도 +20%, 정원 -1",     "type": "mixed",  "effectId": "vip-protocol",   "params": { "speedFactor": 1.2, "capDelta": -1, "capMin": 1 } }
+}

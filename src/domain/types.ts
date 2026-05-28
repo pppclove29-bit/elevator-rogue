@@ -42,6 +42,8 @@ export interface Floor {
   hasToilet: boolean;
   /** 청결도 0~100 (hasToilet=true인 층만 의미) */
   cleanliness: number;
+  /** 오늘 이 층에 도착한(이용한) 손님 수 — day end 결산에 사용 */
+  dailyVisits: number;
 }
 
 export interface Building {
@@ -122,6 +124,8 @@ export interface SimState {
   skillTimers: Record<string, number>;
   policiesByElevator: Record<ElevatorId, ElevatorPolicy>;
   gold: number;
+  /** 직전 day end 정산 매출 (HUD/결산 표시용). 0 = 미정산 또는 초기값. */
+  lastDayPayout?: number;
   repairKits: number;
   activeModifiers: ActiveModifier[];
   ownedRelics: string[];
@@ -140,16 +144,8 @@ export const SHOP_OFFER_SIZE = 4;
 export const SHOP_REROLL_BASE_COST = 8;
 export const SHOP_REROLL_COST_GROWTH = 4;  // 리롤할 때마다 +N G
 
-export const GOLD_PER_ROLE: Record<FloorRole, number> = {
-  lobby: 1,
-  office: 2,
-  restaurant: 3,
-  rooftop: 5,
-  basement: 1,
-  gym: 2,
-  mall: 4,
-  hospital: 3,
-  penthouse: 8,
-  parking: 1,
-  cleanroom: 4,
-};
+// 층 역할별 매출 단가 — data/floors.json 의 goldPerVisit 에서 로드.
+import floorData from '../../data/floors.json';
+export const GOLD_PER_ROLE: Record<FloorRole, number> = Object.fromEntries(
+  Object.entries(floorData as Record<string, { goldPerVisit: number }>).map(([role, spec]) => [role, spec.goldPerVisit]),
+) as Record<FloorRole, number>;

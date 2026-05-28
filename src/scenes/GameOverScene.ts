@@ -139,19 +139,10 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5, 0);
     }
 
-    // 버튼
+    // 버튼 — 재시도는 그냥 새 런으로 동일하므로 메뉴 한 개로 통합 (테마 선택 거치도록).
     const btnY = GAME_HEIGHT - 70;
-    new Button(this, GAME_WIDTH / 2 - 130, btnY, 200, 44, t('gameover.retry'), () => this.restart(),
+    new Button(this, GAME_WIDTH / 2, btnY, 240, 44, t('gameover.menu'), () => this.toTitle(),
       { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
-    new Button(this, GAME_WIDTH / 2 + 130, btnY, 200, 44, t('gameover.menu'), () => this.toTitle(),
-      { fontSize: 14 });
-
-    this.input.keyboard?.on('keydown-R', () => this.restart());
-  }
-
-  private restart(): void {
-    this.gs.restart();
-    this.scene.stop();
   }
 
   private toTitle(): void {

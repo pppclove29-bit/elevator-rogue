@@ -6,7 +6,7 @@ export function createBuilding(floorCount: number, elevatorCount: number): Build
     const role = defaultRoleFor(i, floorCount);
     // 화장실: 로비/오피스/식당에 자동 부여 (옥상/지하는 X)
     const hasToilet = role === 'lobby' || role === 'office' || role === 'restaurant';
-    floors.push({ id: i, role, queue: [], hasToilet, cleanliness: 100 });
+    floors.push({ id: i, role, queue: [], hasToilet, cleanliness: 100, dailyVisits: 0 });
   }
 
   const elevators: Elevator[] = [];
@@ -43,9 +43,9 @@ export function addFloor(building: Building, role?: FloorRole): void {
   const last = building.floors[lastIdx];
   const hasToilet = pickedRole === 'office' || pickedRole === 'restaurant' || pickedRole === 'mall' || pickedRole === 'hospital' || pickedRole === 'gym';
   if (last && last.role === 'rooftop') {
-    building.floors.splice(lastIdx, 0, { id: lastIdx, role: pickedRole, queue: [], hasToilet, cleanliness: 100 });
+    building.floors.splice(lastIdx, 0, { id: lastIdx, role: pickedRole, queue: [], hasToilet, cleanliness: 100, dailyVisits: 0 });
   } else {
-    building.floors.push({ id: building.floors.length, role: pickedRole, queue: [], hasToilet, cleanliness: 100 });
+    building.floors.push({ id: building.floors.length, role: pickedRole, queue: [], hasToilet, cleanliness: 100, dailyVisits: 0 });
   }
   for (let i = 0; i < building.floors.length; i++) building.floors[i]!.id = i;
 }

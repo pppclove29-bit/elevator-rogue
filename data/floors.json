@@ -1,0 +1,13 @@
+{
+  "lobby":      { "nameKo": "로비",       "shortEn": "LB", "color": "#6ec6ff", "goldPerVisit": 1, "desc": "입구. 모든 손님이 처음 들어오는 곳" },
+  "office":     { "nameKo": "사무실",     "shortEn": "OF", "color": "#b0b0c0", "goldPerVisit": 2, "desc": "직장인이 출근/퇴근" },
+  "restaurant": { "nameKo": "식당",       "shortEn": "RT", "color": "#f5c542", "goldPerVisit": 3, "desc": "점심 시간에 손님이 몰림" },
+  "rooftop":    { "nameKo": "옥상",       "shortEn": "RF", "color": "#7ed957", "goldPerVisit": 5, "desc": "VIP / 헬리포트 도착지" },
+  "basement":   { "nameKo": "지하",       "shortEn": "BS", "color": "#8a6cff", "goldPerVisit": 1, "desc": "지하주차 / 지하철 연결" },
+  "gym":        { "nameKo": "헬스장",     "shortEn": "GY", "color": "#ff6a6a", "goldPerVisit": 2, "desc": "운동하러 오는 손님" },
+  "mall":       { "nameKo": "상가",       "shortEn": "ML", "color": "#ff9ed8", "goldPerVisit": 4, "desc": "쇼핑객 (가방 손님)" },
+  "hospital":   { "nameKo": "병원",       "shortEn": "HS", "color": "#ffffff", "goldPerVisit": 3, "desc": "환자 / 의료진" },
+  "penthouse":  { "nameKo": "펜트하우스", "shortEn": "PH", "color": "#ffd700", "goldPerVisit": 8, "desc": "최상위 VIP" },
+  "parking":    { "nameKo": "주차장",     "shortEn": "PK", "color": "#8a6cff", "goldPerVisit": 1, "desc": "운전자 (차에서 내려 입장)" },
+  "cleanroom":  { "nameKo": "클린룸",     "shortEn": "CR", "color": "#6affff", "goldPerVisit": 4, "desc": "연구원 (느림 + 안 화남)" }
+}

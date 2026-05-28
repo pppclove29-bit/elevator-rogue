@@ -44,7 +44,9 @@ export class GameScene extends Phaser.Scene {
   private fx!: EventFx;
   private prevFxEventId: string | null = null;
   private prevPhase: Phase | null = null;
-  private tutorial: { pause: boolean; anger: boolean; shop: boolean; end: boolean } = { pause: false, anger: false, shop: false, end: false };
+  private tutorial: { pause: boolean; anger: boolean; shop: boolean; end: boolean; dirty: boolean; phWork: boolean; phLunch: boolean; phEvening: boolean; phNight: boolean } = { pause: false, anger: false, shop: false, end: false, dirty: false, phWork: false, phLunch: false, phEvening: false, phNight: false };
+  /** 인터랙티브 튜토리얼 — 사용자의 다음 액션을 기다리는 중. null = 기다림 없음. */
+  tutorialAwaiting: 'pause' | 'manage' | null = null;
   private accumulator = 0;
   paused = false;
   timeScale = 1;
@@ -83,13 +85,14 @@ export class GameScene extends Phaser.Scene {
 
     const margin = 80;
     const usableHeight = GAME_HEIGHT - margin * 2;
-    const width = 560;
+    // 빌딩을 넓혀서 큐 줄이 길어져도 보이고, 엘베/승객 확대 사이즈가 들어갈 공간 확보.
+    const width = 900;
     const layout = {
       x: Math.floor((GAME_WIDTH - width) / 2),
       y: margin,
       width,
       totalHeight: usableHeight,
-      shaftSpacing: 72,
+      shaftSpacing: 110,
     };
     this.view = new BuildingView(this, layout);
     this.sprites = new PassengerSprites(this, layout);
@@ -158,12 +161,52 @@ export class GameScene extends Phaser.Scene {
     if (!this.isDayOne()) return;
     if (!this.canTutorialFire()) return;
 
-    // 1) tutorial-pause: morning → work 첫 전환 시
     const info = phaseAtTick(this.state.tick);
+    // 1) tutorial-pause: morning → work 전환 시 (정책 사용법). 이후 work 페이즈 안내.
     if (this.prevPhase !== null && this.prevPhase === 'morning' && info.phase === 'work' && !this.tutorial.pause) {
       this.tutorial.pause = true;
       this.saveTutorialFlags();
-      this.playDialog('tutorial-pause');
+      this.playDialog('tutorial-pause', () => {
+        this.tutorialAwaiting = 'pause';
+      });
+      this.prevPhase = info.phase;
+      return;
+    }
+    // 1.5) work 진입 후 한 박자 — 출근 흐름 설명. (tutorial-pause 가 인터랙티브 대기 끝나면 자연스럽게 work 안내)
+    if (this.prevPhase !== null && this.prevPhase === 'morning' && info.phase === 'work' && !this.tutorial.phWork) {
+      this.tutorial.phWork = true;
+      this.saveTutorialFlags();
+      // 이미 pause 트리거가 있으므로 phWork는 같이 안 띄움 (혼란 방지). work 끝나면 자연스럽게 lunch 으로.
+    }
+    // 2) lunch 진입 시 — 청결도 + 점심 흐름 동시 안내
+    if (this.prevPhase !== null && this.prevPhase === 'work' && info.phase === 'lunch') {
+      if (!this.tutorial.phLunch) {
+        this.tutorial.phLunch = true;
+        this.saveTutorialFlags();
+        this.playDialog('tutorial-phase-lunch', () => {
+          if (!this.tutorial.dirty) {
+            this.tutorial.dirty = true;
+            this.saveTutorialFlags();
+            this.playDialog('tutorial-dirty');
+          }
+        });
+        this.prevPhase = info.phase;
+        return;
+      }
+    }
+    // 3) evening 진입 시 — 퇴근 흐름 안내
+    if (this.prevPhase !== null && this.prevPhase === 'lunch' && info.phase === 'evening' && !this.tutorial.phEvening) {
+      this.tutorial.phEvening = true;
+      this.saveTutorialFlags();
+      this.playDialog('tutorial-phase-evening');
+      this.prevPhase = info.phase;
+      return;
+    }
+    // 4) night 진입 시 — 야간 흐름 안내
+    if (this.prevPhase !== null && this.prevPhase === 'evening' && info.phase === 'night' && !this.tutorial.phNight) {
+      this.tutorial.phNight = true;
+      this.saveTutorialFlags();
+      this.playDialog('tutorial-phase-night');
       this.prevPhase = info.phase;
       return;
     }
@@ -180,13 +223,16 @@ export class GameScene extends Phaser.Scene {
     this.playDialog('tutorial-anger');
   }
 
-  /** Shop 모달 launch 직전 — day 1 한정. */
+  /** Shop 모달 launch 직전 — day 1 한정. 격려 → 상점 안내 순차. */
   private maybeTriggerShopTutorial(onAfter: () => void): boolean {
     if (this.state.dayCompleted !== 1) return false;
     if (this.tutorial.shop) return false;
     this.tutorial.shop = true;
     this.saveTutorialFlags();
-    this.playDialog('tutorial-shop', onAfter);
+    // 1) 하루 마무리 격려 → 2) 상점 사용법
+    this.playDialog('tutorial-day1-praise', () => {
+      this.playDialog('tutorial-shop', onAfter);
+    });
     return true;
   }
 
@@ -202,15 +248,44 @@ export class GameScene extends Phaser.Scene {
 
   setSpeed(scale: number): void { this.timeScale = scale; }
 
+  /** 1 → 2 → 4 → 8 → 1 사이클 (HUD 단일 배속 버튼). 일시정지 중에는 무시. */
+  cycleSpeed(): void {
+    if (this.paused || this.state.gameOver) return;
+    const speeds = [1, 2, 4, 8] as const;
+    const i = speeds.indexOf(this.timeScale as 1 | 2 | 4 | 8);
+    this.timeScale = speeds[(i + 1) % speeds.length] as number;
+  }
+
   rngHandle(): Rng { return this.rng; }
 
+  /** 게임 일시정지만 토글. UI(정책 편집기) 안 엶. */
   togglePause(): void {
     if (this.state.gameOver) return;
     this.paused = !this.paused;
-    if (this.paused) {
-      if (!this.scene.isActive('RuleEditor')) this.scene.launch('RuleEditor');
+    // 인터랙티브 튜토리얼: pause 액션 완료 → tutorial-manage 다이얼로그 → awaiting 'manage'
+    if (this.paused && this.tutorialAwaiting === 'pause') {
+      this.tutorialAwaiting = null;
+      this.playDialog('tutorial-manage', () => {
+        this.tutorialAwaiting = 'manage';
+      });
+    }
+  }
+
+  /** 엘베 관리 (정책 편집기) 토글 — 열리면 자동 일시정지, 닫히면 재개. */
+  toggleManage(): void {
+    if (this.state.gameOver) return;
+    const opening = !this.scene.isActive('RuleEditor');
+    if (this.scene.isActive('RuleEditor')) {
+      this.scene.stop('RuleEditor');
+      this.paused = false;
     } else {
-      if (this.scene.isActive('RuleEditor')) this.scene.stop('RuleEditor');
+      this.paused = true;
+      this.scene.launch('RuleEditor');
+    }
+    // 인터랙티브 튜토리얼: 열 때만 카운트 (닫을 때는 X)
+    if (opening && this.tutorialAwaiting === 'manage') {
+      this.tutorialAwaiting = null;
+      this.playDialog('tutorial-policy');
     }
   }
 
@@ -483,6 +558,24 @@ export class GameScene extends Phaser.Scene {
     // 저장은 깨끗한 상태 (activeModifiers/eventCleanups 비어있음)
   }
 
+  /** 정책 편집기에서 호출 — 현재 상태 저장하고 타이틀로. 일일 챌린지/게임오버는 저장 안 함. */
+  saveAndExitToTitle(): void {
+    if (this.state.gameOver) return;
+    if (this.dailySeed !== null) {
+      // 일일 챌린지는 한 번에 끝까지 — 저장 없이 그냥 타이틀로
+    } else {
+      this.saveNow();
+    }
+    if (this.scene.isActive('RuleEditor')) this.scene.stop('RuleEditor');
+    if (this.scene.isActive('HUD')) this.scene.stop('HUD');
+    if (this.scene.isActive('Shop')) this.scene.stop('Shop');
+    if (this.scene.isActive('Modifier')) this.scene.stop('Modifier');
+    if (this.scene.isActive('Relic')) this.scene.stop('Relic');
+    if (this.scene.isActive('GameOver')) this.scene.stop('GameOver');
+    if (this.scene.isActive('Dialog')) this.scene.stop('Dialog');
+    this.scene.start('Title');
+  }
+
   /** 매 day end 시점에 호출. cleanups 다 비운 후 직렬화. */
   private saveNow(): void {
     const data: SaveData = {
@@ -521,21 +614,22 @@ export class GameScene extends Phaser.Scene {
     this.eventCleanups = remaining;
   }
 
-  /** 상단 중앙에서 위로 부유하면서 페이드아웃 되는 텍스트. */
+  /** 골드 HUD(좌상단) 위에 떠오르며 페이드아웃 — 골드 변화를 시각적으로 알림. */
   private spawnFloatingText(text: string, color: string): void {
-    const x = GAME_WIDTH / 2 + (Math.random() - 0.5) * 80;
-    const y = 100;
+    // HUD 골드는 x≈138, y≈16 위치. 그 바로 위에서 시작해 위로 떠오름.
+    const x = 150 + (Math.random() - 0.5) * 20;
+    const y = 12;
     const txt = this.add.text(x, y, text, {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
-      fontSize: '22px',
+      fontSize: '18px',
       color,
       fontStyle: 'bold',
       stroke: '#000000',
       strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(1000);
+    }).setOrigin(0.5, 1).setDepth(1000);
     this.tweens.add({
       targets: txt,
-      y: y - 50,
+      y: y - 24,
       alpha: 0,
       duration: 900,
       ease: 'Cubic.easeOut',
@@ -556,18 +650,28 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** 모달 (Dialog/RuleEditor/Shop/Modifier/Relic/GameOver) 활성시 게임 단축키 차단. */
+  private modalActive(): boolean {
+    return this.scene.isActive('Dialog')
+      || this.scene.isActive('RuleEditor')
+      || this.scene.isActive('Shop')
+      || this.scene.isActive('Modifier')
+      || this.scene.isActive('Relic')
+      || this.scene.isActive('GameOver');
+  }
+
   private bindInput(): void {
     const kb = this.input.keyboard;
     if (!kb) return;
-    kb.on('keydown-SPACE', () => this.togglePause());
-    kb.on('keydown-ONE', () => this.setSpeed(1));
-    kb.on('keydown-TWO', () => this.setSpeed(2));
-    kb.on('keydown-FOUR', () => this.setSpeed(4));
-    kb.on('keydown-EIGHT', () => this.setSpeed(8));
-    kb.on('keydown-R', () => this.restart());
-    kb.on('keydown-Q', () => this.useSkillSlot(0));
-    kb.on('keydown-W', () => this.useSkillSlot(1));
-    kb.on('keydown-E', () => this.useSkillSlot(2));
+    kb.on('keydown-SPACE', () => { if (!this.modalActive()) this.togglePause(); });
+    kb.on('keydown-ONE', () => { if (!this.modalActive()) this.setSpeed(1); });
+    kb.on('keydown-TWO', () => { if (!this.modalActive()) this.setSpeed(2); });
+    kb.on('keydown-FOUR', () => { if (!this.modalActive()) this.setSpeed(4); });
+    kb.on('keydown-EIGHT', () => { if (!this.modalActive()) this.setSpeed(8); });
+    kb.on('keydown-R', () => { if (!this.modalActive()) this.restart(); });
+    kb.on('keydown-Q', () => { if (!this.modalActive()) this.useSkillSlot(0); });
+    kb.on('keydown-W', () => { if (!this.modalActive()) this.useSkillSlot(1); });
+    kb.on('keydown-E', () => { if (!this.modalActive()) this.useSkillSlot(2); });
 
     // ── 게임패드 매핑 (Xbox 컨벤션) ──
     //   A=skill1, B=skill2, X=skill3, Y=restart
@@ -617,7 +721,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
     this.view.draw(this.state);
-    this.sprites.update(this.state, delta);
+    this.sprites.update(this.state, delta, this.timeScale);
     this.updateEventFx(delta);
   }
 

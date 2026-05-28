@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
-import { COLORS } from '../config';
+import { COLORS, FONT } from '../config';
 import { spaceUsed } from '../domain/archetypes';
-import { ROLE_COLOR, ROLE_SHORT } from '../domain/spawner';
+import { ROLE_COLOR, ROLE_KO } from '../domain/spawner';
 import { SimState } from '../domain/types';
 import { hasSprite } from './sprites';
 
@@ -18,8 +18,6 @@ export interface BuildingViewLayout {
 const DOOR_AREA_W = 28;
 /** 우측 외부 계단/에스컬레이터 영역 */
 const STAIR_AREA_W = 56;
-
-const FONT = '"DotGothic16", "Press Start 2P", monospace';
 
 export class BuildingView {
   private g: Phaser.GameObjects.Graphics;
@@ -81,11 +79,11 @@ export class BuildingView {
       this.g.lineBetween(x, ly, x + width, ly);
     }
 
-    // 엘베 샤프트
+    // 엘베 샤프트 (cab 폭 70 기준 중심에 라인)
     for (let i = 0; i < elevators.length; i++) {
       const sx = shaftXStart + i * shaftSpacing;
       this.g.lineStyle(1, 0x222230, 1);
-      this.g.lineBetween(sx + 18, y, sx + 18, y + totalHeight);
+      this.g.lineBetween(sx + 35, y, sx + 35, y + totalHeight);
     }
 
     // ── 좌측 문 영역 ──
@@ -189,6 +187,9 @@ export class BuildingView {
       const ey = y + totalHeight - e.y * floorHeight - floorHeight / 2;
       const isBroken = e.state.kind === 'broken';
 
+      // 엘베 cab — 폭 70, 높이는 floorHeight 의 ~80% (최대 84) 로 캡. 너무 길쭉한 직사각형 방지.
+      const cabW = 70;
+      const cabH = Math.min(floorHeight - 12, 84);
       if (cabSprite) {
         let img = this.elevatorImages[e.id] ?? null;
         if (!img) {
@@ -197,34 +198,35 @@ export class BuildingView {
         }
         const key = isBroken && brokenSprite ? 'elevator-cab-broken' : 'elevator-cab';
         img.setTexture(key);
-        img.setPosition(sx + 18, ey);
-        img.setDisplaySize(36, floorHeight - 8);
+        img.setPosition(sx + cabW / 2, ey);
+        img.setDisplaySize(cabW, cabH);
         img.setVisible(true);
         img.setTint(isBroken && !brokenSprite ? 0xff7777 : 0xffffff);
       } else {
         if (this.elevatorImages[e.id]) this.elevatorImages[e.id]!.setVisible(false);
         // 픽셀 엘베 박스 + 디테일 (도형 fallback)
         this.g.fillStyle(isBroken ? 0x4a4a55 : COLORS.elevator, 1);
-        this.g.fillRect(sx, ey - floorHeight / 2 + 4, 36, floorHeight - 8);
+        this.g.fillRect(sx, ey - cabH / 2, cabW, cabH);
         this.g.fillStyle(0x000000, 0.25);
-        this.g.fillRect(sx + 2, ey - floorHeight / 2 + 6, 32, 4);
+        this.g.fillRect(sx + 3, ey - cabH / 2 + 3, cabW - 6, 5);
         this.g.lineStyle(1, 0x000000, 0.4);
-        this.g.lineBetween(sx + 18, ey - floorHeight / 2 + 4, sx + 18, ey + floorHeight / 2 - 4);
+        this.g.lineBetween(sx + cabW / 2, ey - cabH / 2, sx + cabW / 2, ey + cabH / 2);
         if (isBroken) {
           this.g.lineStyle(2, 0xe74c3c, 1);
-          this.g.strokeRect(sx - 1, ey - floorHeight / 2 + 3, 38, floorHeight - 6);
+          this.g.strokeRect(sx - 1, ey - cabH / 2 - 1, cabW + 2, cabH + 2);
         }
       }
 
       const used = spaceUsed(e.passengers);
       const label = this.elevatorLabels[i]!;
-      label.setPosition(sx + 18, y - 16);
+      label.setPosition(sx + 35, y - 16);
       label.setText(isBroken ? `E${e.id + 1} BROKEN` : `E${e.id + 1}  ${used}/${e.capacity}`);
       label.setColor(isBroken ? '#e74c3c' : (used >= e.capacity ? '#f5c542' : COLORS.text));
       label.setVisible(true);
     }
 
-    this.statText.setText(`처리 ${state.servedCount}  불만 처리 ${state.angryServedCount}`);
+    // statText 는 HUD 버튼(좌상단)과 겹쳐서 숨김. 처리/불만처리 카운트는 게임오버 결산에서 확인.
+    this.statText.setVisible(false);
   }
 
   private ensureLabels(state: SimState): void {
@@ -265,15 +267,37 @@ export class BuildingView {
         fl.setPosition(x + 8, fy);
       }
       const roleColorHex = '#' + ROLE_COLOR[floor.role].toString(16).padStart(6, '0');
-      let label = `${i + 1}F ${ROLE_SHORT[floor.role]}`;
+      let label = `${i + 1}층 ${ROLE_KO[floor.role]}`;
       if (floor.hasToilet) {
         const c = Math.round(floor.cleanliness);
         const dirty = c < 30;
-        label += dirty ? ` 🚻!${c}` : ` 🚻${c}`;
+        label += dirty ? `  화장실 ${c}% (더러움!)` : `  화장실 ${c}%`;
       }
       fl.setText(label);
       fl.setColor(floor.hasToilet && floor.cleanliness < 30 ? '#e74c3c' : roleColorHex);
       fl.setVisible(true);
+
+      // ── 청결도 게이지 바 (화장실 있는 층만) ──
+      if (floor.hasToilet) {
+        const labelW = fl.width;
+        const barX = fl.x + labelW + 8;
+        const barY = fy - 3;
+        const barW = 60;
+        const barH = 6;
+        // 배경
+        this.g.fillStyle(0x14141c, 0.9);
+        this.g.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
+        // 채움 — 청결도 비율로 색 단계 (높을수록 청정)
+        const ratio = Math.max(0, Math.min(1, floor.cleanliness / 100));
+        const gaugeColor = ratio < 0.3 ? 0xe74c3c
+          : ratio < 0.6 ? 0xf5c542
+          : 0x7ed957;
+        this.g.fillStyle(gaugeColor, 1);
+        this.g.fillRect(barX, barY, barW * ratio, barH);
+        // 더러움 임계 표시선 (30%)
+        this.g.lineStyle(1, 0xffffff, 0.4);
+        this.g.lineBetween(barX + barW * 0.3, barY - 1, barX + barW * 0.3, barY + barH + 1);
+      }
     }
     for (let i = floors.length; i < this.floorLabels.length; i++) {
       this.floorLabels[i]!.setVisible(false);

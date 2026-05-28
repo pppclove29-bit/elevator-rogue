@@ -30,17 +30,30 @@ interface InitData {
   onComplete?: () => void;
 }
 
+interface PortraitSlot {
+  image: Phaser.GameObjects.Image | null;
+  placeholder: Phaser.GameObjects.Container;
+  speakerId: CharacterId | null;
+  side: 'left' | 'right';
+}
+
+/** 화자별 슬롯 매핑 — player는 우측, 그 외(mentor/owner)는 좌측. */
+function sideFor(speaker: CharacterId): 'left' | 'right' | null {
+  if (speaker === 'narrator') return null;
+  if (speaker === 'player') return 'right';
+  return 'left';
+}
+
 export class DialogScene extends Phaser.Scene {
   private lines: DialogLine[] = [];
   private lineIdx = 0;
   private onComplete?: () => void;
 
   private bg!: Phaser.GameObjects.Rectangle;
-  private portraitImage: Phaser.GameObjects.Image | null = null;
-  private portraitPlaceholder!: Phaser.GameObjects.Container;
+  private leftSlot!: PortraitSlot;
+  private rightSlot!: PortraitSlot;
   private nameBox!: Phaser.GameObjects.Rectangle;
   private nameText!: Phaser.GameObjects.Text;
-  // dialogBox는 생성만 하고 별도 갱신 안 함 — 변수 보관 안 함
 
   private dialogText!: Phaser.GameObjects.Text;
   private continueHint!: Phaser.GameObjects.Text;
@@ -61,15 +74,11 @@ export class DialogScene extends Phaser.Scene {
     this.bg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7)
       .setInteractive({ useHandCursor: true });
 
-    // 좌측 portrait area
-    const px = 180, py = GAME_HEIGHT / 2 - 20;
-    const pw = 256, ph = 384;
-    this.portraitPlaceholder = this.add.container(px, py);
-    const phBg = this.add.rectangle(0, 0, pw, ph, 0x4a4a55, 1).setStrokeStyle(2, 0x5a5a68);
-    const phInitial = this.add.text(0, 0, '', {
-      fontFamily: FONT, fontSize: '120px', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5).setName('initial');
-    this.portraitPlaceholder.add([phBg, phInitial]);
+    // 좌/우 portrait 슬롯. NPC(mentor/owner)는 좌, player는 우.
+    const py = GAME_HEIGHT / 2 - 40;
+    const pw = 220, ph = 330;
+    this.leftSlot = this.createPortraitSlot(220, py, pw, ph, 'left');
+    this.rightSlot = this.createPortraitSlot(GAME_WIDTH - 220, py, pw, ph, 'right');
 
     // 하단 다이얼로그 박스
     const boxW = GAME_WIDTH - 80;
@@ -120,7 +129,7 @@ export class DialogScene extends Phaser.Scene {
     if (isNarrator) {
       this.nameBox.setVisible(false);
       this.nameText.setVisible(false);
-      this.hidePortrait();
+      this.dimPortraits();
     } else {
       this.nameBox.setVisible(true);
       this.nameText.setVisible(true);
@@ -149,34 +158,79 @@ export class DialogScene extends Phaser.Scene {
     });
   }
 
+  private createPortraitSlot(cx: number, cy: number, w: number, h: number, side: 'left' | 'right'): PortraitSlot {
+    const placeholder = this.add.container(cx, cy);
+    const bg = this.add.rectangle(0, 0, w, h, 0x4a4a55, 1).setStrokeStyle(2, 0x5a5a68);
+    const initial = this.add.text(0, 0, '', {
+      fontFamily: FONT, fontSize: '96px', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5).setName('initial');
+    placeholder.add([bg, initial]);
+    placeholder.setVisible(false);
+    return { image: null, placeholder, speakerId: null, side };
+  }
+
   private showPortrait(line: DialogLine): void {
     const character = CHARACTERS[line.speaker as CharacterId];
     const portraitKey = line.portrait && character.portraits?.[line.portrait]
       ? character.portraits[line.portrait]
       : character.defaultPortrait;
+    const side = sideFor(line.speaker);
+    if (side === null) return;
+    const slot = side === 'right' ? this.rightSlot : this.leftSlot;
+    const other = side === 'right' ? this.leftSlot : this.rightSlot;
+
+    // 현재 슬롯에 화자 그림 표시 (밝게)
+    this.renderSlot(slot, character, portraitKey, 1.0);
+    slot.speakerId = line.speaker;
+
+    // 반대편 슬롯: 이미 채워져 있으면 어둡게 유지, 비어있으면 그냥 숨김
+    if (other.speakerId) {
+      this.dimSlot(other, 0.45);
+    } else {
+      other.placeholder.setVisible(false);
+      if (other.image) other.image.setVisible(false);
+    }
+  }
+
+  private renderSlot(slot: PortraitSlot, character: typeof CHARACTERS[CharacterId], portraitKey: string, alpha: number): void {
+    const cx = slot.side === 'left' ? 220 : GAME_WIDTH - 220;
+    const cy = GAME_HEIGHT / 2 - 40;
+    const w = 220, h = 330;
 
     if (portraitKey && hasSprite(this, portraitKey)) {
-      this.portraitPlaceholder.setVisible(false);
-      if (this.portraitImage) {
-        this.portraitImage.setTexture(portraitKey);
-      } else {
-        this.portraitImage = this.add.image(180, GAME_HEIGHT / 2 - 20, portraitKey);
+      slot.placeholder.setVisible(false);
+      if (!slot.image) {
+        slot.image = this.add.image(cx, cy, portraitKey);
       }
-      this.portraitImage.setVisible(true);
-      this.portraitImage.setDisplaySize(256, 384);
+      slot.image.setTexture(portraitKey);
+      slot.image.setPosition(cx, cy);
+      slot.image.setDisplaySize(w, h);
+      slot.image.setVisible(true);
+      slot.image.setAlpha(alpha);
+      slot.image.setTint(alpha < 1 ? 0x808080 : 0xffffff);
     } else {
-      if (this.portraitImage) this.portraitImage.setVisible(false);
-      this.portraitPlaceholder.setVisible(true);
-      const bg = this.portraitPlaceholder.list[0] as Phaser.GameObjects.Rectangle;
-      const initial = this.portraitPlaceholder.getByName('initial') as Phaser.GameObjects.Text;
+      if (slot.image) slot.image.setVisible(false);
+      slot.placeholder.setVisible(true);
+      slot.placeholder.setAlpha(alpha);
+      const bg = slot.placeholder.list[0] as Phaser.GameObjects.Rectangle;
+      const initial = slot.placeholder.getByName('initial') as Phaser.GameObjects.Text;
       bg.setFillStyle(character.fallbackColor, 1);
       initial.setText(character.initial);
     }
   }
 
-  private hidePortrait(): void {
-    if (this.portraitImage) this.portraitImage.setVisible(false);
-    this.portraitPlaceholder.setVisible(false);
+  private dimSlot(slot: PortraitSlot, alpha: number): void {
+    if (slot.image && slot.image.visible) {
+      slot.image.setAlpha(alpha);
+      slot.image.setTint(0x808080);
+    } else if (slot.placeholder.visible) {
+      slot.placeholder.setAlpha(alpha);
+    }
+  }
+
+  private dimPortraits(): void {
+    this.dimSlot(this.leftSlot, 0.35);
+    this.dimSlot(this.rightSlot, 0.35);
   }
 
   private advance(): void {

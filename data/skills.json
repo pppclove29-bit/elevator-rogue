@@ -1,0 +1,30 @@
+{
+  "skill-anger-relief": {
+    "name": "서비스 회복",
+    "desc": "모든 승객의 불만을 50% 감소",
+    "cooldownTicks": 1200,
+    "cost": 80,
+    "effectId": "anger-relief"
+  },
+  "skill-warp-lobby": {
+    "name": "전원 1F 집결",
+    "desc": "모든 엘리베이터를 즉시 1F(로비)로 이동 명령",
+    "cooldownTicks": 1800,
+    "cost": 70,
+    "effectId": "warp-lobby"
+  },
+  "skill-clear-largest": {
+    "name": "비상 처리",
+    "desc": "가장 큰 대기열의 승객을 즉시 모두 도착 처리",
+    "cooldownTicks": 2400,
+    "cost": 100,
+    "effectId": "clear-largest"
+  },
+  "skill-slow-spawn": {
+    "name": "한산한 시간",
+    "desc": "20초간 승객 스폰 간격 ×2",
+    "cooldownTicks": 1800,
+    "cost": 60,
+    "effectId": "slow-spawn"
+  }
+}

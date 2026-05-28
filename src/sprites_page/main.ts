@@ -59,18 +59,41 @@ function stat(label: string, value: string): HTMLElement {
 async function handleFiles(files: FileList | File[]): Promise<void> {
   const rejected: string[] = [];
   const accepted: string[] = [];
+  const diskFailed: string[] = [];
   for (const file of Array.from(files)) {
     const base = file.name.replace(/\.(png|jpg|jpeg|webp)$/i, '');
     if (!SPRITE_KEY_SET.has(base)) { rejected.push(file.name); continue; }
-    await saveAsset(`sprites/${base}`, file);
+    // 1) public/sprites/ 디스크에 저장 시도 (dev 서버 endpoint 경유)
+    const diskOk = await uploadToDisk('sprite', base, file);
+    // 2) 디스크 실패 시에만 IndexedDB fallback (배포 빌드 등)
+    if (!diskOk) {
+      diskFailed.push(base);
+      await saveAsset(`sprites/${base}`, file);
+    }
     accepted.push(base);
   }
   if (rejected.length > 0) {
     alert(`인식 못한 파일 (이름이 <key>.png 형식이어야 함):\n${rejected.join('\n')}\n\n허용된 key 목록은 표 참고.`);
   }
+  if (diskFailed.length > 0) {
+    console.warn('[sprites] 디스크 저장 실패, IndexedDB 로 fallback:', diskFailed);
+  }
   if (accepted.length > 0) {
     await refreshStatuses();
     render();
+  }
+}
+
+/** dev 서버 endpoint 로 파일 업로드 → public/sprites/<key>.png 에 저장. 성공 시 true. */
+async function uploadToDisk(type: 'sprite' | 'sound', key: string, file: File): Promise<boolean> {
+  try {
+    const res = await fetch(`/_api/save-asset?type=${type}&key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      body: file,
+    });
+    return res.ok;
+  } catch {
+    return false;
   }
 }
 

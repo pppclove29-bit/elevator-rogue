@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { ElevatorId, ElevatorPolicy, FloorRole, PolicyParity, PolicyPickup } from '../domain/types';
-import { ROLE_COLOR, ROLE_SHORT } from '../domain/spawner';
+import { ROLE_COLOR, ROLE_DESC, ROLE_KO } from '../domain/spawner';
 import { t } from '../i18n/locale';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
@@ -21,16 +21,35 @@ export class RuleEditorScene extends Phaser.Scene {
 
   create(): void {
     this.gs = this.scene.get('Game') as GameScene;
-    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
+    // 백드롭: setInteractive() 로 입력 캡쳐 → 뒤쪽 (HUD/Game) 클릭 차단
+    this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78)
+      .setInteractive();
     this.add.text(GAME_WIDTH / 2, 16, t('policy.title'), {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '22px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    new Button(this, GAME_WIDTH - 100, 30, 140, 32, t('policy.resume'), () => this.gs.togglePause(), { fontSize: 13 });
+    // 닫기 X 버튼 (재개가 아니라 단순 닫기 — toggleManage 가 정책편집기 닫고 게임 재개)
+    new Button(this, GAME_WIDTH - 40, 30, 44, 32, '✕', () => this.gs.toggleManage(), { fontSize: 16 });
+
+    // 좌측 상단 — 저장하고 타이틀로 (런 진행도 유지, 자동 저장됨)
+    new Button(this, 90, 30, 160, 32, '💾 저장 후 타이틀', () => this.saveAndExit(), {
+      fontSize: 12, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10',
+    });
 
     this.content = this.add.container(0, 0);
-    this.input.keyboard?.on('keydown-ESC', () => this.gs.togglePause());
-    this.input.keyboard?.on('keydown-SPACE', () => this.gs.togglePause());
+    this.input.keyboard?.on('keydown-ESC', () => this.gs.toggleManage());
+    // SPACE는 GameScene이 전역으로 처리. 여기서 중복 등록하면 두 번 호출됨.
+
+    // 다른 scene 입력 비활성화 (모달 동작 보장)
+    const hud = this.scene.get('HUD');
+    const game = this.scene.get('Game');
+    if (hud) hud.input.enabled = false;
+    if (game) game.input.enabled = false;
+    // shutdown 시 복구
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      if (hud) hud.input.enabled = true;
+      if (game) game.input.enabled = true;
+    });
 
     if (this.gs.state.building.elevators.length > 0) {
       this.currentElevator = this.gs.state.building.elevators[0]!.id;
@@ -177,19 +196,65 @@ export class RuleEditorScene extends Phaser.Scene {
     // 역할 선택 (pickupMode='role' 일 때만 활성)
     if (policy.pickupMode === 'role') {
       const roles: FloorRole[] = ['lobby', 'office', 'restaurant', 'rooftop', 'basement'];
-      let rx = x + 140;
+      // ? 헬프 아이콘 (역할 의미 툴팁)
+      const helpBtn = new Button(this, x + 140 + 14, y + 70, 24, 22, '?', () => this.showRoleHelpPopup(), {
+        fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10',
+      });
+      this.content.add(helpBtn.container);
+
+      let rx = x + 140 + 28;
       for (const r of roles) {
         const roleActive = policy.pickupRole === r;
         const color = ROLE_COLOR[r];
-        const btn = new Button(this, rx + 30, y + 70, 56, 22, ROLE_SHORT[r], () => {
+        const btn = new Button(this, rx + 40, y + 70, 76, 22, ROLE_KO[r], () => {
           this.gs.updatePolicy(this.currentElevator, { pickupRole: r }); this.rebuild();
         }, { fontSize: 11, bg: roleActive ? color : 0x222230, bgHover: roleActive ? color : 0x2c2c3a,
              textColor: roleActive ? '#0b0b10' : COLORS.text, textColorActive: '#0b0b10' });
         this.content.add(btn.container);
-        rx += 66;
+        rx += 86;
       }
     }
     return y + 100;
+  }
+
+  /** 역할 의미 안내 팝업 — ? 버튼 클릭 시 */
+  private showRoleHelpPopup(): void {
+    const roles: FloorRole[] = this.gs.state.building.floors.map((f) => f.role);
+    const uniqueRoles = Array.from(new Set(roles));
+    const popup = this.add.container(GAME_WIDTH / 2, GAME_HEIGHT / 2);
+    const w = 460, h = 60 + uniqueRoles.length * 32;
+    const bg = this.add.rectangle(0, 0, w, h, 0x14141c, 1).setStrokeStyle(2, 0x4a90e2)
+      .setInteractive(); // 뒤로 클릭 차단
+    const title = this.add.text(0, -h / 2 + 18, '🏷️ 역할 안내', {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    popup.add([bg, title]);
+    let py = -h / 2 + 50;
+    for (const r of uniqueRoles) {
+      const colorHex = '#' + ROLE_COLOR[r].toString(16).padStart(6, '0');
+      const dot = this.add.rectangle(-w / 2 + 18, py + 6, 10, 10, ROLE_COLOR[r], 1);
+      const name = this.add.text(-w / 2 + 36, py, ROLE_KO[r], {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+        fontSize: '13px', color: colorHex, fontStyle: 'bold',
+      }).setOrigin(0, 0);
+      const desc = this.add.text(-w / 2 + 120, py, ROLE_DESC[r], {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+        fontSize: '12px', color: COLORS.textDim,
+      }).setOrigin(0, 0);
+      popup.add([dot, name, desc]);
+      py += 32;
+    }
+    const closeBtn = new Button(this, 0, h / 2 - 24, 100, 30, '닫기', () => popup.destroy(true), {
+      fontSize: 12, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10',
+    });
+    popup.add(closeBtn.container);
+    popup.setDepth(100);
+  }
+
+  /** 현재 진행 저장 + 타이틀로 복귀. 게임 scene 모두 정리. */
+  private saveAndExit(): void {
+    this.gs.saveAndExitToTitle();
   }
 
   private drawToggleRow(x: number, y: number, w: number, label: string, value: boolean, onChange: (v: boolean) => void): void {

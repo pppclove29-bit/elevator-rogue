@@ -114,30 +114,37 @@ function pickFloorByRole(
   return pickWeighted(rng, candidates, wOut);
 }
 
-export const ROLE_COLOR: Record<FloorRole, number> = {
-  lobby: 0x6ec6ff,
-  office: 0xb0b0c0,
-  restaurant: 0xf5c542,
-  rooftop: 0x7ed957,
-  basement: 0x8a6cff,
-  gym: 0xff6a6a,
-  mall: 0xff9ed8,
-  hospital: 0xffffff,
-  penthouse: 0xffd700,
-  parking: 0x8a6cff,
-  cleanroom: 0x6affff,
-};
+// ─── 층 역할 메타 (data/floors.json 에서 로드) ─────────────────────────
+// CMS (/cms.html) 에서 편집 가능.
+import floorData from '../../data/floors.json';
 
-export const ROLE_SHORT: Record<FloorRole, string> = {
-  lobby: 'LB',
-  office: 'OF',
-  restaurant: 'RT',
-  rooftop: 'RF',
-  basement: 'BS',
-  gym: 'GY',
-  mall: 'ML',
-  hospital: 'HS',
-  penthouse: 'PH',
-  parking: 'PK',
-  cleanroom: 'CR',
-};
+interface JsonFloorRole {
+  nameKo: string;
+  shortEn: string;
+  color: string;          // "#rrggbb"
+  goldPerVisit: number;
+  desc: string;
+}
+
+function hexToNum(hex: string): number {
+  const clean = hex.startsWith('#') ? hex.slice(1) : hex;
+  return parseInt(clean, 16);
+}
+
+const floorJson = floorData as Record<string, JsonFloorRole>;
+
+export const ROLE_COLOR: Record<FloorRole, number> = Object.fromEntries(
+  Object.entries(floorJson).map(([role, spec]) => [role, hexToNum(spec.color)]),
+) as Record<FloorRole, number>;
+
+export const ROLE_SHORT: Record<FloorRole, string> = Object.fromEntries(
+  Object.entries(floorJson).map(([role, spec]) => [role, spec.shortEn]),
+) as Record<FloorRole, string>;
+
+export const ROLE_KO: Record<FloorRole, string> = Object.fromEntries(
+  Object.entries(floorJson).map(([role, spec]) => [role, spec.nameKo]),
+) as Record<FloorRole, string>;
+
+export const ROLE_DESC: Record<FloorRole, string> = Object.fromEntries(
+  Object.entries(floorJson).map(([role, spec]) => [role, spec.desc]),
+) as Record<FloorRole, string>;

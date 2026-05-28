@@ -23,6 +23,8 @@ interface Sprite {
   delay: number;
   /** 목적지 층 role 컬러 (머리 위 dot 으로 표시) */
   destColor: number;
+  /** 목적지 층 id (라벨 표시용. -1이면 표시 안 함) */
+  destFloor: number;
 }
 
 let HINT_ID_COUNTER = -1000;
@@ -30,7 +32,8 @@ let HINT_ID_COUNTER = -1000;
 // px/sec 단위. entering 100px → 1초, riding 짧은 이동도 충분히 인지 가능.
 const LERP_SPEED_PX_PER_SEC = 140;
 const FADE_SPEED_PER_SEC = 4;        // 0 → 1 가는 데 0.25초
-const STAGGER_MS = 140;              // 한 명씩 타고 내리는 간격 (좀 더 여유)
+// 한 명씩 타고 내리는 간격 (실시간 ms). 가독성 위해 충분히 길게.
+const STAGGER_MS = 260;
 
 function approach(current: number, target: number, maxStep: number): number {
   if (current === target) return current;
@@ -45,6 +48,8 @@ export class PassengerSprites {
   private scene: Phaser.Scene;
   /** archetype sprite 가 있을 때 사용. id → Image. 미사용 시 setVisible(false). */
   private images: Map<number, Phaser.GameObjects.Image> = new Map();
+  /** 목적지 층 번호 라벨. id → Text. */
+  private destLabels: Map<number, Phaser.GameObjects.Text> = new Map();
 
   constructor(scene: Phaser.Scene, private layout: BuildingViewLayout) {
     this.scene = scene;
@@ -52,12 +57,17 @@ export class PassengerSprites {
     this.g.setDepth(3);
   }
 
-  update(state: SimState, deltaMs: number): void {
+  /**
+   * @param deltaMs Phaser 실시간 delta
+   * @param gameSpeed timeScale (1/2/4/8). lerp 속도 스케일링 (높은 배속에서도 엘베 따라가도록).
+   *                  stagger/fade 는 실시간 유지 (가독성).
+   */
+  update(state: SimState, deltaMs: number, gameSpeed: number = 1): void {
     this.consumeHints(state);
     this.sync(state);
 
     const dt = deltaMs / 1000;
-    const moveStep = LERP_SPEED_PX_PER_SEC * dt;
+    const moveStep = LERP_SPEED_PX_PER_SEC * dt * Math.max(1, gameSpeed);
     const fadeStep = FADE_SPEED_PER_SEC * dt;
 
     for (const s of this.map.values()) {
@@ -79,12 +89,14 @@ export class PassengerSprites {
           && s.alpha <= 0.01) s.done = true;
     }
 
-    // 제거 + image 객체 같이 정리
+    // 제거 + image / 라벨 객체 같이 정리
     for (const [id, s] of this.map) {
       if (s.done) {
         this.map.delete(id);
         const img = this.images.get(id);
         if (img) { img.destroy(); this.images.delete(id); }
+        const lbl = this.destLabels.get(id);
+        if (lbl) { lbl.destroy(); this.destLabels.delete(id); }
       }
     }
 
@@ -105,12 +117,14 @@ export class PassengerSprites {
 
     const stillAlive = new Set<number>();
 
-    // 큐 승객 위치
+    // 큐 승객 위치 — 입구(왼쪽 문) 근처에 줄. i=0(헤드)은 첫 엘베에 가깝게,
+    // 신규는 입구 쪽으로 늘어남. 엘베 영역(x+80~)과 안 겹치도록 x+70 직전까지만.
     for (const f of floors) {
       const fy = y + totalHeight - f.id * floorHeight - floorHeight / 2;
+      const queueHeadX = x + 65;       // 첫 엘베(x+80) 직전
       for (let i = 0; i < f.queue.length; i++) {
         const p = f.queue[i]!;
-        const targetX = x + 40 + i * 10;
+        const targetX = queueHeadX - i * 16;  // 입구 쪽으로 16px씩 (꽉 차게)
         const targetY = fy;
         stillAlive.add(p.id);
         let s = this.map.get(p.id);
@@ -123,6 +137,7 @@ export class PassengerSprites {
             alpha: 0, targetAlpha: 1,
             done: false, delay: 0,
             destColor: destColorFor(p.dest),
+            destFloor: p.dest,
           };
           this.map.set(p.id, s);
         } else {
@@ -131,6 +146,7 @@ export class PassengerSprites {
           s.targetAlpha = 1;
           s.anger = p.anger;
           s.destColor = destColorFor(p.dest);
+          s.destFloor = p.dest;
           if (s.phase === 'riding' || s.phase === 'alighting') s.phase = 'queued';
         }
       }
@@ -143,8 +159,8 @@ export class PassengerSprites {
       let boardingStaggerIdx = 0;
       for (let i = 0; i < e.passengers.length; i++) {
         const p = e.passengers[i]!;
-        const spaceMul = ARCHETYPES[p.archetype].spaceCost > 1 ? 8 : 6;
-        const targetX = sx + 6 + i * spaceMul;
+        const spaceMul = ARCHETYPES[p.archetype].spaceCost > 1 ? 18 : 14;
+        const targetX = sx + 10 + i * spaceMul;
         const targetY = ey;
         stillAlive.add(p.id);
         let s = this.map.get(p.id);
@@ -154,10 +170,12 @@ export class PassengerSprites {
             x: targetX, y: targetY, targetX, targetY,
             phase: 'riding', alpha: 1, targetAlpha: 1, done: false, delay: 0,
             destColor: destColorFor(p.dest),
+            destFloor: p.dest,
           };
           this.map.set(p.id, s);
         } else {
           s.destColor = destColorFor(p.dest);
+          s.destFloor = p.dest;
           const justBoarding = s.phase === 'queued' || s.phase === 'entering';
           if (justBoarding) {
             s.phase = 'boarding';
@@ -170,9 +188,17 @@ export class PassengerSprites {
           s.targetY = targetY;
           s.targetAlpha = 1;
           s.anger = p.anger;
-          // boarding이 끝나면 riding으로
-          if (s.phase === 'boarding' && Math.abs(s.x - targetX) < 1 && Math.abs(s.y - targetY) < 1 && s.delay === 0) {
+          // boarding: stagger 만 적용하고, delay 가 끝나면 즉시 엘베로 snap.
+          // (lerp 로 천천히 가면 엘베가 먼저 출발해서 승객이 floor에 남아있는 듯이 보이는 버그)
+          if (s.phase === 'boarding' && s.delay === 0) {
+            s.x = targetX;
+            s.y = targetY;
             s.phase = 'riding';
+          }
+          // riding 중에는 엘베와 함께 이동.
+          if (s.phase === 'riding') {
+            s.x = targetX;
+            s.y = targetY;
           }
         }
       }
@@ -225,6 +251,7 @@ export class PassengerSprites {
           alpha: 1, targetAlpha: 0,
           done: false, delay: 0,
           destColor: destColorFor(h.destFloorId),
+          destFloor: -1,
         });
       } else if (h.kind === 'subway') {
         const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
@@ -237,6 +264,7 @@ export class PassengerSprites {
           alpha: 1, targetAlpha: 0,
           done: false, delay: 0,
           destColor: destColorFor(h.floorId),
+          destFloor: -1,
         });
       }
     }
@@ -268,15 +296,19 @@ export class PassengerSprites {
     this.g.clear();
     for (const s of this.map.values()) {
       const spec = ARCHETYPES[s.archetype];
-      const color = s.anger >= ANGER_THRESHOLD * 0.6 ? COLORS.passengerAngry : spec.color;
+      const angerRatio = Math.min(1, s.anger / ANGER_THRESHOLD);
+      const isAngry = angerRatio >= 0.6;
+      const color = isAngry ? COLORS.passengerAngry : spec.color;
       const big = spec.spaceCost > 1;
-      const w = big ? 6 : 4;
-      const h = big ? 8 : 6;
+      // 도형 fallback 사이즈 (이전 4×6 → 10×16 정도로 확대)
+      const w = big ? 14 : 10;
+      const h = big ? 22 : 16;
 
       // archetype 별 sprite 가 있으면 image 로, 없으면 도형 fallback.
       const spriteKey = `passenger-${s.archetype}`;
       const useSprite = hasSprite(this.scene, spriteKey);
       let bodyTopY: number;
+      let bodyHalfW: number;
 
       if (useSprite) {
         let img = this.images.get(s.id) ?? null;
@@ -287,29 +319,72 @@ export class PassengerSprites {
         img.setTexture(spriteKey);
         img.setPosition(s.x, s.y);
         img.setAlpha(s.alpha);
-        // 16×24(또는 baggage 20×28) 권장 — 도형 사이즈와 비슷한 작은 크기로 표시
-        const dispW = big ? 12 : 10;
-        const dispH = big ? 18 : 14;
+        const dispW = big ? 22 : 18;
+        const dispH = big ? 32 : 26;
         img.setDisplaySize(dispW, dispH);
-        img.setTint(s.anger >= ANGER_THRESHOLD * 0.6 ? 0xff5555 : 0xffffff);
+        img.setTint(isAngry ? 0xff5555 : 0xffffff);
         img.setVisible(true);
         bodyTopY = s.y - dispH / 2;
+        bodyHalfW = dispW / 2;
       } else {
         const img = this.images.get(s.id);
         if (img) img.setVisible(false);
         // 도형 fallback (몸 + 머리)
         this.g.fillStyle(color, s.alpha);
-        this.g.fillRect(s.x - w / 2, s.y - h / 2, w, h);
-        this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 3, w - 2, 3);
-        bodyTopY = s.y - h / 2 - 3;
+        this.g.fillRect(s.x - w / 2, s.y - h / 2 + 4, w, h - 4);
+        // 머리
+        this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 2, w - 2, 6);
+        bodyTopY = s.y - h / 2 - 2;
+        bodyHalfW = w / 2;
       }
 
-      // 목적지 dest 색 dot — 몸 위. sprite 사용 여부와 무관하게 항상 표시.
-      const dotY = bodyTopY - 3;
-      this.g.fillStyle(0x000000, s.alpha * 0.8);
-      this.g.fillRect(s.x - 2, dotY - 1, 4, 4);
-      this.g.fillStyle(s.destColor, s.alpha);
-      this.g.fillRect(s.x - 1, dotY, 2, 2);
+      // ───── 인내심(분노) 게이지 ─────
+      // 큐/입장 단계에서만 표시. 엘베 안(riding/boarding)이나 이동중에는 안 보임 — 우선순위 판단은 큐에서만 의미 있음.
+      const showGauge = s.phase === 'queued' || s.phase === 'entering';
+      const gaugeY = bodyTopY - 6;
+      if (showGauge) {
+        const gaugeW = Math.max(14, bodyHalfW * 2 + 4);
+        const gaugeH = 3;
+        const gaugeX = s.x - gaugeW / 2;
+        // 배경
+        this.g.fillStyle(0x14141c, s.alpha * 0.85);
+        this.g.fillRect(gaugeX - 1, gaugeY - 1, gaugeW + 2, gaugeH + 2);
+        // 채움 색상 (단계별: 녹→노→주→빨)
+        const gaugeColor = angerRatio >= 1 ? 0xff3030
+          : angerRatio >= 0.66 ? 0xff7a2a
+          : angerRatio >= 0.33 ? 0xf5c542
+          : 0x5fd07a;
+        this.g.fillStyle(gaugeColor, s.alpha);
+        this.g.fillRect(gaugeX, gaugeY, gaugeW * angerRatio, gaugeH);
+      }
+
+      // ───── 목적지 층 번호 ─────
+      // 큐/입장 단계에서만 라벨 표시. 엘베 안/이동중에는 게이지 위 색만으로 충분 (라벨 중첩 방지).
+      const showLabel = s.destFloor >= 0 && (s.phase === 'queued' || s.phase === 'entering');
+      if (showLabel) {
+        let lbl = this.destLabels.get(s.id) ?? null;
+        if (!lbl) {
+          lbl = this.scene.add.text(0, 0, '', {
+            fontFamily: FONT,
+            fontSize: '8px',
+            color: '#ffffff',
+            stroke: '#000000',
+            strokeThickness: 2,
+            fontStyle: 'bold',
+          }).setOrigin(0.5, 1).setDepth(4);
+          this.destLabels.set(s.id, lbl);
+        }
+        const label = `${s.destFloor + 1}F`;
+        if (lbl.text !== label) lbl.setText(label);
+        const hex = '#' + s.destColor.toString(16).padStart(6, '0');
+        if (lbl.style.color !== hex) lbl.setColor(hex);
+        lbl.setPosition(s.x, gaugeY - 1);
+        lbl.setAlpha(s.alpha);
+        lbl.setVisible(true);
+      } else {
+        const lbl = this.destLabels.get(s.id);
+        if (lbl) lbl.setVisible(false);
+      }
     }
   }
 }

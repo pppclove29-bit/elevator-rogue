@@ -1,11 +1,9 @@
 import Phaser from 'phaser';
 import { sound } from '../audio/sound';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { COLORS, FONT, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { getLocale, Locale, setLocale, SUPPORTED_LOCALES, t } from '../i18n/locale';
 import { applyZoom, clearAllGameData, DefaultTimeScale, loadOptions, Options, saveOptions, ZoomLevel } from '../meta/options';
 import { Button } from '../ui/Button';
-
-const FONT = '"DotGothic16", "Press Start 2P", monospace';
 const PANEL_BG = 0x14141c;
 const ROW_BG = 0x1c1c26;
 const BORDER = 0x3a3a48;

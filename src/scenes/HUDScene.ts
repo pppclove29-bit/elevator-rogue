@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS } from '../config';
-import { dayOfWeekFor, dayToDate, phaseAtTick, WEEKEND } from '../domain/phase';
+import { dayLengthTicks, dayOfWeekFor, dayToDate, PHASES, PHASE_TICKS, phaseAtTick, WEEKEND, Phase } from '../domain/phase';
 import { localizeEvent } from '../i18n/cards';
 import { t } from '../i18n/locale';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
@@ -8,8 +8,6 @@ import { REPAIR_COST } from '../domain/types';
 import { MAX_SKILLS, skillById } from '../meta/skills';
 import { hasSprite } from '../render/sprites';
 import { GameScene } from './GameScene';
-
-const SPEEDS = [1, 2, 4, 8] as const;
 
 export class HUDScene extends Phaser.Scene {
   private timeText!: Phaser.GameObjects.Text;
@@ -19,13 +17,16 @@ export class HUDScene extends Phaser.Scene {
   private relicText!: Phaser.GameObjects.Text;
   private eventText!: Phaser.GameObjects.Text;
   private phaseText!: Phaser.GameObjects.Text;
-  private phaseBarBg!: Phaser.GameObjects.Rectangle;
-  private phaseBarFill!: Phaser.GameObjects.Rectangle;
+  /** 24시간 시계 (페이즈 wedge + 시침). phaseBar 대체. */
+  private clockG!: Phaser.GameObjects.Graphics;
+  private clockTimeLabel!: Phaser.GameObjects.Text;
   private pauseBtn!: ControlButton;
-  private speedBtns: ControlButton[] = [];
-  private restartBtn!: ControlButton;
+  private speedBtn!: ControlButton;
+  private manageBtn!: ControlButton;
   private skillSlots: SkillSlotView[] = [];
   private repairContainer!: Phaser.GameObjects.Container;
+  private tutorialBanner: Phaser.GameObjects.Container | null = null;
+  private tutorialBannerText: Phaser.GameObjects.Text | null = null;
 
   constructor() {
     super('HUD');
@@ -80,21 +81,49 @@ export class HUDScene extends Phaser.Scene {
 
     this.phaseText = this.add.text(GAME_WIDTH / 2, 16, '', {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
-      fontSize: '20px',
+      fontSize: '18px',
       color: COLORS.text,
     }).setOrigin(0.5, 0);
 
-    const barW = 220;
-    const barH = 6;
-    const barX = GAME_WIDTH / 2 - barW / 2;
-    const barY = 46;
-    this.phaseBarBg = this.add.rectangle(barX, barY, barW, barH, 0x222230).setOrigin(0, 0);
-    this.phaseBarFill = this.add.rectangle(barX, barY, 0, barH, 0x4a90e2).setOrigin(0, 0);
+    // 24시간 시계 — 중앙 상단, phaseText 우측
+    this.clockG = this.add.graphics();
+    this.clockTimeLabel = this.add.text(GAME_WIDTH / 2 + 200, 30, '06:00', {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '14px', color: COLORS.text, fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
     this.buildControlBar(game);
     this.buildSkillBar(game);
     this.repairContainer = this.add.container(0, 0);
+    this.buildTutorialBanner();
     if (import.meta.env.DEV) this.buildDevLinks();
+  }
+
+  private buildTutorialBanner(): void {
+    const bg = this.add.rectangle(0, 0, 480, 44, 0xf5c542, 0.95).setStrokeStyle(2, 0xffffff);
+    const txt = this.add.text(0, 0, '', {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '16px', color: '#0b0b10', fontStyle: 'bold', align: 'center',
+    }).setOrigin(0.5);
+    this.tutorialBanner = this.add.container(GAME_WIDTH / 2, 100, [bg, txt]).setDepth(10).setVisible(false);
+    this.tutorialBannerText = txt;
+    this.tweens.add({
+      targets: this.tutorialBanner, scale: 1.04, yoyo: true, repeat: -1, duration: 700, ease: 'Sine.easeInOut',
+    });
+  }
+
+  private updateTutorialBanner(game: GameScene): void {
+    if (!this.tutorialBanner || !this.tutorialBannerText) return;
+    const await_ = game.tutorialAwaiting;
+    if (!await_) {
+      if (this.tutorialBanner.visible) this.tutorialBanner.setVisible(false);
+      return;
+    }
+    const msg = await_ === 'pause'
+      ? '⬇ Space 또는 [일시정지] 버튼을 눌러봐!'
+      : '⬇ [엘베 관리] 버튼을 눌러봐!';
+    if (this.tutorialBannerText.text !== msg) this.tutorialBannerText.setText(msg);
+    this.tutorialBanner.setVisible(true);
   }
 
   private buildDevLinks(): void {
@@ -102,9 +131,85 @@ export class HUDScene extends Phaser.Scene {
     const open = (path: string) => () => window.open(path, '_blank');
     new ControlButton(this, 16, y - 14, 70, 24, 'DOCS', open('/docs.html'));
     new ControlButton(this, 92, y - 14, 80, 24, 'DESIGN', open('/design.html'));
-    this.add.text(180, y - 12, '[DEV]', {
+    new ControlButton(this, 178, y - 14, 90, 24, '🖼 SPRITES', open('/sprites.html'));
+    new ControlButton(this, 274, y - 14, 90, 24, '🔊 SOUNDS', open('/sounds.html'));
+    new ControlButton(this, 370, y - 14, 70, 24, '📝 CMS', open('/cms.html'));
+    this.add.text(446, y - 12, '[DEV]', {
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '10px', color: '#5a5a68',
     });
+  }
+
+  /**
+   * 24시간 시계 그리기. 게임 하루(3000 tick) 를 24시간에 매핑.
+   * 게임 시작 = 6:00, 한 바퀴 돌면 다음날 6:00.
+   * 5개 페이즈를 색상 wedge 로 표시 + 시침이 회전.
+   */
+  private drawClock(tick: number): void {
+    const cx = GAME_WIDTH / 2 + 165;
+    const cy = 30;
+    const radius = 22;
+    const g = this.clockG;
+    g.clear();
+
+    const dayTotal = dayLengthTicks();
+    const tickInDay = ((tick % dayTotal) + dayTotal) % dayTotal;
+
+    // 페이즈 색상 — 출근/근무/점심/퇴근/야간
+    const PHASE_COLOR: Record<Phase, number> = {
+      morning: 0x4a90e2,
+      work: 0x7ed957,
+      lunch: 0xf5c542,
+      evening: 0xe2a04a,
+      night: 0x6c5ce7,
+    };
+
+    // 페이즈별 wedge — 시작 각도 -90° (위) 부터 시계방향.
+    let cumTick = 0;
+    for (const p of PHASES) {
+      const phaseTicks = PHASE_TICKS[p];
+      const startAngle = -Math.PI / 2 + (cumTick / dayTotal) * Math.PI * 2;
+      const endAngle = -Math.PI / 2 + ((cumTick + phaseTicks) / dayTotal) * Math.PI * 2;
+      g.fillStyle(PHASE_COLOR[p], 0.5);
+      g.beginPath();
+      g.moveTo(cx, cy);
+      g.arc(cx, cy, radius, startAngle, endAngle, false);
+      g.closePath();
+      g.fillPath();
+      cumTick += phaseTicks;
+    }
+
+    // 외곽선
+    g.lineStyle(1.5, 0x3a3a48, 1);
+    g.strokeCircle(cx, cy, radius);
+
+    // 시간 눈금 (6, 12, 18, 24 시 위치에 짧은 선)
+    for (let h = 0; h < 24; h += 6) {
+      const angle = -Math.PI / 2 + (h / 24) * Math.PI * 2;
+      const x1 = cx + Math.cos(angle) * (radius - 4);
+      const y1 = cy + Math.sin(angle) * (radius - 4);
+      const x2 = cx + Math.cos(angle) * radius;
+      const y2 = cy + Math.sin(angle) * radius;
+      g.lineStyle(1, 0xffffff, 0.6);
+      g.lineBetween(x1, y1, x2, y2);
+    }
+
+    // 시침 — 게임 하루 진행률 비율로 0~360°
+    const handAngle = -Math.PI / 2 + (tickInDay / dayTotal) * Math.PI * 2;
+    const handX = cx + Math.cos(handAngle) * (radius - 4);
+    const handY = cy + Math.sin(handAngle) * (radius - 4);
+    g.lineStyle(2.5, 0xffffff, 1);
+    g.lineBetween(cx, cy, handX, handY);
+    // 중심점
+    g.fillStyle(0xffffff, 1);
+    g.fillCircle(cx, cy, 2);
+
+    // 우측 시각 텍스트 — 06:00 시작
+    const hourFloat = 6 + (tickInDay / dayTotal) * 24;
+    const hour = Math.floor(hourFloat) % 24;
+    const minute = Math.floor((hourFloat - Math.floor(hourFloat)) * 60);
+    const hh = hour.toString().padStart(2, '0');
+    const mm = minute.toString().padStart(2, '0');
+    this.clockTimeLabel.setText(`${hh}:${mm}`);
   }
 
   private buildSkillBar(game: GameScene): void {
@@ -127,16 +232,14 @@ export class HUDScene extends Phaser.Scene {
     const gap = 6;
 
     this.pauseBtn = new ControlButton(this, x, y, 80, 28, t('hud.pause'), () => game.togglePause());
-    x += 80 + gap + 8;
+    x += 80 + gap;
 
-    for (const s of SPEEDS) {
-      const btn = new ControlButton(this, x, y, 40, 28, `${s}x`, () => game.setSpeed(s));
-      this.speedBtns.push(btn);
-      x += 40 + gap;
-    }
+    // 단일 배속 사이클 버튼 (1x → 2x → 4x → 8x → 1x)
+    this.speedBtn = new ControlButton(this, x, y, 56, 28, `${game.timeScale}x`, () => game.cycleSpeed());
+    x += 56 + gap;
 
-    x += 8;
-    this.restartBtn = new ControlButton(this, x, y, 80, 28, t('hud.restart'), () => game.restart());
+    // 엘베 관리 (정책 편집기 토글, 자동 일시정지)
+    this.manageBtn = new ControlButton(this, x, y, 110, 28, t('hud.manage') ?? '엘베 관리', () => game.toggleManage());
   }
 
   update(): void {
@@ -161,16 +264,14 @@ export class HUDScene extends Phaser.Scene {
       prefix: yearPrefix, month: cal.month, date: cal.date, dow: dowLabel, phase: phaseLabel,
     }));
     this.phaseText.setColor(weekendColor);
-    const ratio = info.tickInPhase / info.phaseTicks;
-    const barW = this.phaseBarBg.width;
-    this.phaseBarFill.width = Math.max(2, Math.floor(barW * ratio));
 
     this.pauseBtn.setLabel(game.paused ? t('hud.resume') : t('hud.pause'));
     this.pauseBtn.setActive(game.paused);
-    for (let i = 0; i < SPEEDS.length; i++) {
-      this.speedBtns[i]!.setActive(!game.paused && game.timeScale === SPEEDS[i]);
-    }
-    this.restartBtn.setActive(false);
+    this.speedBtn.setLabel(`${game.timeScale}x`);
+    this.speedBtn.setActive(false);
+    this.manageBtn.setActive(this.scene.isActive('RuleEditor'));
+
+    this.drawClock(game.state.tick);
 
     const angry = countActiveAngry(game.state);
     this.dangerText.setText(`${t('hud.angry')}  ${angry} / ${GAME_OVER_ACTIVE_ANGRY}`);
@@ -190,6 +291,7 @@ export class HUDScene extends Phaser.Scene {
     }
 
     this.updateRepairButtons(game);
+    this.updateTutorialBanner(game);
 
     for (let i = 0; i < this.skillSlots.length; i++) {
       const slotId = game.state.ownedSkills[i];

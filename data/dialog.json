@@ -1,0 +1,83 @@
+{
+  "intro-opening": [
+    { "speaker": "narrator", "text": "— 어느 도시, 한물간 빌딩의 1층 로비." },
+    { "speaker": "mentor",  "text": "어서 와. 신입이지?" },
+    { "speaker": "mentor",  "text": "이 빌딩, 한때는 잘 나갔어. 지금은... 글쎄." },
+    { "speaker": "mentor",  "text": "사장님이 마지막으로 베팅한 사람이 자네야.", "portrait": "smirk" },
+    { "speaker": "player",  "text": "그래서, 저는 뭘 하면 되죠?" },
+    { "speaker": "mentor",  "text": "엘리베이터를 직접 운전하진 않아. 우린 정책만 짜." },
+    { "speaker": "mentor",  "text": "손님은 알아서 흐르고, 우리는 그 흐름을 받아치는 거지." },
+    { "speaker": "mentor",  "text": "1일차야. 천천히 보고 익혀." }
+  ],
+  "tutorial-pause": [
+    { "speaker": "mentor", "text": "엘리베이터를 직접 조작하지 않아. 정책으로 받아치는 거지." },
+    { "speaker": "mentor", "text": "먼저 게임을 멈추는 법부터 배워보자." },
+    { "speaker": "mentor", "text": "Space 키 또는 좌측 상단의 [일시정지] 버튼을 눌러봐. 한 번 직접 해봐.", "portrait": "smirk" }
+  ],
+  "tutorial-manage": [
+    { "speaker": "mentor", "text": "좋아, 멈췄어. 이제 [엘베 관리] 버튼을 눌러봐." },
+    { "speaker": "mentor", "text": "엘베마다 운영 정책을 설정할 수 있어. 4가지 form이 있어." },
+    { "speaker": "player", "text": "정책 form 4가지가 뭐예요?" },
+    { "speaker": "mentor", "text": "운영 층 범위, 짝/홀 패리티, 픽업 모드, 정원 풀시 즉시 하차." },
+    { "speaker": "mentor", "text": "직접 [엘베 관리] 눌러서 봐. 시작은 픽업 모드부터 만져보면 좋아.", "portrait": "smirk" }
+  ],
+  "tutorial-policy": [
+    { "speaker": "mentor", "text": "잘했어. 이제 손님이 어떻게 흐르는지 관찰해." },
+    { "speaker": "mentor", "text": "머리 위 게이지가 가득 차서 빨개지면 그 손님은 \"불만\" 손님이 돼." },
+    { "speaker": "mentor", "text": "불만 5명 동시면 게임 끝. 빨간 게이지 먼저 처리해." },
+    { "speaker": "mentor", "text": "관찰부터 시작해. 천천히." }
+  ],
+  "tutorial-anger": [
+    { "speaker": "mentor", "text": "손님 머리 위 게이지 보여? 그게 불만이야." },
+    { "speaker": "mentor", "text": "시간이 지날수록 가득 차고, 가득 차면 빨갛게 변해." },
+    { "speaker": "player", "text": "빨개진 손님은 어떻게 되는 건데요?" },
+    { "speaker": "mentor", "text": "불만 가득 찬 손님이 동시에 5명이면 그날로 끝이야. 게임 오버.", "portrait": "smirk" },
+    { "speaker": "mentor", "text": "머리 위 색 점은 그 손님이 가려는 층 색이야. 우선순위 판단할 때 봐." },
+    { "speaker": "mentor", "text": "바쁠 땐 게이지 가득 찬 손님부터 처리해." }
+  ],
+  "tutorial-shop": [
+    { "speaker": "mentor", "text": "하루 정산 시간이야. 골드로 강화나 수리를 살 수 있어." },
+    { "speaker": "mentor", "text": "한 번 산 건 다시 못 무르니까 신중히." }
+  ],
+  "tutorial-dirty": [
+    { "speaker": "mentor", "text": "점심 시간이다. 이제 화장실 청결도가 떨어지기 시작할 거야." },
+    { "speaker": "mentor", "text": "층 라벨 옆에 [녹/노/빨] 게이지 보이지? 그게 청결도야." },
+    { "speaker": "player", "text": "게이지가 어떻게 되면 문제예요?" },
+    { "speaker": "mentor", "text": "흰 선(30%) 아래로 빨갛게 떨어지면, 그 층 대기 손님은 1.5배 빠르게 화내.", "portrait": "smirk" },
+    { "speaker": "mentor", "text": "근무 시간(점심 전)에는 청결도가 100 그대로니까 신경 안 써도 돼." },
+    { "speaker": "mentor", "text": "청소부를 고용하면 청결도가 자동 회복되니, 화장실 층은 청소부가 답이야." }
+  ],
+  "tutorial-phase-work": [
+    { "speaker": "mentor", "text": "근무 시간이야. 출근 흐름이 본격적으로 시작돼." },
+    { "speaker": "mentor", "text": "1층 로비에서 손님이 들어와서 자기 사무실 층으로 올라가." },
+    { "speaker": "mentor", "text": "엘베가 1층에서 자주 보일 거야. 그게 정상.", "portrait": "smirk" }
+  ],
+  "tutorial-phase-lunch": [
+    { "speaker": "mentor", "text": "점심 시간! 흐름이 바뀐다." },
+    { "speaker": "mentor", "text": "사람들이 사무실에서 식당층으로 몰려." },
+    { "speaker": "player", "text": "식당이 없는 빌딩은요?" },
+    { "speaker": "mentor", "text": "그럼 그냥 다른 층 돌아다녀. 점심에 손님 절대량은 늘어." }
+  ],
+  "tutorial-phase-evening": [
+    { "speaker": "mentor", "text": "퇴근 시간이다. 흐름이 정반대로 뒤집혀." },
+    { "speaker": "mentor", "text": "사무실에서 1층 로비로 내려가는 손님이 폭주해." },
+    { "speaker": "mentor", "text": "엘베가 위에서 아래로 자주 보이면 정상이야.", "portrait": "smirk" }
+  ],
+  "tutorial-phase-night": [
+    { "speaker": "mentor", "text": "야간이야. 트래픽 확 줄어." },
+    { "speaker": "mentor", "text": "늦게까지 일하는 사람, 야근, 청소부 정도가 다야." },
+    { "speaker": "mentor", "text": "하루 정산이 곧 시작될 거다. 골드 잘 모았으면 좋겠네." }
+  ],
+  "tutorial-day1-praise": [
+    { "speaker": "mentor", "text": "1일차 끝! 첫날 치고 나쁘지 않았어." },
+    { "speaker": "player", "text": "진짜요?" },
+    { "speaker": "mentor", "text": "...아직 평가는 안 했어. 내일부터 진짜 시작이지.", "portrait": "smirk" },
+    { "speaker": "mentor", "text": "곧 상점에서 강화 살 수 있어. 신중히 골라." }
+  ],
+  "tutorial-day1-end": [
+    { "speaker": "mentor", "text": "1일차 끝났네. 나쁘지 않았어." },
+    { "speaker": "owner",  "text": "...기대해도 되는 거지?" },
+    { "speaker": "player", "text": "...열심히 하겠습니다.", "portrait": "worried" },
+    { "speaker": "mentor", "text": "내일부턴 진짜로 어려워진다." }
+  ]
+}

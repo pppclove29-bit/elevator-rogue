@@ -9,7 +9,7 @@ interface CreditSection {
 
 const SECTIONS: CreditSection[] = [
   {
-    title: 'Elevator Rogue',
+    title: '분주한 승강씨 / Elevator Rogue',
     lines: [
       'AI 정책으로 하루의 트래픽을 받아치는 로그라이크.',
       'A roguelike where you parry daily traffic with policies.',

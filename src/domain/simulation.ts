@@ -1,7 +1,7 @@
 import { ARCHETYPES, spaceUsed, THIEF_GOLD_DAMAGE } from './archetypes';
 import { createBuilding, nearestFloor } from './building';
 import { tickPassengerEvents } from './passengerEvents';
-import { DAY_OF_WEEK_GOLD_MUL, dayLengthTicks, dayOfWeekFor } from './phase';
+import { DAY_OF_WEEK_GOLD_MUL, dayLengthTicks, dayOfWeekFor, phaseAtTick, Phase } from './phase';
 import { decide } from './policy';
 import { Rng, mulberry32 } from './rng';
 import { maybeSpawn } from './spawner';
@@ -73,6 +73,11 @@ export function createSim(cfg: SimConfig): { state: SimState; rng: Rng } {
 export const GAME_OVER_ACTIVE_ANGRY = 5;
 export const ANGER_THRESHOLD = 180;
 
+/** 청결도 시스템 활성 페이즈. 점심 이후(lunch/evening/night)만 적용. 출근/근무 시간은 100 유지. */
+function cleanlinessActive(phase: Phase): boolean {
+  return phase === 'lunch' || phase === 'evening' || phase === 'night';
+}
+
 export function tick(state: SimState, rng: Rng): void {
   if (state.gameOver) return;
 
@@ -126,7 +131,27 @@ function checkGameOver(state: SimState): void {
 
 function checkDayCompletion(state: SimState): void {
   const completed = Math.floor(state.tick / dayLengthTicks());
-  if (completed > state.dayCompleted) state.dayCompleted = completed;
+  if (completed > state.dayCompleted) {
+    state.dayCompleted = completed;
+    // 하루 종료 — 층별 이용자 수 × 역할 단가로 매출 정산 후 dailyVisits 초기화.
+    payoutDayEnd(state);
+  }
+}
+
+/** 하루 종료 시 정산 — 층별 dailyVisits × GOLD_PER_ROLE 합산하여 골드 지급, visits 리셋. */
+function payoutDayEnd(state: SimState): void {
+  const dow = dayOfWeekFor(state.dayCompleted);
+  const dowGold = DAY_OF_WEEK_GOLD_MUL[dow];
+  let total = 0;
+  for (const f of state.building.floors) {
+    if (f.dailyVisits <= 0) continue;
+    const baseRate = GOLD_PER_ROLE[f.role] ?? 0;
+    const heliBonus = f.role === 'rooftop' ? state.params.rooftopGoldMultiplier : 1;
+    total += Math.round(f.dailyVisits * baseRate * heliBonus * dowGold);
+    f.dailyVisits = 0;
+  }
+  state.gold += total;
+  state.lastDayPayout = total;
 }
 
 function stepElevator(state: SimState, e: Elevator, rng: Rng): void {
@@ -183,29 +208,24 @@ function doLoadUnload(state: SimState, e: Elevator, floorId: number): { moved: n
   let moved = 0;
   let bonusTicks = 0;
   const destFloor = state.building.floors[floorId];
-  const destRole = destFloor?.role;
   const remaining: Passenger[] = [];
   for (const p of e.passengers) {
     if (p.dest === floorId) {
       state.servedCount += 1;
       const spec = ARCHETYPES[p.archetype];
-      // 도둑 도착 = 골드 강탈
+      // 도둑 도착 = 골드 강탈 (즉시. 도착 단위 효과는 도둑만 유지)
       if (p.archetype === 'thief') {
         const dmg = Math.min(state.gold, THIEF_GOLD_DAMAGE);
         state.gold -= dmg;
         console.log(`[t=${state.tick}] 도둑 도착! 골드 -${dmg}G`);
       } else if (p.anger >= ANGER_THRESHOLD) {
         state.angryServedCount += 1;
-      } else if (destRole) {
-        const baseGold = GOLD_PER_ROLE[destRole];
-        const fast = p.anger <= ANGER_THRESHOLD * 0.3 ? spec.fastBonus : 1;
-        const heliBonus = destRole === 'rooftop' ? state.params.rooftopGoldMultiplier : 1;
-        const dow = dayOfWeekFor(Math.floor(state.tick / dayLengthTicks()) + 1);
-        const dowGold = DAY_OF_WEEK_GOLD_MUL[dow];
-        state.gold += Math.round(baseGold * spec.goldMultiplier * fast * heliBonus * dowGold);
+      } else if (destFloor) {
+        // 일반 손님 = 도착 층의 dailyVisits 증가. 골드는 day end 결산 시 일괄 지급.
+        destFloor.dailyVisits += 1;
       }
-      // 화장실 보유 층 dest 도착 시 청결도 감소
-      if (destFloor?.hasToilet) {
+      // 화장실 보유 층 dest 도착 시 청결도 감소 — 점심 이후만.
+      if (destFloor?.hasToilet && cleanlinessActive(phaseAtTick(state.tick).phase)) {
         destFloor.cleanliness = Math.max(0, destFloor.cleanliness - 4);
       }
       bonusTicks += spec.loadTickBonus;
@@ -262,6 +282,8 @@ export function repairElevator(state: SimState, eId: number): boolean {
 }
 
 function accumulateAnger(state: SimState): void {
+  const phase = phaseAtTick(state.tick).phase;
+  const cleanActive = cleanlinessActive(phase);
   for (const floor of state.building.floors) {
     // 청소부 효과: 매 tick 청결도 회복
     if (floor.hasToilet && state.params.toiletCleanRate > 0) {
@@ -269,8 +291,8 @@ function accumulateAnger(state: SimState): void {
     }
     const full = floor.queue.length >= state.params.floorCapacity;
     const fullMult = full ? state.params.angerFloorFullMultiplier : 1;
-    // 더러운 화장실 가중
-    const dirty = floor.hasToilet && floor.cleanliness < 30;
+    // 더러운 화장실 가중 — 점심 이후만 (출근/근무 시간엔 영향 없음)
+    const dirty = cleanActive && floor.hasToilet && floor.cleanliness < 30;
     const dirtyMult = dirty ? state.params.dirtyToiletAngerMultiplier : 1;
     for (const p of floor.queue) {
       const spec = ARCHETYPES[p.archetype];

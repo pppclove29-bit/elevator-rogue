@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import { COLORS, FONT, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { t as tr } from '../i18n/locale';
 import { CHALLENGES, challengeById } from '../meta/challenges';
 import { todayBestDay, todayDaily } from '../meta/daily';
@@ -10,7 +10,6 @@ import { DEFAULT_THEME, ThemeId, THEMES } from '../meta/themes';
 import { Button } from '../ui/Button';
 
 const TUTORIAL_KEY = 'elevator-rogue.tutorialShown';
-const FONT = '"DotGothic16", "Press Start 2P", monospace';
 
 export class TitleScene extends Phaser.Scene {
   private selectedTheme: ThemeId = DEFAULT_THEME;
@@ -69,26 +68,26 @@ export class TitleScene extends Phaser.Scene {
       targets: cab, y: 268, duration: 6000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
     });
 
-    // 타이틀
-    this.add.text(GAME_WIDTH / 2 + 30, 116, 'Elevator', {
-      fontFamily: FONT, fontSize: '58px', color: COLORS.text, fontStyle: 'bold',
+    // 타이틀 (위로 올려 공간 확보)
+    this.add.text(GAME_WIDTH / 2 + 30, 100, '분주한', {
+      fontFamily: FONT, fontSize: '54px', color: COLORS.text, fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 174, 'Rogue', {
-      fontFamily: FONT, fontSize: '58px', color: '#f5c542', fontStyle: 'bold',
+    this.add.text(GAME_WIDTH / 2 + 30, 156, '승강씨', {
+      fontFamily: FONT, fontSize: '54px', color: '#f5c542', fontStyle: 'bold',
     }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 246, tr('title.subtitle'), {
-      fontFamily: FONT, fontSize: '13px', color: COLORS.textDim,
+    this.add.text(GAME_WIDTH / 2 + 30, 224, tr('title.subtitle'), {
+      fontFamily: FONT, fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
     // 테마 선택
-    this.add.text(GAME_WIDTH / 2 + 30, 286, tr('title.theme_section'), {
-      fontFamily: FONT, fontSize: '14px', color: '#f5c542',
+    this.add.text(GAME_WIDTH / 2 + 30, 256, tr('title.theme_section'), {
+      fontFamily: FONT, fontSize: '13px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
     const themes = Object.values(THEMES);
-    const cardW = 200, cardH = 70, gap = 6;
+    const cardW = 200, cardH = 62, gap = 6;
     const startX = GAME_WIDTH / 2 + 30 - (cardW * 2 + gap) / 2;
-    const themeY = 312;
+    const themeY = 280;
     const prog = loadProgression();
 
     const cardElements: Array<{ id: ThemeId; locked: boolean; bg: Phaser.GameObjects.Rectangle; nameText: Phaser.GameObjects.Text; descText: Phaser.GameObjects.Text }> = [];
@@ -108,18 +107,18 @@ export class TitleScene extends Phaser.Scene {
         .setStrokeStyle(2, locked ? 0x2a2a35 : 0x3a3a48);
       if (!locked) bg.setInteractive({ useHandCursor: true });
 
-      const nameText = this.add.text(x + 10, y + 6, locked ? `🔒 ${t.name}` : t.name, {
+      const nameText = this.add.text(x + 10, y + 4, locked ? `🔒 ${t.name}` : t.name, {
         fontFamily: FONT, fontSize: '12px', color: locked ? '#5a5a68' : COLORS.text,
       });
-      this.add.text(x + 10, y + 24, t.flavor, {
+      this.add.text(x + 10, y + 22, t.flavor, {
         fontFamily: FONT, fontSize: '10px', color: locked ? '#3a3a48' : '#f5c542',
       });
-      const descText = this.add.text(x + 10, y + 42, locked ? `해금: ${unlockLabel(t.id)}` : t.desc, {
+      const descText = this.add.text(x + 10, y + 38, locked ? `해금: ${unlockLabel(t.id)}` : t.desc, {
         fontFamily: FONT, fontSize: '10px', color: locked ? '#5a5a68' : COLORS.textDim,
         wordWrap: { width: cardW - 20 },
       });
       if (t.startingGoldBonus && !locked) {
-        this.add.text(x + cardW - 10, y + 6, `+${t.startingGoldBonus}G`, {
+        this.add.text(x + cardW - 10, y + 4, `+${t.startingGoldBonus}G`, {
           fontFamily: FONT, fontSize: '11px', color: '#f5c542',
         }).setOrigin(1, 0);
       }
@@ -144,23 +143,24 @@ export class TitleScene extends Phaser.Scene {
     };
     this.refreshThemeCards();
 
-    // 시작 / 계속하기 / 조작법
+    // 시작 / 계속하기 / 조작법 — 그리드 아래 충분한 마진 확보 (카오스 카드와 겹침 방지)
     const btnX = GAME_WIDTH / 2 + 30;
     const themeRows = Math.ceil(themes.length / 2);
     const gridBottom = themeY + themeRows * cardH + (themeRows - 1) * gap;
-    let btnY = gridBottom + 14;
+    let btnY = gridBottom + 28;
 
     const hasSave = saveExists();
     if (hasSave) {
       const save = readSave();
       new Button(this, btnX, btnY, 280, 42, tr('title.continue'), () => this.continueGame(),
         { fontSize: 14, bg: 0x7ed957, bgHover: 0x8fea68, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+      // summary 텍스트는 버튼 아래(밖)에 표시 — 안쪽에 두면 버튼 bg와 겹쳐 가독성 0.
       if (save) {
-        this.add.text(btnX, btnY + 24, summarize(save), {
-          fontFamily: FONT, fontSize: '10px', color: '#0b0b10',
-        }).setOrigin(0.5);
+        this.add.text(btnX, btnY + 30, summarize(save), {
+          fontFamily: FONT, fontSize: '11px', color: COLORS.textDim,
+        }).setOrigin(0.5, 0);
       }
-      btnY += 48;
+      btnY += 64;
       new Button(this, btnX, btnY, 280, 34, tr('title.new_game'), () => this.startGame(),
         { fontSize: 13, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
       btnY += 38;
@@ -198,36 +198,58 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(1, 1).setInteractive({ useHandCursor: true })
       .on('pointerdown', () => this.scene.launch('Credits'));
 
-    // 도전 모드 cycle 버튼 — 좌측 빌딩 실루엣 아래 (continue 가능성 무시: 챌린지는 새 런만)
-    this.add.text(110, 640, '도전 모드', {
-      fontFamily: FONT, fontSize: '11px', color: '#f5c542', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.challengeLabel = this.add.text(110, 656, '', {
-      fontFamily: FONT, fontSize: '11px', color: COLORS.text,
-      wordWrap: { width: 200 }, align: 'center',
-    }).setOrigin(0.5, 0);
-    new Button(this, 110, 700, 200, 26, '다음 ▶', () => this.cycleChallenge(), { fontSize: 11 });
-    this.refreshChallengeLabel();
+    // ── 도전 모드 (좌측, 빌딩 실루엣 아래) ──
+    // 잠금 조건: 어떤 테마든 best day >= 3
+    const CHALLENGE_UNLOCK_DAY = 3;
+    const DAILY_UNLOCK_DAY = 5;
+    const challengeUnlocked = prog.bestDayOverall >= CHALLENGE_UNLOCK_DAY;
+    const dailyUnlocked = prog.bestDayOverall >= DAILY_UNLOCK_DAY;
 
-    // 일일 챌린지 카드 — 우측 (빌딩 옆)
-    const dx = 290;
-    const daily = todayDaily();
-    const dailyBest = todayBestDay();
+    this.add.text(110, 640, '도전 모드', {
+      fontFamily: FONT, fontSize: '11px', color: challengeUnlocked ? '#f5c542' : '#5a5a68', fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    if (challengeUnlocked) {
+      this.challengeLabel = this.add.text(110, 656, '', {
+        fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+        wordWrap: { width: 200 }, align: 'center',
+      }).setOrigin(0.5, 0);
+      // ◀ prev / next ▶ 두 버튼으로 분리
+      new Button(this, 50, 700, 50, 26, '◀', () => this.cycleChallenge(-1), { fontSize: 12 });
+      new Button(this, 170, 700, 50, 26, '▶', () => this.cycleChallenge(1), { fontSize: 12 });
+      this.refreshChallengeLabel();
+    } else {
+      this.add.text(110, 660, `🔒 ${CHALLENGE_UNLOCK_DAY}일차 도달 시 해금`, {
+        fontFamily: FONT, fontSize: '10px', color: '#5a5a68', align: 'center',
+        wordWrap: { width: 200 },
+      }).setOrigin(0.5, 0);
+    }
+
+    // ── 일일 챌린지 (좌측, 도전 모드 옆) ──
+    const dx = 270;
     this.add.text(dx, 640, '오늘의 일일 챌린지', {
-      fontFamily: FONT, fontSize: '11px', color: '#7ed957', fontStyle: 'bold',
+      fontFamily: FONT, fontSize: '11px', color: dailyUnlocked ? '#7ed957' : '#5a5a68', fontStyle: 'bold',
     }).setOrigin(0, 0.5);
-    this.add.text(dx, 656, `${daily.dateString}`, {
-      fontFamily: FONT, fontSize: '10px', color: COLORS.textDim,
-    });
-    const dailyCh = challengeById(daily.challengeId);
-    this.add.text(dx, 670, `${dailyCh?.name ?? '?'} (${daily.themeId})`, {
-      fontFamily: FONT, fontSize: '11px', color: COLORS.text,
-    });
-    this.add.text(dx, 684, dailyBest > 0 ? `오늘 최고: ${dailyBest}일차` : '도전 안 함', {
-      fontFamily: FONT, fontSize: '10px', color: dailyBest > 0 ? '#f5c542' : COLORS.textDim,
-    });
-    new Button(this, dx + 80, 706, 160, 24, '일일 도전 시작', () => this.startDaily(),
-      { fontSize: 11, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+    if (dailyUnlocked) {
+      const daily = todayDaily();
+      const dailyBest = todayBestDay();
+      this.add.text(dx, 656, `${daily.dateString}`, {
+        fontFamily: FONT, fontSize: '10px', color: COLORS.textDim,
+      });
+      const dailyCh = challengeById(daily.challengeId);
+      this.add.text(dx, 670, `${dailyCh?.name ?? '?'} (${daily.themeId})`, {
+        fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+      });
+      this.add.text(dx, 684, dailyBest > 0 ? `오늘 최고: ${dailyBest}일차` : '도전 안 함', {
+        fontFamily: FONT, fontSize: '10px', color: dailyBest > 0 ? '#f5c542' : COLORS.textDim,
+      });
+      new Button(this, dx + 80, 706, 160, 24, '일일 도전 시작', () => this.startDaily(),
+        { fontSize: 11, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+    } else {
+      this.add.text(dx, 660, `🔒 ${DAILY_UNLOCK_DAY}일차 도달 시 해금`, {
+        fontFamily: FONT, fontSize: '10px', color: '#5a5a68', wordWrap: { width: 220 },
+      }).setOrigin(0, 0);
+    }
 
     const opt = loadOptions();
     if (opt.showTutorialOnStart && !localStorage.getItem(TUTORIAL_KEY)) {
@@ -257,11 +279,11 @@ export class TitleScene extends Phaser.Scene {
     this.scene.start('Game', { theme: d.themeId, challenge: d.challengeId, dailySeed: d.seed });
   }
 
-  /** 도전 모드 cycle — 없음 → 5종 → 없음 반복 */
-  private cycleChallenge(): void {
+  /** 도전 모드 cycle — 없음 → 5종 → 없음 반복. dir=+1 다음, -1 이전. */
+  private cycleChallenge(dir: 1 | -1 = 1): void {
     const ids = [null, ...Object.keys(CHALLENGES)];
     const idx = ids.indexOf(this.selectedChallenge);
-    const nextIdx = (idx + 1) % ids.length;
+    const nextIdx = (idx + dir + ids.length) % ids.length;
     this.selectedChallenge = ids[nextIdx] as string | null;
     this.refreshChallengeLabel();
   }
