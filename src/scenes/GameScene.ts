@@ -568,6 +568,32 @@ export class GameScene extends Phaser.Scene {
     kb.on('keydown-Q', () => this.useSkillSlot(0));
     kb.on('keydown-W', () => this.useSkillSlot(1));
     kb.on('keydown-E', () => this.useSkillSlot(2));
+
+    // ── 게임패드 매핑 (Xbox 컨벤션) ──
+    //   A=skill1, B=skill2, X=skill3, Y=restart
+    //   Start=pause(정책), LB=speed-, RB=speed+ (1→2→4→8 cycle)
+    const gp = this.input.gamepad;
+    if (!gp) return;
+    const SPEEDS = [1, 2, 4, 8] as const;
+    gp.on('down', (_pad: Phaser.Input.Gamepad.Gamepad, button: Phaser.Input.Gamepad.Button) => {
+      switch (button.index) {
+        case 0: this.useSkillSlot(0); break;
+        case 1: this.useSkillSlot(1); break;
+        case 2: this.useSkillSlot(2); break;
+        case 3: this.restart(); break;
+        case 9: this.togglePause(); break; // Start
+        case 5: { // RB — speed up
+          const i = SPEEDS.indexOf(this.timeScale as 1 | 2 | 4 | 8);
+          this.setSpeed(SPEEDS[Math.min(SPEEDS.length - 1, i + 1)]!);
+          break;
+        }
+        case 4: { // LB — speed down
+          const i = SPEEDS.indexOf(this.timeScale as 1 | 2 | 4 | 8);
+          this.setSpeed(SPEEDS[Math.max(0, i - 1)]!);
+          break;
+        }
+      }
+    });
   }
 
   update(_time: number, delta: number): void {

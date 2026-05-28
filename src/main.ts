@@ -30,6 +30,9 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: false },
   },
+  input: {
+    gamepad: true,
+  },
   scene: [BootScene, TitleScene, HelpScene, OptionsScene, StatsScene, GameScene, HUDScene, RuleEditorScene, ShopScene, ModifierScene, RelicScene, GameOverScene, DialogScene],
 };
 
