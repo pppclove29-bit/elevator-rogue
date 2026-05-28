@@ -24,21 +24,50 @@ export class TitleScene extends Phaser.Scene {
   create(): void {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x0b0b10).setOrigin(0.5);
 
-    // 좌측 빌딩 실루엣
+    // 좌측 빌딩 실루엣 + 창문 깜빡임
     const g = this.add.graphics();
     g.fillStyle(0x14141c, 1);
     g.fillRect(80, 140, 240, 480);
     g.lineStyle(1, 0x2a2a35, 1);
     g.strokeRect(80, 140, 240, 480);
     for (let i = 0; i < 8; i++) g.lineBetween(80, 140 + i * 60, 320, 140 + i * 60);
+    // 엘리베이터 cab (정적)
     g.fillStyle(0x4a90e2, 1);
     g.fillRect(160, 360, 36, 56);
-    g.fillStyle(0xf5c542, 0.5);
+
+    // 창문 픽셀 — 각각 Rectangle 객체로 만들어 깜빡임 tween 적용.
+    const windowConfigs: Array<{ r: number; c: number; baseAlpha: number; period: number }> = [];
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 5; c++) {
-        if (((r * 5 + c) % 7) === 0) g.fillRect(100 + c * 40, 160 + r * 60, 6, 6);
+        if (((r * 5 + c) % 7) === 0) {
+          // 항상 켜진 듯한 큰 base + 가끔 깜빡임
+          windowConfigs.push({ r, c, baseAlpha: 0.45, period: 2400 + ((r * 5 + c) * 137) % 2000 });
+        } else if (((r * 5 + c) % 11) === 3) {
+          // 가끔 켜졌다 꺼지는 창문
+          windowConfigs.push({ r, c, baseAlpha: 0.0, period: 3800 + ((r * 5 + c) * 211) % 2500 });
+        }
       }
     }
+    for (const w of windowConfigs) {
+      const rect = this.add.rectangle(100 + w.c * 40 + 3, 160 + w.r * 60 + 3, 6, 6, 0xf5c542, w.baseAlpha).setOrigin(0.5);
+      // 각 창문마다 다른 페이즈로 alpha 깜빡임 (불 켜졌다 꺼졌다)
+      this.tweens.add({
+        targets: rect,
+        alpha: w.baseAlpha > 0.2 ? { from: 0.45, to: 0.95 } : { from: 0, to: 0.6 },
+        duration: w.period,
+        yoyo: true,
+        repeat: -1,
+        delay: (w.r * 5 + w.c) * 73,
+        ease: 'Sine.easeInOut',
+      });
+    }
+    // 엘리베이터 cab 도 위아래 천천히 움직임 (운영 분위기)
+    const cab = this.add.rectangle(178, 388, 36, 56, 0x4a90e2, 1).setOrigin(0.5);
+    g.fillStyle(0x0b0b10, 1); // graphics 의 cab 자리는 빈자리로
+    g.fillRect(160, 360, 36, 56);
+    this.tweens.add({
+      targets: cab, y: 268, duration: 6000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
 
     // 타이틀
     this.add.text(GAME_WIDTH / 2 + 30, 116, 'Elevator', {

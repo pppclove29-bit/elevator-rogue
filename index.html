@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Elevator Rogue</title>
     <style>
+      /* Galmuri11 — 한국어 픽셀 폰트 (OFL). public/fonts/Galmuri11.woff2 두면 자동 적용. */
+      /* 파일 없으면 font-display: swap 으로 cascade 다음 폰트(system sans) 사용. */
+      @font-face {
+        font-family: 'Galmuri11';
+        src: url('/fonts/Galmuri11.woff2') format('woff2');
+        font-display: swap;
+        font-weight: normal;
+        font-style: normal;
+      }
       html, body { margin: 0; padding: 0; background: #0b0b10; overflow: hidden; }
       #game { width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
     </style>

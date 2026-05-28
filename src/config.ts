@@ -6,8 +6,9 @@ export const TICK_MS = 50;
 export const INITIAL_FLOORS = 5;
 export const INITIAL_ELEVATORS = 1;
 
-// 게임 폰트 (가독성 우선 — system-ui)
-export const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
+// 게임 폰트 — Galmuri11 (한국어 픽셀 폰트, OFL) 우선, 없으면 system fallback.
+// public/fonts/Galmuri11.woff2 두면 자동 적용 (index.html @font-face).
+export const FONT = '"Galmuri11", -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
 
 export const COLORS = {
   bg: '#0b0b10',

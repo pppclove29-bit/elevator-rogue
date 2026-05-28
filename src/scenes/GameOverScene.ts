@@ -24,26 +24,64 @@ export class GameOverScene extends Phaser.Scene {
 
     // 게임 오버 = 런 종료. 저장 삭제 + 진행도 기록.
     clearSave();
+    const themeId = (this.gs as any).themeId ?? 'office';
+    const challengeId = (this.gs as any).challengeId ?? null;
+    const finalDay = s.dayCompleted + 1;
+
+    // 신기록 비교는 record 호출 *전*에 prev 캡쳐
     const prog = loadProgression();
-    const newUnlocks = recordRunEnd(prog, (this.gs as any).themeId ?? 'office', s.dayCompleted + 1, s.servedCount, s.gold, s.angryServedCount, (this.gs as any).challengeId ?? null);
+    const prevBest = challengeId
+      ? (prog.bestDayByChallenge?.[challengeId] ?? 0)
+      : (prog.bestDayByTheme[themeId as keyof typeof prog.bestDayByTheme] ?? 0);
+    const isNewBest = finalDay > prevBest;
+
+    const newUnlocks = recordRunEnd(prog, themeId, finalDay, s.servedCount, s.gold, s.angryServedCount, challengeId);
     saveProgression(prog);
-    // 일일 챌린지 런이면 별도 기록
     const dailySeed = (this.gs as any).dailySeed as number | null | undefined;
-    if (dailySeed) recordDailyRun(dailySeed, s.dayCompleted + 1);
+    if (dailySeed) recordDailyRun(dailySeed, finalDay);
 
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.88);
 
-    // 타이틀
-    this.add.text(GAME_WIDTH / 2, 60, t('gameover.title'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '56px', color: '#e74c3c', fontStyle: 'bold',
+    // 상단 GAME OVER 라벨 (작게)
+    this.add.text(GAME_WIDTH / 2, 44, t('gameover.title'), {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '24px', color: '#e74c3c', fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    this.add.text(GAME_WIDTH / 2, 130, this.deathFlavor(s), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '14px', color: COLORS.textDim, fontStyle: 'italic',
+    // 가운데 큰 결과 — "N 일차 도달" + 카운트업
+    const dayLabel = this.add.text(GAME_WIDTH / 2, 100, '0', {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '88px', color: COLORS.text, fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.add.text(GAME_WIDTH / 2 + 110, 130, '일차', {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '24px', color: COLORS.textDim,
+    }).setOrigin(0, 1);
+    // 카운트업
+    this.tweens.addCounter({
+      from: 0, to: finalDay,
+      duration: Math.min(1200, 80 * finalDay + 200),
+      onUpdate: (tw) => dayLabel.setText(String(Math.round(tw.getValue() ?? 0))),
+    });
+
+    // 신기록 배너 — 가운데 위. 빛나는 효과.
+    if (isNewBest && finalDay > 1) {
+      const banner = this.add.text(GAME_WIDTH / 2, 168, `✨  NEW BEST  ✨   (이전 ${prevBest})`, {
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+        fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
+      }).setOrigin(0.5).setAlpha(0);
+      this.tweens.add({ targets: banner, alpha: 1, duration: 400, delay: 400 });
+      this.tweens.add({ targets: banner, scale: 1.08, yoyo: true, repeat: -1, duration: 700, delay: 800, ease: 'Sine.easeInOut' });
+    }
+
+    // 플레이버 문구
+    this.add.text(GAME_WIDTH / 2, 200, this.deathFlavor(s), {
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontSize: '13px', color: COLORS.textDim, fontStyle: 'italic',
     }).setOrigin(0.5);
 
     // 통계 패널
-    const panelX = 180, panelY = 180, panelW = GAME_WIDTH - 360, panelH = 360;
+    const panelX = 180, panelY = 230, panelW = GAME_WIDTH - 360, panelH = 320;
     this.add.rectangle(panelX, panelY, panelW, panelH, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
 
     this.add.text(panelX + 20, panelY + 16, t('gameover.summary_title'), {
