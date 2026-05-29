@@ -240,6 +240,12 @@ export class HUDScene extends Phaser.Scene {
 
     // 엘베 관리 (정책 편집기 토글, 자동 일시정지)
     this.manageBtn = new ControlButton(this, x, y, 110, 28, t('hud.manage') ?? '엘베 관리', () => game.toggleManage());
+    x += 110 + gap;
+
+    // 설정 (톱니바퀴) — Options 모달 launch
+    new ControlButton(this, x, y, 36, 28, '⚙', () => {
+      if (!this.scene.isActive('Options')) this.scene.launch('Options');
+    });
   }
 
   update(): void {

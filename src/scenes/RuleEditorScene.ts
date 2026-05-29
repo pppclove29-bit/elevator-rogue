@@ -30,11 +30,7 @@ export class RuleEditorScene extends Phaser.Scene {
 
     // 닫기 X 버튼 (재개가 아니라 단순 닫기 — toggleManage 가 정책편집기 닫고 게임 재개)
     new Button(this, GAME_WIDTH - 40, 30, 44, 32, '✕', () => this.gs.toggleManage(), { fontSize: 16 });
-
-    // 좌측 상단 — 저장하고 타이틀로 (런 진행도 유지, 자동 저장됨)
-    new Button(this, 90, 30, 160, 32, '💾 저장 후 타이틀', () => this.saveAndExit(), {
-      fontSize: 12, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10',
-    });
+    // (저장 후 타이틀 버튼은 HUD 톱니바퀴(⚙) → Options 안으로 이동했음)
 
     this.content = this.add.container(0, 0);
     this.input.keyboard?.on('keydown-ESC', () => this.gs.toggleManage());
@@ -252,10 +248,7 @@ export class RuleEditorScene extends Phaser.Scene {
     popup.setDepth(100);
   }
 
-  /** 현재 진행 저장 + 타이틀로 복귀. 게임 scene 모두 정리. */
-  private saveAndExit(): void {
-    this.gs.saveAndExitToTitle();
-  }
+  // saveAndExit 는 HUD 의 ⚙ → Options 모달로 이동했음 (메뉴 통합)
 
   private drawToggleRow(x: number, y: number, w: number, label: string, value: boolean, onChange: (v: boolean) => void): void {
     this.content.add(this.add.rectangle(x, y, w, 60, value ? ROW_BG_ACTIVE : ROW_BG, 1).setOrigin(0, 0).setStrokeStyle(1, value ? BORDER_SEL : BORDER));

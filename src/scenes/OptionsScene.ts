@@ -27,10 +27,28 @@ export class OptionsScene extends Phaser.Scene {
     new Button(this, GAME_WIDTH - 80, 38, 100, 28, `${t('common.close')} (ESC)`, () => this.close(),
       { fontSize: 12 });
 
+    // 게임 중일 때만 좌측 상단에 "타이틀로 이동" 버튼 (저장 + 메인 메뉴)
+    if (this.scene.isActive('Game')) {
+      new Button(this, 100, 38, 180, 28, '💾 저장 후 타이틀로', () => this.saveAndExitToTitle(),
+        { fontSize: 12, bg: 0x4a6a32, bgHover: 0x6a8a42, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+    }
+
     this.content = this.add.container(0, 0);
     this.input.keyboard?.on('keydown-ESC', () => this.close());
 
     this.rebuild();
+  }
+
+  private saveAndExitToTitle(): void {
+    saveOptions(this.opt);
+    const gs = this.scene.get('Game') as { saveAndExitToTitle?: () => void } | undefined;
+    if (gs?.saveAndExitToTitle) {
+      this.scene.stop();
+      gs.saveAndExitToTitle();
+    } else {
+      this.scene.stop();
+      this.scene.start('Title');
+    }
   }
 
   private close(): void {
