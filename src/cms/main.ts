@@ -327,6 +327,91 @@ function exportAll(): void {
   toast('전체 번들 내보내기');
 }
 
+// ─── 검증 ─────────────────────────────────────────────────
+interface ValidationIssue { level: 'error' | 'warn'; tab: Tab; id: string; msg: string; }
+
+function validateAll(): ValidationIssue[] {
+  const issues: ValidationIssue[] = [];
+  for (const tab of Object.keys(TABS) as Tab[]) {
+    const spec = TABS[tab];
+    for (const [id, entry] of Object.entries(spec.data)) {
+      if (tab === 'dialog') {
+        const lines = entry as Array<{ speaker: string; text: string; portrait?: string }>;
+        if (!Array.isArray(lines) || lines.length === 0) { issues.push({ level: 'error', tab, id, msg: '빈 다이얼로그' }); continue; }
+        for (let i = 0; i < lines.length; i++) {
+          const l = lines[i]!;
+          if (!l.speaker) issues.push({ level: 'error', tab, id, msg: `${i + 1}번 라인: speaker 빈값` });
+          else if (!SPEAKERS.includes(l.speaker)) issues.push({ level: 'warn', tab, id, msg: `${i + 1}번 라인: 알 수 없는 speaker "${l.speaker}"` });
+          if (l.text === undefined || l.text === null) issues.push({ level: 'error', tab, id, msg: `${i + 1}번 라인: text 빈값` });
+        }
+        continue;
+      }
+      const e = entry as Record<string, unknown>;
+      for (const f of spec.fields) {
+        const v = e[f.key];
+        if (f.type === 'text' || f.type === 'textarea') {
+          if (v === undefined || v === null || v === '') issues.push({ level: 'warn', tab, id, msg: `${f.label} 빈값` });
+        }
+        if (f.type === 'number' && (v === undefined || v === null || !Number.isFinite(v))) {
+          issues.push({ level: 'error', tab, id, msg: `${f.label} 숫자 X` });
+        }
+        if (f.type === 'effect-id') {
+          const meta = f.effectKind === 'modifier' ? MODIFIER_EFFECTS_META : SKILL_EFFECTS_META as Record<string, unknown>;
+          if (v && !(v as string in meta)) issues.push({ level: 'error', tab, id, msg: `미정의 effectId "${v}"` });
+        }
+        if (f.type === 'color' && typeof v === 'string' && !/^#[0-9a-f]{6}$/i.test(v)) {
+          issues.push({ level: 'warn', tab, id, msg: `색상 형식 # rrggbb 아님: ${v}` });
+        }
+      }
+      // phase-weights: 모든 phase 가중치 0 이면 등장 안 함 → 경고
+      if (tab === 'archetypes') {
+        const w = e.weightByPhase as Record<string, number> | undefined;
+        const total = w ? Object.values(w).reduce((a, b) => a + (b ?? 0), 0) : 0;
+        if (total === 0) issues.push({ level: 'warn', tab, id, msg: '모든 페이즈 가중치 0 — 게임 등장 X' });
+      }
+    }
+  }
+  return issues;
+}
+
+function renderValidationPanel(): HTMLElement {
+  const issues = validateAll();
+  const errors = issues.filter((i) => i.level === 'error');
+  const warns = issues.filter((i) => i.level === 'warn');
+  const tabIssues = issues.filter((i) => i.tab === currentTab);
+
+  const summary = el('div', {
+    style: 'display: flex; gap: 8px; align-items: center; padding: 6px 10px; margin-bottom: 8px; background: var(--row); border-radius: 4px; font-size: 11px;',
+  },
+    errors.length > 0
+      ? el('span', { style: 'color: var(--danger); font-weight: bold;' }, `🛑 ${errors.length} 오류`)
+      : el('span', { style: 'color: var(--success);' }, '✓ 오류 없음'),
+    warns.length > 0
+      ? el('span', { style: 'color: var(--warning);' }, `⚠ ${warns.length} 경고`)
+      : el('span'),
+    el('span', { style: 'flex: 1;' }),
+    el('span', { style: 'color: var(--text-dim);' }, `현재 탭 ${tabIssues.length}건`),
+  );
+
+  if (tabIssues.length === 0) return summary;
+
+  const list = el('div', { style: 'max-height: 180px; overflow: auto; font-size: 11px;' });
+  for (const iss of tabIssues.slice(0, 30)) {
+    list.append(el('div', {
+      style: `padding: 3px 8px; border-left: 2px solid ${iss.level === 'error' ? 'var(--danger)' : 'var(--warning)'}; margin-bottom: 2px; cursor: pointer;`,
+      onClick: () => { activeKey = iss.id; render(); },
+    },
+      el('span', { style: 'color: var(--accent); font-weight: bold; margin-right: 6px;' }, iss.id),
+      el('span', { style: 'color: var(--text-dim);' }, iss.msg),
+    ));
+  }
+  if (tabIssues.length > 30) {
+    list.append(el('div', { style: 'padding: 3px 8px; color: var(--text-dim);' }, `... +${tabIssues.length - 30}건 더`));
+  }
+
+  return el('div', {}, summary, list);
+}
+
 async function importFromFile(): Promise<void> {
   const input = document.createElement('input');
   input.type = 'file';
@@ -521,7 +606,8 @@ function renderSidebar(): HTMLElement {
 
   return el('div', { class: 'cms-sidebar' },
     el('div', { style: 'padding: 4px 6px 10px;' },
-      el('h3', { style: 'margin: 0 0 8px;' }, `${spec.label} 목록`),
+      renderValidationPanel(),
+      el('h3', { style: 'margin: 8px 0 8px;' }, `${spec.label} 목록`),
       el('input', {
         id: 'cms-search', type: 'text', placeholder: '검색... (/ 로 포커스)',
         value: searchByTab[currentTab],
@@ -577,6 +663,92 @@ function duplicateEntry(id: string): void {
   render();
 }
 
+const SPEAKER_LABEL: Record<string, string> = {
+  narrator: '내레이션',
+  mentor: '멘토 구판장',
+  owner: '사장님',
+  player: '신입 매니저',
+};
+const SPEAKER_COLOR: Record<string, string> = {
+  narrator: '#3a3a48',
+  mentor: '#7ed957',
+  owner: '#e74c3c',
+  player: '#4a90e2',
+};
+
+let dialogPreviewIdx = 0;
+
+/** 한 줄의 다이얼로그를 게임 다이얼로그 박스 모양으로 렌더 (미니어처). */
+function renderDialogPreview(lines: Array<{ speaker: string; text: string; portrait?: string }>): HTMLElement {
+  if (lines.length === 0) {
+    return el('div', { style: 'padding: 14px; color: var(--text-dim); font-size: 12px;' }, '빈 다이얼로그');
+  }
+  if (dialogPreviewIdx >= lines.length) dialogPreviewIdx = 0;
+  const cur = lines[dialogPreviewIdx]!;
+  const speakerLabel = SPEAKER_LABEL[cur.speaker] ?? cur.speaker;
+  const speakerColor = SPEAKER_COLOR[cur.speaker] ?? '#888';
+  const initial = (SPEAKER_LABEL[cur.speaker] ?? '?').charAt(0);
+
+  const wrap = el('div', {
+    style: 'border: 1px solid var(--border); background: #0b0b10; border-radius: 6px; overflow: hidden;',
+  });
+
+  // 윗부분 — 게임 화면 미니어처
+  const stage = el('div', {
+    style: 'position: relative; background: #1c1c26; height: 280px; display: flex; align-items: flex-end; padding: 0;',
+  });
+  // 캐릭터 portrait 자리 (좌측)
+  if (cur.speaker !== 'narrator') {
+    const portrait = el('div', {
+      style: `width: 120px; height: 220px; margin: 10px 14px; background: linear-gradient(to bottom, #2a2a35, #0e0e14); border: 1px solid ${speakerColor}; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;`,
+    },
+      el('div', { style: `width: 60px; height: 60px; border-radius: 50%; background: ${speakerColor}; color: #0b0b10; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold;` }, initial),
+      el('div', { style: 'color: var(--text-dim); font-size: 10px; margin-top: 8px;' }, speakerLabel),
+      cur.portrait
+        ? el('div', { style: 'position: absolute; bottom: 6px; left: 6px; color: var(--warning); font-size: 9px; background: rgba(0,0,0,0.6); padding: 2px 5px; border-radius: 3px;' }, cur.portrait)
+        : el('span'),
+    );
+    wrap.append(); // noop — but keeps tree symmetry
+    stage.append(portrait);
+  }
+
+  // 다이얼로그 박스 (하단)
+  const dialogBox = el('div', {
+    style: 'position: absolute; left: 14px; right: 14px; bottom: 12px; background: #14141cdd; border: 1px solid #4a90e2; border-radius: 6px; padding: 10px 14px; min-height: 80px;',
+  });
+  if (cur.speaker !== 'narrator') {
+    dialogBox.append(el('div', {
+      style: `position: absolute; top: -12px; left: 12px; background: ${speakerColor}; color: #0b0b10; padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;`,
+    }, speakerLabel));
+  }
+  dialogBox.append(el('div', {
+    style: 'color: var(--text); font-size: 13px; line-height: 1.5; margin-top: 4px; white-space: pre-wrap;',
+  }, cur.text || '(빈 텍스트)'));
+  stage.append(dialogBox);
+  wrap.append(stage);
+
+  // 컨트롤 (이전/다음/카운터)
+  const controls = el('div', {
+    style: 'display: flex; gap: 8px; align-items: center; padding: 8px 12px; background: var(--row); border-top: 1px solid var(--border);',
+  },
+    el('button', {
+      class: 'secondary', style: 'padding: 4px 10px; font-size: 12px;',
+      disabled: dialogPreviewIdx === 0,
+      onClick: () => { dialogPreviewIdx -= 1; render(); },
+    }, '◀ 이전'),
+    el('button', {
+      class: 'secondary', style: 'padding: 4px 10px; font-size: 12px;',
+      disabled: dialogPreviewIdx >= lines.length - 1,
+      onClick: () => { dialogPreviewIdx += 1; render(); },
+    }, '다음 ▶'),
+    el('span', { style: 'flex: 1;' }),
+    el('span', { style: 'color: var(--text-dim); font-size: 11px;' }, `${dialogPreviewIdx + 1} / ${lines.length}`),
+  );
+  wrap.append(controls);
+
+  return wrap;
+}
+
 function renderDialogContent(): HTMLElement {
   const spec = TABS.dialog;
   if (!activeKey) return el('div', { class: 'cms-content' }, el('div', { class: 'empty' }, '스크립트 선택'));
@@ -620,7 +792,8 @@ function renderDialogContent(): HTMLElement {
     );
   });
 
-  return el('div', { class: 'cms-content' },
+  // 좌측: 편집 영역, 우측: 미리보기 (게임 모양)
+  const editor = el('div', { style: 'flex: 1; min-width: 0; padding: 16px 24px; overflow-y: auto;' },
     el('div', { class: 'hint' },
       el('strong', {}, '💡 다이얼로그: '),
       'speaker = narrator/mentor/owner/player. portrait 은 캐릭터 변형 키 (smirk/worried). 저장 후 게임 새로고침.'
@@ -633,6 +806,19 @@ function renderDialogContent(): HTMLElement {
       el('span', { style: 'color: var(--text-dim); font-size: 12px;' }, `${lines.length}줄`)
     ),
     ...lineRows
+  );
+
+  const preview = el('div', { style: 'width: 380px; min-width: 380px; padding: 14px; border-left: 1px solid var(--border); background: #0e0e14;' },
+    el('div', { style: 'color: var(--text-dim); font-size: 11px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;' },
+      el('strong', { style: 'color: var(--accent);' }, '🎬 미리보기'),
+      el('span', {}, '— 게임 다이얼로그 박스 모양'),
+    ),
+    renderDialogPreview(lines),
+  );
+
+  return el('div', { class: 'cms-content', style: 'display: flex; gap: 0; padding: 0;' },
+    editor,
+    preview,
   );
 }
 
