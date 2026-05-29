@@ -21,21 +21,32 @@ export interface Progression {
   bestDayByChallenge?: Record<string, number>;
 }
 
-/** 테마별 해금 조건 — 난이도 점증. "어느 테마든" 조건 만족 시 해금. */
+/** 테마별 순차 해금. 스토리(오피스)부터 시작 → 각 테마 7일 도달 시 다음 해금. */
+export const STORY_CLEAR_DAY = 7;
 export const UNLOCK_REQUIREMENTS: Array<{
   theme: ThemeId;
   requireDay: number;
   requireTheme?: ThemeId;
-  /** 4개 기본 테마 모두 이 일자 이상 달성 시 해금 (chaos용) */
   requireAllThemesBest?: number;
   label: string;
 }> = [
-  { theme: 'office',   requireDay: 0,  label: '시작 테마' },
-  { theme: 'airport',  requireDay: 7,  requireTheme: 'office', label: '오피스 빌딩에서 7일차 도달' },
-  { theme: 'hospital', requireDay: 14, label: '어떤 테마든 14일차 도달' },
-  { theme: 'hotel',    requireDay: 21, label: '어떤 테마든 21일차 도달' },
-  { theme: 'chaos',    requireDay: 0,  requireAllThemesBest: 7, label: '오피스/공항/병원/호텔 모두 7일차 이상 도달' },
+  { theme: 'office',   requireDay: 0,  label: '스토리 모드 (시작)' },
+  { theme: 'airport',  requireDay: STORY_CLEAR_DAY, requireTheme: 'office',   label: `스토리(오피스) ${STORY_CLEAR_DAY}일차 도달` },
+  { theme: 'hospital', requireDay: STORY_CLEAR_DAY, requireTheme: 'airport',  label: `공항 ${STORY_CLEAR_DAY}일차 도달` },
+  { theme: 'hotel',    requireDay: STORY_CLEAR_DAY, requireTheme: 'hospital', label: `병원 ${STORY_CLEAR_DAY}일차 도달` },
+  { theme: 'chaos',    requireDay: STORY_CLEAR_DAY, requireTheme: 'hotel',    label: `호텔 ${STORY_CLEAR_DAY}일차 도달` },
 ];
+
+/** 스토리 클리어 = 오피스 STORY_CLEAR_DAY 일차 도달. */
+export function isStoryCleared(p: Progression): boolean {
+  return (p.bestDayByTheme.office ?? 0) >= STORY_CLEAR_DAY;
+}
+
+/** 모든 테마(5종) 클리어 = 룰셋 도전 모드 + 일일 챌린지 해금. */
+export function isAllThemesCleared(p: Progression): boolean {
+  const ALL_THEMES: ThemeId[] = ['office', 'airport', 'hospital', 'hotel', 'chaos'];
+  return ALL_THEMES.every((t) => (p.bestDayByTheme[t] ?? 0) >= STORY_CLEAR_DAY);
+}
 
 export function loadProgression(): Progression {
   const raw = localStorage.getItem(KEY);

@@ -108,12 +108,31 @@ export class DialogScene extends Phaser.Scene {
       targets: this.continueHint, alpha: 0.3, yoyo: true, repeat: -1, duration: 600,
     });
 
+    // 스킵 버튼 — 우측 상단. 누르면 전체 다이얼로그 즉시 종료 (onComplete 호출).
+    const skipBtn = this.add.text(GAME_WIDTH - 24, 24, '스킵 ▶▶', {
+      fontFamily: FONT, fontSize: '13px', color: '#9aa0a6',
+      backgroundColor: '#14141c', padding: { x: 10, y: 6 },
+    }).setOrigin(1, 0).setInteractive({ useHandCursor: true });
+    skipBtn.on('pointerover', () => skipBtn.setColor('#f5c542'));
+    skipBtn.on('pointerout', () => skipBtn.setColor('#9aa0a6'));
+    skipBtn.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, ev: Phaser.Types.Input.EventData) => {
+      ev.stopPropagation();
+      this.skip();
+    });
+
     // 입력
     this.bg.on('pointerdown', () => this.advance());
     this.input.keyboard?.on('keydown-SPACE', () => this.advance());
     this.input.keyboard?.on('keydown-ENTER', () => this.advance());
+    this.input.keyboard?.on('keydown-ESC', () => this.skip());
 
     this.showCurrentLine();
+  }
+
+  /** 전체 다이얼로그 즉시 종료. onComplete 그대로 호출. */
+  private skip(): void {
+    this.lineIdx = this.lines.length;
+    this.finish();
   }
 
   private showCurrentLine(): void {

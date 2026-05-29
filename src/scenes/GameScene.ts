@@ -55,9 +55,11 @@ export class GameScene extends Phaser.Scene {
   private challengeId: string | null = null;
   /** 일일 챌린지 시드. 있으면 seed 강제 + recordDailyRun 호출. */
   private dailySeed: number | null = null;
+  /** 스토리 모드 — 다이얼로그 강제 노출 (introShown flag 무시) */
+  private storyMode: boolean = false;
   private pendingLoad: SaveData | null = null;
 
-  init(data: { theme?: ThemeId; load?: boolean; challenge?: string | null; dailySeed?: number }): void {
+  init(data: { theme?: ThemeId; load?: boolean; challenge?: string | null; dailySeed?: number; storyMode?: boolean }): void {
     if (data?.load) {
       this.pendingLoad = readSave();
     } else {
@@ -65,6 +67,7 @@ export class GameScene extends Phaser.Scene {
       if (data?.theme) this.themeId = data.theme;
       this.challengeId = data?.challenge ?? null;
       this.dailySeed = data?.dailySeed ?? null;
+      this.storyMode = data?.storyMode ?? false;
       if (this.dailySeed !== null) this.seed = this.dailySeed;
     }
   }
@@ -104,12 +107,13 @@ export class GameScene extends Phaser.Scene {
     this.maybeShowIntro();
   }
 
-  /** 게임 첫 실행 시 인트로 스토리. localStorage flag 로 1회만. */
+  /** 게임 첫 실행 시 인트로 스토리. localStorage flag 로 1회만.
+   *  단 storyMode 면 매번 강제 노출 (사용자가 스킵 가능). */
   private maybeShowIntro(): void {
     const KEY = 'elevator-rogue.story.introShown';
     this.loadTutorialFlags();
     if (this.pendingLoad) return; // 세이브 로드는 인트로 X
-    if (localStorage.getItem(KEY)) return;
+    if (!this.storyMode && localStorage.getItem(KEY)) return;
     this.playDialog('intro-opening', () => {
       localStorage.setItem(KEY, '1');
     });
