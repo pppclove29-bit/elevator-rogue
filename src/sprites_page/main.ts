@@ -108,6 +108,64 @@ async function clearKey(key: string): Promise<void> {
   render();
 }
 
+/**
+ * 안전한 클립보드 복사 — 3단 fallback.
+ *  1) navigator.clipboard (secure context 만)
+ *  2) textarea + execCommand (구식이지만 호환성 ↑)
+ *  3) 모달로 텍스트 표시 (사용자 수동 Cmd+A → Cmd+C)
+ */
+async function copyToClipboard(text: string): Promise<'modern' | 'legacy' | 'manual'> {
+  // 1) modern
+  if (navigator.clipboard && (window.isSecureContext || location.protocol === 'http:')) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return 'modern';
+    } catch { /* fallthrough */ }
+  }
+  // 2) legacy
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.position = 'fixed';
+  ta.style.top = '0';
+  ta.style.left = '0';
+  ta.style.opacity = '0';
+  document.body.append(ta);
+  ta.focus();
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch { /* ignore */ }
+  ta.remove();
+  if (ok) return 'legacy';
+  // 3) 수동 — 모달로 표시
+  showManualCopyModal(text);
+  return 'manual';
+}
+
+/** 클립보드 못 쓰는 환경 — 텍스트 모달 + 자동 select. */
+function showManualCopyModal(text: string): void {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 40px;';
+  overlay.onclick = (e) => { if (e.target === overlay) overlay.remove(); };
+  const panel = document.createElement('div');
+  panel.style.cssText = 'background: #14141c; border: 1px solid #4a90e2; border-radius: 8px; padding: 20px; max-width: 900px; max-height: 80vh; display: flex; flex-direction: column; gap: 12px;';
+  const title = document.createElement('div');
+  title.innerHTML = '<strong style="color:#f5c542">자동 복사 실패</strong> — 텍스트 박스에서 직접 복사하세요 (Cmd+A → Cmd+C)';
+  title.style.cssText = 'color: #c5c8cc; font-size: 13px;';
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  ta.style.cssText = 'flex: 1; min-height: 50vh; padding: 12px; background: #0e0e14; color: #f5f5f5; border: 1px solid #4a4a55; border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.5;';
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '닫기';
+  closeBtn.style.cssText = 'background: #4a90e2; color: #0b0b10; padding: 8px 16px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer; align-self: flex-end;';
+  closeBtn.onclick = () => overlay.remove();
+  panel.append(title, ta, closeBtn);
+  overlay.append(panel);
+  document.body.append(overlay);
+  // 텍스트 전체 자동 select
+  setTimeout(() => { ta.focus(); ta.select(); }, 50);
+}
+
 /** 키 배열에 대해 placeholder 일괄 생성. 디스크 우선 + IndexedDB fallback. */
 async function runBulk(keys: string[]): Promise<void> {
   const metas = SPRITE_KEYS.filter((m) => keys.includes(m.key));
@@ -230,13 +288,12 @@ function render(): void {
   };
   const copyBundle = async (filter: 'all' | 'must' | 'missing'): Promise<void> => {
     const text = buildBundle(filter);
-    try {
-      await navigator.clipboard.writeText(text);
-      const labels: Record<string, string> = { all: '전체', must: '필수만', missing: '미생성만' };
-      alert(`${labels[filter]} 프롬프트 묶음 복사됨 (${text.length.toLocaleString()}자).\nChatGPT 등에 붙여넣기.`);
-    } catch {
-      alert('복사 실패. 다운로드 버튼 사용.');
+    const result = await copyToClipboard(text);
+    const labels: Record<string, string> = { all: '전체', must: '필수만', missing: '미생성만' };
+    if (result === 'modern' || result === 'legacy') {
+      alert(`${labels[filter]} 프롬프트 묶음 복사됨 (${text.length.toLocaleString()}자, ${result}).\nChatGPT 등에 붙여넣기.`);
     }
+    // 'manual' 케이스 — 모달이 자동 표시됨
   };
   const downloadBundle = (filter: 'all' | 'must' | 'missing'): void => {
     const text = buildBundle(filter);
@@ -386,13 +443,11 @@ function render(): void {
           style: 'background: #4a90e2; color: #0b0b10; padding: 4px 10px; border: none; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; flex-shrink: 0;',
           title: '클립보드 복사',
           onClick: async () => {
-            try {
-              await navigator.clipboard.writeText(prompt);
+            const result = await copyToClipboard(prompt);
+            if (result !== 'manual') {
               copyBtn.textContent = '✓ 복사됨';
               copyBtn.style.background = '#7ed957';
               setTimeout(() => { copyBtn.textContent = '📋 복사'; copyBtn.style.background = '#4a90e2'; }, 1500);
-            } catch {
-              copyBtn.textContent = '실패';
             }
           },
         }, '📋 복사') as HTMLButtonElement;
