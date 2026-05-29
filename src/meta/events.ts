@@ -424,6 +424,70 @@ export const EVENTS: Record<string, EventEntry> = {
     },
   },
 
+  // ─────────────────────────────────────────────────────────────
+  // 추가 공휴일 / 랜덤 (콘텐츠 확장)
+  // ─────────────────────────────────────────────────────────────
+  'ev-holiday-buddha': {
+    id: 'ev-holiday-buddha', name: '🪷 부처님 오신 날',
+    desc: '공휴일. 매우 한산. +20G',
+    severity: 'mild', holiday: { month: 5, date: 27 },
+    trigger: (s) => {
+      s.gold += 20;
+      const u = mulSpawn(s, 2.5);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-holiday-april-fools': {
+    id: 'ev-holiday-april-fools', name: '🤡 만우절',
+    desc: '도둑 출몰 ×3. 보너스 +20G (속았다!)',
+    severity: 'major', holiday: { month: 4, date: 1 },
+    trigger: (s) => {
+      s.gold += 20;
+      const orig = s.params.thiefSpawnMultiplier;
+      s.params.thiefSpawnMultiplier *= 3;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.thiefSpawnMultiplier = orig; } };
+    },
+  },
+  'ev-summer-festival': {
+    id: 'ev-summer-festival', name: '🏖️ 여름 휴가철',
+    desc: '옥상 dest 가중치 ↑. 골드 ×1.3. +35G',
+    severity: 'major', holiday: { month: 8, date: 1 },
+    trigger: (s) => {
+      s.gold += 35;
+      const orig = s.params.rooftopGoldMultiplier;
+      s.params.rooftopGoldMultiplier *= 1.3;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => { s.params.rooftopGoldMultiplier = orig; } };
+    },
+  },
+  'ev-coffee-break': {
+    id: 'ev-coffee-break', name: '☕ 커피 타임',
+    desc: '하루 종일 모든 페이즈 스폰 ×0.6. 보너스 +20G',
+    severity: 'mild', minDay: 3,
+    trigger: (s) => {
+      s.gold += 20;
+      const u = mulSpawn(s, 1.66);
+      return { durationTicks: Math.floor(150 * 1000 / 50), cleanup: u };
+    },
+  },
+  'ev-overtime': {
+    id: 'ev-overtime', name: '🌙 야근',
+    desc: '저녁/야간 스폰 ×2. EVENING dest 옥상 가중치 ↑',
+    severity: 'major', minDay: 5,
+    trigger: (s) => {
+      const ev = s.params.phaseSpawnMultiplier.evening;
+      const ni = s.params.phaseSpawnMultiplier.night;
+      s.params.phaseSpawnMultiplier.evening *= 0.5;
+      s.params.phaseSpawnMultiplier.night *= 0.5;
+      return { durationTicks: Math.floor(150 * 1000 / 50),
+        cleanup: () => {
+          s.params.phaseSpawnMultiplier.evening = ev;
+          s.params.phaseSpawnMultiplier.night = ni;
+        } };
+    },
+  },
+
   'ev-subway-strike': {
     id: 'ev-subway-strike', name: '지하철 파업',
     desc: '오늘 로비 트래픽 ×1.7 (지하철 안 다녀 사람들이 1F로 몰림)',
