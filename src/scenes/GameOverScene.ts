@@ -80,6 +80,19 @@ export class GameOverScene extends Phaser.Scene {
       fontSize: '13px', color: COLORS.textDim, fontStyle: 'italic',
     }).setOrigin(0.5);
 
+    // 이전 최고 비교 (신기록 아닐 때만 — 신기록이면 NEW BEST 배너로 충분)
+    if (!isNewBest && prevBest > 0) {
+      const delta = finalDay - prevBest;
+      const deltaStr = delta >= 0 ? `+${delta}` : `${delta}`;
+      const deltaColor = delta >= 0 ? '#7ed957' : '#e74c3c';
+      this.add.text(GAME_WIDTH / 2, 220, `이전 최고 ${prevBest}일차 · 이번 ${deltaStr}일`, {
+        fontFamily: FONT, fontSize: '12px', color: COLORS.textDim,
+      }).setOrigin(0.5);
+      this.add.text(GAME_WIDTH / 2 + 95, 220, deltaStr, {
+        fontFamily: FONT, fontSize: '12px', color: deltaColor, fontStyle: 'bold',
+      }).setOrigin(0, 0.5);
+    }
+
     // 통계 패널
     const panelX = 180, panelY = 230, panelW = GAME_WIDTH - 360, panelH = 320;
     this.add.rectangle(panelX, panelY, panelW, panelH, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
@@ -126,6 +139,26 @@ export class GameOverScene extends Phaser.Scene {
       }
     }
 
+    // ── 이번 런 달성 배지 ──
+    const badges = this.collectBadges(s);
+    if (badges.length > 0) {
+      const bgY = panelY + panelH - 64;
+      this.add.text(panelX + 20, bgY, '🏅 달성 배지', {
+        fontFamily: FONT, fontSize: '13px', color: '#f5c542', fontStyle: 'bold',
+      });
+      let bx = panelX + 20;
+      const by = bgY + 22;
+      for (const b of badges) {
+        const chip = this.add.rectangle(bx, by, b.label.length * 9 + 36, 28, b.color, 0.85).setOrigin(0, 0).setStrokeStyle(1, 0xffffff);
+        const txt = this.add.text(bx + 8, by + 5, `${b.emoji} ${b.label}`, {
+          fontFamily: FONT, fontSize: '12px', color: '#0b0b10', fontStyle: 'bold',
+        });
+        bx += chip.width + 6;
+        // hover (선택) — 설명 표시. 단순화: 호버 X
+        void txt;
+      }
+    }
+
     // 해금 알림 (있으면)
     if (newUnlocks.length > 0) {
       const noticeY = panelY + panelH + 12;
@@ -143,6 +176,22 @@ export class GameOverScene extends Phaser.Scene {
     const btnY = GAME_HEIGHT - 70;
     new Button(this, GAME_WIDTH / 2, btnY, 240, 44, t('gameover.menu'), () => this.toTitle(),
       { fontSize: 14, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
+  }
+
+  /** 이번 런에서 달성한 배지 리스트. */
+  private collectBadges(s: SimState): Array<{ emoji: string; label: string; color: number }> {
+    const finalDay = s.dayCompleted + 1;
+    const out: Array<{ emoji: string; label: string; color: number }> = [];
+    if (finalDay >= 3)  out.push({ emoji: '🌅', label: '첫걸음',     color: 0x7ed957 });
+    if (finalDay >= 7)  out.push({ emoji: '📖', label: '스토리 클리어', color: 0x4a90e2 });
+    if (finalDay >= 14) out.push({ emoji: '💪', label: '베테랑',     color: 0xe2a04a });
+    if (finalDay >= 30) out.push({ emoji: '👑', label: '마스터',     color: 0xf5c542 });
+    if (finalDay >= 60) out.push({ emoji: '🏆', label: '전설',       color: 0xff7ab8 });
+    if (s.angryServedCount === 0 && s.servedCount >= 30) out.push({ emoji: '🛡️', label: '무결점', color: 0xb08cff });
+    if (s.gold >= 200)  out.push({ emoji: '💰', label: '부자',       color: 0xffd700 });
+    if (s.servedCount >= 500)  out.push({ emoji: '🚀', label: '효율왕', color: 0x7ed957 });
+    if (s.servedCount >= 2000) out.push({ emoji: '⚡', label: '폭주', color: 0xff6a4a });
+    return out;
   }
 
   private toTitle(): void {
