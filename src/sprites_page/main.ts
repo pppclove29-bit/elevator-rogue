@@ -1,6 +1,7 @@
 import { SPRITE_KEYS, SpriteCategory } from '../render/sprites';
 import { deleteAsset, loadAllStoredAssets, saveAsset } from '../assets/storage';
 import { generatePlaceholder } from './placeholder';
+import { fullPromptFor } from '../render/sprite-prompts';
 
 const root = document.getElementById('root')!;
 root.innerHTML = '';
@@ -281,6 +282,37 @@ function render(): void {
         right,
       );
       section.append(row);
+
+      // AI 프롬프트 행 — sprite row 바로 아래 작은 영역
+      const prompt = fullPromptFor(meta.key);
+      if (prompt) {
+        const promptRow = el('div', {
+          style: 'padding: 6px 12px 10px 88px; background: #0e0e14; border-bottom: 1px solid #1c1c26; display: flex; gap: 8px; align-items: flex-start; font-size: 11px;',
+        });
+        const copyBtn = el('button', {
+          style: 'background: #4a90e2; color: #0b0b10; padding: 4px 10px; border: none; border-radius: 3px; font-size: 11px; font-weight: 600; cursor: pointer; flex-shrink: 0;',
+          title: '클립보드 복사',
+          onClick: async () => {
+            try {
+              await navigator.clipboard.writeText(prompt);
+              copyBtn.textContent = '✓ 복사됨';
+              copyBtn.style.background = '#7ed957';
+              setTimeout(() => { copyBtn.textContent = '📋 복사'; copyBtn.style.background = '#4a90e2'; }, 1500);
+            } catch {
+              copyBtn.textContent = '실패';
+            }
+          },
+        }, '📋 복사') as HTMLButtonElement;
+        const textBox = el('div', {
+          style: 'flex: 1; color: #9aa0a6; font-family: ui-monospace, monospace; line-height: 1.45; padding: 4px 8px; background: #14141c; border-left: 2px solid #4a90e2; border-radius: 0 3px 3px 0;',
+        }, prompt);
+        promptRow.append(
+          el('span', { style: 'color: #f5c542; font-weight: 600; padding-top: 4px; flex-shrink: 0;' }, '🤖 AI prompt'),
+          textBox,
+          copyBtn,
+        );
+        section.append(promptRow);
+      }
     }
     root.append(section);
   }
