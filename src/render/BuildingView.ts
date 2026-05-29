@@ -237,15 +237,15 @@ export class BuildingView {
     while (this.floorLabels.length < floors.length) {
       const fl = this.scene.add
         .text(x + 8, 0, '', { fontFamily: FONT, fontSize: '12px', color: COLORS.textDim })
-        .setOrigin(0, 0.5).setDepth(1);
+        .setOrigin(0, 0.5).setDepth(6);
       this.floorLabels.push(fl);
       const ql = this.scene.add
         .text(0, 0, '', { fontFamily: FONT, fontSize: '11px', color: COLORS.textDim })
-        .setOrigin(1, 0.5).setDepth(1);
+        .setOrigin(1, 0.5).setDepth(6);
       this.queueLabels.push(ql);
       // floor role 아이콘 (선택). 없으면 setVisible(false).
       const fi = this.scene.add.image(0, 0, '__missing__')
-        .setOrigin(0.5).setDepth(1).setVisible(false);
+        .setOrigin(0.5).setDepth(6).setVisible(false);
       this.floorIcons.push(fi);
     }
 
@@ -267,36 +267,41 @@ export class BuildingView {
         fl.setPosition(x + 8, fy);
       }
       const roleColorHex = '#' + ROLE_COLOR[floor.role].toString(16).padStart(6, '0');
-      let label = `${i + 1}층 ${ROLE_KO[floor.role]}`;
-      if (floor.hasToilet) {
-        const c = Math.round(floor.cleanliness);
-        const dirty = c < 30;
-        label += dirty ? `  화장실 ${c}% (더러움!)` : `  화장실 ${c}%`;
-      }
+      const label = `${i + 1}층 ${ROLE_KO[floor.role]}`;
       fl.setText(label);
-      fl.setColor(floor.hasToilet && floor.cleanliness < 30 ? '#e74c3c' : roleColorHex);
+      fl.setColor(roleColorHex);
       fl.setVisible(true);
 
-      // ── 청결도 게이지 바 (화장실 있는 층만) ──
+      // ── 청결도 표시 = 빌딩 좌측 외부 쓰레기통 + 세로 채움 게이지 (화장실 있는 층만) ──
       if (floor.hasToilet) {
-        const labelW = fl.width;
-        const barX = fl.x + labelW + 8;
-        const barY = fy - 3;
-        const barW = 60;
-        const barH = 6;
-        // 배경
-        this.g.fillStyle(0x14141c, 0.9);
-        this.g.fillRect(barX - 1, barY - 1, barW + 2, barH + 2);
-        // 채움 — 청결도 비율로 색 단계 (높을수록 청정)
-        const ratio = Math.max(0, Math.min(1, floor.cleanliness / 100));
-        const gaugeColor = ratio < 0.3 ? 0xe74c3c
-          : ratio < 0.6 ? 0xf5c542
-          : 0x7ed957;
-        this.g.fillStyle(gaugeColor, 1);
-        this.g.fillRect(barX, barY, barW * ratio, barH);
-        // 더러움 임계 표시선 (30%)
-        this.g.lineStyle(1, 0xffffff, 0.4);
-        this.g.lineBetween(barX + barW * 0.3, barY - 1, barX + barW * 0.3, barY + barH + 1);
+        const tw = 10;            // 통 가로
+        const th = Math.min(20, floorHeight - 6); // 통 세로 (층 안 들어가게)
+        const tx = x - DOOR_AREA_W - tw - 4;       // 좌측 문 영역 바깥
+        const ty = fy - th / 2;
+        // 뚜껑 (위 가로 바)
+        this.g.fillStyle(0x5a5a68, 1);
+        this.g.fillRect(tx - 1, ty - 2, tw + 2, 2);
+        // 통 외곽
+        this.g.fillStyle(0x14141c, 1);
+        this.g.fillRect(tx, ty, tw, th);
+        this.g.lineStyle(1, 0x5a5a68, 1);
+        this.g.strokeRect(tx + 0.5, ty + 0.5, tw - 1, th - 1);
+        // 게이지 — 청결도 ↓ = 통 채워짐 ↑
+        const dirtyRatio = 1 - Math.max(0, Math.min(1, floor.cleanliness / 100));
+        const fillH = Math.max(0, Math.floor((th - 2) * dirtyRatio));
+        const fillColor = dirtyRatio > 0.7 ? 0xe74c3c    // 가득 = 빨강 (위험)
+          : dirtyRatio > 0.4 ? 0xf5c542
+          : dirtyRatio > 0 ? 0x7ed957
+          : 0x2a3d2a;                                      // 빈통 = 어두운 녹
+        this.g.fillStyle(fillColor, 1);
+        this.g.fillRect(tx + 1, ty + th - 1 - fillH, tw - 2, fillH);
+        // 매우 더러우면 통 옆에 ! 표시 (텍스트는 생성 비용 ↑ — 도형으로 ! 모양)
+        if (dirtyRatio > 0.7) {
+          this.g.fillStyle(0xe74c3c, 1);
+          // ! 점 + 막대
+          this.g.fillRect(tx - 4, ty + 2, 1, th - 8);
+          this.g.fillRect(tx - 4, ty + th - 4, 1, 1);
+        }
       }
     }
     for (let i = floors.length; i < this.floorLabels.length; i++) {
