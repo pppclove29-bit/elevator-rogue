@@ -372,6 +372,7 @@ export class GameScene extends Phaser.Scene {
     if (angry > this.prevAngryCount) {
       sound.alarm();
       this.flashAngryOverlay();
+      this.cameras.main.shake(180, 0.005); // anger 임계 — 가벼운 흔들림
       this.maybeTriggerAngerTutorial();
     }
     this.prevAngryCount = angry;
@@ -379,19 +380,30 @@ export class GameScene extends Phaser.Scene {
     // 엘베 고장 = breakdown
     const broken = new Set<number>();
     for (const e of this.state.building.elevators) if (e.state.kind === 'broken') broken.add(e.id);
-    for (const id of broken) if (!this.prevBrokenIds.has(id)) sound.breakdown();
+    for (const id of broken) if (!this.prevBrokenIds.has(id)) {
+      sound.breakdown();
+      this.cameras.main.shake(280, 0.012); // 고장 — 중간 흔들림
+    }
     this.prevBrokenIds = broken;
 
     // 보스/공휴일 이벤트 시작 = 인트로
     const evName = this.activeEventToday?.name ?? null;
     if (evName && evName !== this.prevEventName) {
-      if (evName.includes('🔥')) sound.bossDay();
-      else sound.holiday();
+      if (evName.includes('🔥')) {
+        sound.bossDay();
+        this.cameras.main.shake(500, 0.015); // 보스 day — 강한 흔들림
+      } else {
+        sound.holiday();
+      }
     }
     this.prevEventName = evName;
 
     // 게임 오버
-    if (this.state.gameOver && !this.prevGameOver) sound.gameOver();
+    if (this.state.gameOver && !this.prevGameOver) {
+      sound.gameOver();
+      this.cameras.main.shake(700, 0.02); // 게임오버 — 가장 강한 흔들림
+      this.cameras.main.flash(400, 231, 76, 60); // 빨간 플래시
+    }
     this.prevGameOver = this.state.gameOver;
   }
 
