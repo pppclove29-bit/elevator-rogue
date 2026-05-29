@@ -1,5 +1,6 @@
 import { SOUND_KEYS } from '../audio/sound';
 import { deleteAsset, loadAllStoredAssets, saveAsset } from '../assets/storage';
+import { canSynthesize, synthesizableKeys, synthesizeSound } from './synth';
 
 const root = document.getElementById('root')!;
 root.innerHTML = '';
@@ -87,6 +88,26 @@ async function handleFiles(files: FileList | File[]): Promise<void> {
   }
 }
 
+/** 합성 가능한 키들에 대해 일괄 placeholder 생성 (BGM 제외). */
+async function runBulkSynth(keys: string[]): Promise<void> {
+  let ok = 0; let fail = 0;
+  for (const key of keys) {
+    if (!canSynthesize(key)) continue;
+    try {
+      const file = await synthesizeSound(key);
+      const diskOk = await uploadToDisk('sound', key, file);
+      if (!diskOk) await saveAsset(`sounds/${key}`, file);
+      ok += 1;
+    } catch (e) {
+      console.warn('[bulk] failed for', key, e);
+      fail += 1;
+    }
+  }
+  await refreshStatuses();
+  render();
+  alert(`완료: ${ok}개 합성${fail > 0 ? `, ${fail}개 실패` : ''}.\n게임 새로고침하면 적용됨.\nBGM 4종은 합성 제외 — 외부 음원 필요.`);
+}
+
 /** dev 서버 endpoint 로 파일 업로드 → public/sounds/<key>.mp3 에 저장. 성공 시 true. */
 async function uploadToDisk(type: 'sprite' | 'sound', key: string, file: File): Promise<boolean> {
   try {
@@ -147,6 +168,43 @@ function render(): void {
   fileInput.onchange = async () => { if (fileInput.files) await handleFiles(fileInput.files); fileInput.value = ''; };
   dropZone.addEventListener('click', () => fileInput.click());
   root.append(dropZone, fileInput);
+
+  // ── 일괄 합성 placeholder 버튼 ──
+  const bulkBar = el('div', {
+    style: 'display: flex; gap: 8px; align-items: center; margin: 0 0 16px 0; padding: 12px; background: #14141c; border: 1px solid #2a2a35; border-radius: 6px;',
+  });
+  bulkBar.append(
+    el('div', { style: 'flex: 1; color: #9aa0a6; font-size: 12px;' },
+      el('strong', { style: 'color: #f5c542;' }, '🎵 합성 placeholder 일괄 생성'),
+      ' — Web Audio API 합성으로 SFX 11종을 즉시. BGM 4종은 외부 음원 필요.'),
+    (() => {
+      const btn = el('button', {
+        style: 'background: #4a90e2; color: #0b0b10; padding: 8px 14px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;',
+      }, '미생성 SFX 합성') as HTMLButtonElement;
+      btn.onclick = async () => {
+        const targets = SOUND_KEYS
+          .filter((m) => canSynthesize(m.key))
+          .filter((m) => status[m.key] !== 'loaded-public' && status[m.key] !== 'loaded-upload')
+          .map((m) => m.key);
+        if (targets.length === 0) { alert('합성 가능한 SFX 가 이미 모두 채워져 있습니다.'); return; }
+        if (!confirm(`${targets.length}개 SFX 합성?`)) return;
+        await runBulkSynth(targets);
+      };
+      return btn;
+    })(),
+    (() => {
+      const btn = el('button', {
+        style: 'background: #2a2a35; color: #f5f5f5; padding: 8px 14px; border: 1px solid #4a4a55; border-radius: 4px; cursor: pointer;',
+      }, '전체 재합성') as HTMLButtonElement;
+      btn.onclick = async () => {
+        const targets = synthesizableKeys();
+        if (!confirm(`전체 SFX ${targets.length}개 재합성? (기존 덮어쓰기)`)) return;
+        await runBulkSynth(targets);
+      };
+      return btn;
+    })(),
+  );
+  root.append(bulkBar);
 
   const total = SOUND_KEYS.length;
   const loaded = SOUND_KEYS.filter((s) => status[s.key]?.startsWith('loaded')).length;

@@ -1,5 +1,6 @@
 import { SPRITE_KEYS, SpriteCategory } from '../render/sprites';
 import { deleteAsset, loadAllStoredAssets, saveAsset } from '../assets/storage';
+import { generatePlaceholder } from './placeholder';
 
 const root = document.getElementById('root')!;
 root.innerHTML = '';
@@ -103,6 +104,26 @@ async function clearKey(key: string): Promise<void> {
   render();
 }
 
+/** 키 배열에 대해 placeholder 일괄 생성. 디스크 우선 + IndexedDB fallback. */
+async function runBulk(keys: string[]): Promise<void> {
+  const metas = SPRITE_KEYS.filter((m) => keys.includes(m.key));
+  let ok = 0; let fail = 0;
+  for (const meta of metas) {
+    try {
+      const file = await generatePlaceholder(meta);
+      const diskOk = await uploadToDisk('sprite', meta.key, file);
+      if (!diskOk) await saveAsset(`sprites/${meta.key}`, file);
+      ok += 1;
+    } catch (e) {
+      console.warn('[bulk] failed for', meta.key, e);
+      fail += 1;
+    }
+  }
+  await refreshStatuses();
+  render();
+  alert(`완료: ${ok}개 생성${fail > 0 ? `, ${fail}개 실패 (콘솔 참고)` : ''}.\n게임 새로고침하면 적용됨.`);
+}
+
 const CATEGORY_ORDER: SpriteCategory[] = ['character', 'elevator', 'passenger', 'floor', 'environment', 'ui', 'decoration'];
 const CATEGORY_LABEL: Record<SpriteCategory, string> = {
   character: '캐릭터 portrait (다이얼로그)',
@@ -154,6 +175,39 @@ function render(): void {
   fileInput.onchange = async () => { if (fileInput.files) await handleFiles(fileInput.files); fileInput.value = ''; };
   dropZone.addEventListener('click', () => fileInput.click());
   root.append(dropZone, fileInput);
+
+  // ── 일괄 placeholder 생성 버튼 ──
+  const bulkBar = el('div', {
+    style: 'display: flex; gap: 8px; align-items: center; margin: 0 0 16px 0; padding: 12px; background: #14141c; border: 1px solid #2a2a35; border-radius: 6px;',
+  });
+  bulkBar.append(
+    el('div', { style: 'flex: 1; color: #9aa0a6; font-size: 12px;' },
+      el('strong', { style: 'color: #f5c542;' }, '🎨 placeholder 자동 생성'),
+      ' — 카테고리별 단순 모양으로 미생성 키 한 번에 채움. 마음에 안 드는 건 개별 교체.'),
+    (() => {
+      const btn = el('button', {
+        style: 'background: #4a90e2; color: #0b0b10; padding: 8px 14px; border: none; border-radius: 4px; font-weight: 600; cursor: pointer;',
+      }, '미생성 키만 생성') as HTMLButtonElement;
+      btn.onclick = async () => {
+        const targets = SPRITE_KEYS.filter((m) => status[m.key] !== 'loaded-public' && status[m.key] !== 'loaded-upload');
+        if (targets.length === 0) { alert('모든 키가 이미 채워져 있습니다.'); return; }
+        if (!confirm(`${targets.length}개 키에 placeholder 생성?`)) return;
+        await runBulk(targets.map((m) => m.key));
+      };
+      return btn;
+    })(),
+    (() => {
+      const btn = el('button', {
+        style: 'background: #2a2a35; color: #f5f5f5; padding: 8px 14px; border: 1px solid #4a4a55; border-radius: 4px; cursor: pointer;',
+      }, '전체 재생성') as HTMLButtonElement;
+      btn.onclick = async () => {
+        if (!confirm(`전체 ${SPRITE_KEYS.length}개 키 placeholder 재생성? (기존 업로드 덮어쓰기)`)) return;
+        await runBulk(SPRITE_KEYS.map((m) => m.key));
+      };
+      return btn;
+    })(),
+  );
+  root.append(bulkBar);
 
   const total = SPRITE_KEYS.length;
   const loaded = SPRITE_KEYS.filter((s) => status[s.key]?.startsWith('loaded')).length;
