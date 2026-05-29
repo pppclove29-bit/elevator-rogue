@@ -14,6 +14,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
+    // 1.5MB → chunk 분리로 로딩 속도 ↑
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),
@@ -22,6 +24,12 @@ export default defineConfig({
         sounds: resolve(__dirname, 'sounds.html'),
         sprites: resolve(__dirname, 'sprites.html'),
         cms: resolve(__dirname, 'cms.html'),
+      },
+      output: {
+        manualChunks: {
+          // Phaser 자체가 ~1MB. 분리하면 게임 코드 변경 시 phaser chunk 재캐시.
+          phaser: ['phaser'],
+        },
       },
     },
   },
