@@ -256,6 +256,8 @@ const TABS: Record<Tab, TabSpec> = {
 let currentTab: Tab = 'dialog';
 let activeKey: string | null = null;
 let dirty: Record<Tab, boolean> = { dialog: false, skills: false, modifiers: false, floors: false, archetypes: false };
+/** sidebar 검색어 (탭별로 분리). 빈 문자열이면 전체 표시. */
+let searchByTab: Record<Tab, string> = { dialog: '', skills: '', modifiers: '', floors: '', archetypes: '' };
 
 function resetActiveKey(): void {
   const keys = Object.keys(TABS[currentTab].data);
@@ -308,10 +310,25 @@ async function save(): Promise<void> {
 
 // ─── 렌더 ────────────────────────────────────────────────
 function renderHeader(): HTMLElement {
+  const dirtyTabs = (Object.entries(dirty) as Array<[Tab, boolean]>).filter(([, d]) => d).map(([t]) => TABS[t].label);
+  const totalEntries = (Object.values(TABS) as TabSpec[]).reduce((a, s) => a + Object.keys(s.data).length, 0);
+
+  const statusChip = dirtyTabs.length > 0
+    ? el('span', {
+        style: 'background: var(--danger); color: #0b0b10; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: bold;',
+        title: dirtyTabs.join(', '),
+      }, `● 미저장 ${dirtyTabs.length}`)
+    : el('span', {
+        style: 'background: var(--success); color: #0b0b10; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: bold;',
+      }, '✓ 저장됨');
+
   return el('div', { class: 'cms-header' },
     el('h1', {}, '분주한 승강씨 CMS'),
     el('span', { class: 'subtitle' }, '코드 없이 게임 데이터 편집 · data/*.json 직접 저장'),
-    el('a', { class: 'game-link', href: '/', target: '_blank' }, '게임 ↗')
+    el('span', { style: 'flex: 1;' }),
+    el('span', { style: 'color: var(--text-dim); font-size: 11px; margin-right: 12px;' }, `전체 ${totalEntries}개 항목`),
+    statusChip,
+    el('a', { class: 'game-link', href: '/', target: '_blank', style: 'margin-left: 12px;' }, '게임 ↗')
   );
 }
 
@@ -327,39 +344,110 @@ function renderTabs(): HTMLElement {
   return el('div', { class: 'cms-tabs' }, ...tabs);
 }
 
+/** entry 의 검색 매칭 텍스트 추출 — id + name + desc 등 사람이 입력한 문자열 모두. */
+function entrySearchableText(id: string, entry: any): string {
+  if (currentTab === 'dialog') {
+    const lines = entry as Array<{ speaker: string; text: string }>;
+    return `${id} ${lines.map((l) => `${l.speaker} ${l.text}`).join(' ')}`.toLowerCase();
+  }
+  const fields = ['name', 'nameKo', 'desc', 'shortEn', 'effectId', 'type'];
+  return [id, ...fields.map((f) => (entry as Record<string, unknown>)[f] ?? '')].join(' ').toLowerCase();
+}
+
 function renderSidebar(): HTMLElement {
   const spec = TABS[currentTab];
-  const ids = Object.keys(spec.data).sort();
+  const allIds = Object.keys(spec.data).sort();
+  const q = searchByTab[currentTab].trim().toLowerCase();
+  const ids = q ? allIds.filter((id) => entrySearchableText(id, spec.data[id]).includes(q)) : allIds;
+
   const items = ids.map((id) => {
     const entry = spec.data[id];
     const cls = id === activeKey ? 'script-item active' : 'script-item';
     const countLabel = currentTab === 'dialog' ? `${(entry as any[]).length}줄` : '';
-    return el('div', {
+    const row = el('div', {
       class: cls,
       onClick: () => { activeKey = id; render(); },
     },
-      el('span', {}, id),
-      countLabel ? el('span', { class: 'count' }, countLabel) : el('span')
+      el('span', { style: 'flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;' }, id),
+      countLabel ? el('span', { class: 'count', style: 'margin-right: 6px;' }, countLabel) : el('span', { style: 'margin-right: 6px;' }),
+      // 복제 버튼 (event stopPropagation 으로 row 클릭과 분리)
+      el('button', {
+        class: 'secondary', style: 'padding: 2px 6px; font-size: 11px;', title: '복제 (Cmd+D)',
+        onClick: (e: MouseEvent) => { e.stopPropagation(); duplicateEntry(id); },
+      }, '📋'),
+      // 삭제 버튼
+      el('button', {
+        class: 'danger', style: 'padding: 2px 6px; font-size: 11px; margin-left: 2px;', title: '삭제',
+        onClick: (e: MouseEvent) => {
+          e.stopPropagation();
+          if (!confirm(`"${id}" 삭제?`)) return;
+          delete spec.data[id];
+          if (activeKey === id) {
+            const remaining = Object.keys(spec.data);
+            activeKey = remaining[0] ?? null;
+          }
+          dirty[currentTab] = true;
+          render();
+        },
+      }, '✕'),
     );
+    return row;
   });
+
   return el('div', { class: 'cms-sidebar' },
-    el('h3', {}, `${spec.label} 목록`),
+    el('div', { style: 'padding: 4px 6px 10px;' },
+      el('h3', { style: 'margin: 0 0 8px;' }, `${spec.label} 목록`),
+      el('input', {
+        id: 'cms-search', type: 'text', placeholder: '검색... (/ 로 포커스)',
+        value: searchByTab[currentTab],
+        style: 'width: 100%; padding: 6px 10px; background: var(--row); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 12px;',
+        onInput: (e: Event) => {
+          searchByTab[currentTab] = (e.target as HTMLInputElement).value;
+          // input value 만 갱신해도 충분 — sidebar 목록 다시 그리되 input focus 유지
+          render();
+          const after = document.getElementById('cms-search') as HTMLInputElement | null;
+          if (after) { after.focus(); after.setSelectionRange(after.value.length, after.value.length); }
+        },
+      }),
+      q ? el('div', { style: 'color: var(--text-dim); font-size: 11px; margin-top: 4px;' },
+        `${ids.length} / ${allIds.length} 매칭`) : el('span'),
+    ),
     ...items,
     el('div', { style: 'margin-top: 12px; padding: 0 6px;' },
       el('button', {
         class: 'secondary',
         style: 'width: 100%; font-size: 12px;',
-        onClick: () => {
-          const id = prompt(`새 ${spec.label} ID`);
-          if (!id || spec.data[id]) return;
-          spec.data[id] = spec.newEntryFactory();
-          activeKey = id;
-          dirty[currentTab] = true;
-          render();
-        },
-      }, '+ 새 항목')
+        onClick: () => createNewEntry(),
+      }, '+ 새 항목 (Cmd+N)')
     )
   );
+}
+
+/** 현재 탭에 새 항목 만들기 — 단축키와 sidebar 버튼 공유. */
+function createNewEntry(): void {
+  const spec = TABS[currentTab];
+  const id = prompt(`새 ${spec.label} ID`);
+  if (!id || spec.data[id]) return;
+  spec.data[id] = spec.newEntryFactory();
+  activeKey = id;
+  dirty[currentTab] = true;
+  render();
+}
+
+/** 항목 복제 — id 끝에 -copy / -copy-2 등 suffix 자동. */
+function duplicateEntry(id: string): void {
+  const spec = TABS[currentTab];
+  const source = spec.data[id];
+  if (!source) return;
+  let suffix = '-copy';
+  let newId = `${id}${suffix}`;
+  let n = 2;
+  while (spec.data[newId]) { newId = `${id}-copy-${n}`; n += 1; }
+  // 깊은 복사
+  spec.data[newId] = JSON.parse(JSON.stringify(source));
+  activeKey = newId;
+  dirty[currentTab] = true;
+  render();
 }
 
 function renderDialogContent(): HTMLElement {
@@ -696,6 +784,19 @@ function renderIdRow(_tab: Tab, file: string): HTMLElement {
   );
 }
 
+function renderShortcutBar(): HTMLElement {
+  return el('div', {
+    style: 'padding: 6px 16px; background: #0e0e14; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 11px; display: flex; gap: 16px; justify-content: center;',
+  },
+    el('span', {}, '⌘S 저장'),
+    el('span', {}, '⌘D 복제'),
+    el('span', {}, '⌘N 새 항목'),
+    el('span', {}, '⌘1–5 탭'),
+    el('span', {}, '/ 검색'),
+    el('span', {}, 'Esc 검색지우기'),
+  );
+}
+
 function render(): void {
   root.innerHTML = '';
   const content = currentTab === 'dialog' ? renderDialogContent() : renderEntityContent();
@@ -705,7 +806,8 @@ function render(): void {
     el('div', { class: 'cms-main' },
       renderSidebar(),
       content
-    )
+    ),
+    renderShortcutBar(),
   );
 }
 
@@ -713,4 +815,54 @@ render();
 
 window.addEventListener('beforeunload', (e) => {
   if (Object.values(dirty).some((d) => d)) { e.preventDefault(); e.returnValue = ''; }
+});
+
+// ─── 키보드 단축키 ────────────────────────────────────────────
+window.addEventListener('keydown', (e) => {
+  const target = e.target as HTMLElement | null;
+  const inEditable = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+  const meta = e.metaKey || e.ctrlKey;
+
+  // Cmd/Ctrl+S — 저장
+  if (meta && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (dirty[currentTab]) save();
+    else toast('변경 없음');
+    return;
+  }
+  // Cmd/Ctrl+D — 활성 entry 복제
+  if (meta && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    if (activeKey) duplicateEntry(activeKey);
+    return;
+  }
+  // Cmd/Ctrl+N — 새 entry
+  if (meta && e.key.toLowerCase() === 'n') {
+    e.preventDefault();
+    createNewEntry();
+    return;
+  }
+  // Cmd/Ctrl+1..5 — 탭 전환
+  if (meta && /^[1-5]$/.test(e.key)) {
+    e.preventDefault();
+    const tabIds = (Object.keys(TABS) as Tab[]);
+    const idx = parseInt(e.key, 10) - 1;
+    if (tabIds[idx]) { currentTab = tabIds[idx]; resetActiveKey(); render(); }
+    return;
+  }
+  // / — sidebar 검색 포커스 (editable 안 일 때만)
+  if (!inEditable && e.key === '/') {
+    const input = document.getElementById('cms-search') as HTMLInputElement | null;
+    if (input) { e.preventDefault(); input.focus(); input.select(); }
+    return;
+  }
+  // Escape — 검색 비우기
+  if (e.key === 'Escape') {
+    const input = document.getElementById('cms-search') as HTMLInputElement | null;
+    if (input && document.activeElement === input) {
+      e.preventDefault();
+      searchByTab[currentTab] = '';
+      render();
+    }
+  }
 });
