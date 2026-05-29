@@ -110,8 +110,11 @@ async function runBulkSynth(keys: string[]): Promise<void> {
 
 /** dev 서버 endpoint 로 파일 업로드 → public/sounds/<key>.mp3 에 저장. 성공 시 true. */
 async function uploadToDisk(type: 'sprite' | 'sound', key: string, file: File): Promise<boolean> {
+  // file.name 끝에서 확장자 추출 (예: "ding.wav" → "wav"). placeholder 합성 결과는 .wav.
+  const m = file.name.match(/\.([a-zA-Z0-9]+)$/);
+  const ext = m?.[1]?.toLowerCase() ?? (type === 'sprite' ? 'png' : 'mp3');
   try {
-    const res = await fetch(`/_api/save-asset?type=${type}&key=${encodeURIComponent(key)}`, {
+    const res = await fetch(`/_api/save-asset?type=${type}&key=${encodeURIComponent(key)}&ext=${encodeURIComponent(ext)}`, {
       method: 'POST',
       body: file,
     });

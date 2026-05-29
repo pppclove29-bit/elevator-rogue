@@ -55,11 +55,16 @@ export function assetSavePlugin(): Plugin {
       });
 
       // ── 2) /_api/save-asset — sprites/sounds 디스크 저장 ──
+      // query: type=sprite|sound, key=<name>, ext=<file ext, optional>
+      // 화이트리스트: sprite → png/jpg/jpeg/webp / sound → mp3/ogg/wav
+      const SPRITE_EXTS = ['png', 'jpg', 'jpeg', 'webp'] as const;
+      const SOUND_EXTS = ['mp3', 'ogg', 'wav'] as const;
       server.middlewares.use('/_api/save-asset', async (req, res, next) => {
         if (req.method !== 'POST') return next();
         const url = new URL(req.url ?? '', 'http://x');
         const type = url.searchParams.get('type'); // 'sprite' | 'sound'
         const key = url.searchParams.get('key');
+        const extParam = (url.searchParams.get('ext') ?? '').toLowerCase().replace(/^\./, '');
         if (!type || !key) {
           res.statusCode = 400;
           res.end('missing type or key');
@@ -77,12 +82,16 @@ export function assetSavePlugin(): Plugin {
           return;
         }
 
+        // 확장자 결정 — 클라이언트가 보낸 ext 우선, 없으면 카테고리 기본값.
+        const allowed: readonly string[] = type === 'sprite' ? SPRITE_EXTS : SOUND_EXTS;
+        const defaultExt = type === 'sprite' ? 'png' : 'mp3';
+        const ext = extParam && allowed.includes(extParam) ? extParam : defaultExt;
+
         // 바디 수집
         const chunks: Buffer[] = [];
         for await (const chunk of req) chunks.push(chunk as Buffer);
         const body = Buffer.concat(chunks);
 
-        const ext = type === 'sprite' ? 'png' : 'mp3';
         const folder = type === 'sprite' ? 'public/sprites' : 'public/sounds';
         const targetDir = resolve(server.config.root, folder);
         const targetPath = resolve(targetDir, `${key}.${ext}`);
