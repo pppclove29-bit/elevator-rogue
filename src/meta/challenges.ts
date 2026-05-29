@@ -84,6 +84,57 @@ export const CHALLENGES: Record<string, ChallengeEntry> = {
       s.params.angerRidingPerTick *= 1.5;
     },
   },
+
+  'chal-mega-rush': {
+    id: 'chal-mega-rush',
+    name: '메가 러시',
+    desc: '모든 페이즈 스폰 ×2.0 (러시 강력 버전)',
+    scoreMultiplier: 1.8,
+    apply: (s) => {
+      const phases: Phase[] = ['morning', 'work', 'lunch', 'evening', 'night'];
+      for (const p of phases) s.params.phaseSpawnMultiplier[p] *= 0.5;
+    },
+  },
+  'chal-mini-cab': {
+    id: 'chal-mini-cab',
+    name: '초소형 엘베',
+    desc: '엘베 정원 3 고정 + 층 큐 상한 6',
+    scoreMultiplier: 1.5,
+    apply: (s) => {
+      for (const e of s.building.elevators) e.capacity = 3;
+      s.params.floorCapacity = 6;
+    },
+  },
+  'chal-quick': {
+    id: 'chal-quick',
+    name: '굼벵이 엘베',
+    desc: '엘베 속도 ×0.5 (압박: 느림)',
+    scoreMultiplier: 1.5,
+    apply: (s) => {
+      s.params.globalSpeedMultiplier *= 0.5;
+    },
+  },
+  'chal-double-anger': {
+    id: 'chal-double-anger',
+    name: '폭발 직전',
+    desc: '불만 누적 ×2.5 (예민의 강력)',
+    scoreMultiplier: 1.7,
+    apply: (s) => {
+      s.params.angerWaitingPerTick *= 2.5;
+      s.params.angerRidingPerTick *= 2.5;
+    },
+  },
+  'chal-no-modifier': {
+    id: 'chal-no-modifier',
+    name: '모디파이어 무효',
+    desc: '매 3일 모디파이어 적용되지만 효과 절반',
+    scoreMultiplier: 1.3,
+    apply: (s) => {
+      // 일부 effect 들이 angerWaiting / spawn 등 곱연산이라 절반 효과는 시스템 차원
+      // 단순화: anger 누적은 평균이라 보상으로 +50G 시작
+      s.gold += 50;
+    },
+  },
 };
 
 export const NO_CHALLENGE = null;

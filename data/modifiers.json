@@ -20,5 +20,11 @@
 
   "dm-rush-rewards":        { "name": "위기는 곧 기회","desc": "스폰 ×1.5, 보상으로 +30G",   "type": "mixed",  "effectId": "rush-rewards",   "params": { "factor": 0.66, "gold": 30 } },
   "dm-marathon":            { "name": "마라톤 데이",   "desc": "스폰 ×0.7, 불만 ×0.8",        "type": "mixed",  "effectId": "marathon",       "params": { "spawnFactor": 1.4, "angerFactor": 0.8 } },
-  "dm-vip-protocol":        { "name": "VIP 의전",      "desc": "엘베 속도 +20%, 정원 -1",     "type": "mixed",  "effectId": "vip-protocol",   "params": { "speedFactor": 1.2, "capDelta": -1, "capMin": 1 } }
+  "dm-vip-protocol":        { "name": "VIP 의전",      "desc": "엘베 속도 +20%, 정원 -1",     "type": "mixed",  "effectId": "vip-protocol",   "params": { "speedFactor": 1.2, "capDelta": -1, "capMin": 1 } },
+
+  "dm-zen-mode":            { "name": "선의 경지",     "desc": "모든 페이즈 스폰 ×0.6 (강력 한산)", "type": "buff",   "effectId": "spawn-global-mul","params": { "factor": 1.66 } },
+  "dm-night-storm":         { "name": "야간 폭풍",     "desc": "야간 스폰 ×4 (압박)",        "type": "debuff", "effectId": "phase-spawn-mul", "params": { "phase": "night",   "factor": 0.25 } },
+  "dm-power-surge":         { "name": "전력 서지",     "desc": "엘베 속도 ×1.5",              "type": "buff",   "effectId": "speed-mul",       "params": { "factor": 1.5 } },
+  "dm-crew-fatigue":        { "name": "직원 피로",     "desc": "정차 시간 +5 tick",           "type": "debuff", "effectId": "load-tick-add",   "params": { "delta": 5 } },
+  "dm-final-push":          { "name": "막판 스퍼트",   "desc": "스폰 ×1.7, 보상으로 +50G",   "type": "mixed",  "effectId": "rush-rewards",   "params": { "factor": 0.59, "gold": 50 } }
 }
