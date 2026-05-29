@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import {  GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS , FONT } from '../config';
+import { COLORS, GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS, FONT } from '../config';
 import { Rng } from '../domain/rng';
 import { phaseAtTick, Phase } from '../domain/phase';
 import { createSim, tick } from '../domain/simulation';
@@ -392,8 +392,11 @@ export class GameScene extends Phaser.Scene {
       if (evName.includes('🔥')) {
         sound.bossDay();
         this.cameras.main.shake(500, 0.015); // 보스 day — 강한 흔들림
-      } else {
+        this.cameras.main.flash(200, 245, 197, 66); // 노란 플래시
+        this.showBossIntro(evName, this.activeEventToday?.desc ?? '');
+      } else if (this.activeEventToday) {
         sound.holiday();
+        this.showHolidayIntro(evName, this.activeEventToday.desc ?? '');
       }
     }
     this.prevEventName = evName;
@@ -654,6 +657,61 @@ export class GameScene extends Phaser.Scene {
   }
 
   /** angry 임계 도달 시 화면 가장자리에 빨간 vignette 플래시 (1회). */
+  /** 보스 day — 화면 중앙 큰 배너 + 페이드 인/아웃 (시네마틱). */
+  private showBossIntro(name: string, desc: string): void {
+    const w = GAME_WIDTH, h = GAME_HEIGHT;
+    const stripeH = 120;
+    const cy = h / 2;
+    // 위/아래 검은 띠 (cinematic letterbox)
+    const top = this.add.rectangle(0, cy - 80, w, stripeH, 0x000000, 0).setOrigin(0, 0.5).setDepth(950);
+    const bot = this.add.rectangle(0, cy + 80, w, stripeH, 0x000000, 0).setOrigin(0, 0.5).setDepth(950);
+    // 가운데 빨간 라인
+    const line = this.add.rectangle(w / 2, cy, w, 4, 0xe74c3c, 0).setOrigin(0.5).setDepth(951);
+    // 보스 라벨 (위)
+    const label = this.add.text(w / 2, cy - 30, '⚠ BOSS DAY ⚠', {
+      fontFamily: FONT, fontSize: '24px', color: '#e74c3c', fontStyle: 'bold',
+    }).setOrigin(0.5).setAlpha(0).setDepth(952);
+    // 이벤트 이름 (아래)
+    const title = this.add.text(w / 2, cy + 10, name.replace(/🔥/g, '').trim(), {
+      fontFamily: FONT, fontSize: '34px', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5).setAlpha(0).setDepth(952);
+    // 설명
+    const descText = this.add.text(w / 2, cy + 60, desc, {
+      fontFamily: FONT, fontSize: '14px', color: '#f5c542', align: 'center',
+    }).setOrigin(0.5).setAlpha(0).setDepth(952);
+
+    // 진입 — letterbox 확장 + 라인 페이드 인
+    this.tweens.add({ targets: [top, bot], alpha: 0.85, duration: 200 });
+    this.tweens.add({ targets: line, alpha: 1, scaleY: { from: 0, to: 1 }, duration: 200 });
+    this.tweens.add({ targets: [label, title, descText], alpha: 1, duration: 300, delay: 200 });
+    // 유지 후 자동 사라짐 (총 2.4초)
+    this.tweens.add({
+      targets: [top, bot, line, label, title, descText],
+      alpha: 0, duration: 400, delay: 2000,
+      onComplete: () => { top.destroy(); bot.destroy(); line.destroy(); label.destroy(); title.destroy(); descText.destroy(); },
+    });
+  }
+
+  /** 공휴일 — 작은 배너 (상단), 부드러운 페이드. */
+  private showHolidayIntro(name: string, desc: string): void {
+    const w = GAME_WIDTH;
+    const cy = 130;
+    const bg = this.add.rectangle(w / 2, cy, 520, 60, 0x14141c, 0).setStrokeStyle(2, 0xf5c542).setDepth(950);
+    const title = this.add.text(w / 2, cy - 10, name, {
+      fontFamily: FONT, fontSize: '18px', color: '#f5c542', fontStyle: 'bold',
+    }).setOrigin(0.5).setAlpha(0).setDepth(951);
+    const descText = this.add.text(w / 2, cy + 14, desc, {
+      fontFamily: FONT, fontSize: '11px', color: COLORS.textDim,
+    }).setOrigin(0.5).setAlpha(0).setDepth(951);
+    this.tweens.add({ targets: bg, fillAlpha: 0.92, duration: 250 });
+    this.tweens.add({ targets: [title, descText], alpha: 1, duration: 300, delay: 100 });
+    this.tweens.add({
+      targets: [bg, title, descText],
+      alpha: 0, duration: 400, delay: 2400,
+      onComplete: () => { bg.destroy(); title.destroy(); descText.destroy(); },
+    });
+  }
+
   private flashAngryOverlay(): void {
     const flash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xe74c3c, 0.35)
       .setDepth(999);
