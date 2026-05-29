@@ -44,6 +44,8 @@ function approach(current: number, target: number, maxStep: number): number {
 
 export class PassengerSprites {
   private g: Phaser.GameObjects.Graphics;
+  /** draw() 에서 sprite cap 계산에 사용 — 마지막 update 의 floor count */
+  private lastFloorCount: number = 1;
   private map: Map<number, Sprite> = new Map();
   private scene: Phaser.Scene;
   /** archetype sprite 가 있을 때 사용. id → Image. 미사용 시 setVisible(false). */
@@ -63,6 +65,7 @@ export class PassengerSprites {
    *                  stagger/fade 는 실시간 유지 (가독성).
    */
   update(state: SimState, deltaMs: number, gameSpeed: number = 1): void {
+    this.lastFloorCount = state.building.floors.length;
     this.consumeHints(state);
     this.sync(state);
 
@@ -118,13 +121,13 @@ export class PassengerSprites {
     const stillAlive = new Set<number>();
 
     // 큐 승객 위치 — 입구(왼쪽 문) 근처에 줄. i=0(헤드)은 첫 엘베에 가깝게,
-    // 신규는 입구 쪽으로 늘어남. 엘베 영역(x+80~)과 안 겹치도록 x+70 직전까지만.
+    // 신규는 입구 쪽으로 늘어남. sprite 가 ~3배 커진 만큼 spacing 도 키움.
     for (const f of floors) {
       const fy = y + totalHeight - f.id * floorHeight - floorHeight / 2;
-      const queueHeadX = x + 65;       // 첫 엘베(x+80) 직전
+      const queueHeadX = x + 60;       // 첫 엘베(x+80) 직전
       for (let i = 0; i < f.queue.length; i++) {
         const p = f.queue[i]!;
-        const targetX = queueHeadX - i * 16;  // 입구 쪽으로 16px씩 (꽉 차게)
+        const targetX = queueHeadX - i * 36;  // sprite 폭 (~54) 의 67% 간격 — 약간 겹쳐 큐 느낌
         const targetY = fy;
         stillAlive.add(p.id);
         let s = this.map.get(p.id);
@@ -319,8 +322,14 @@ export class PassengerSprites {
         img.setTexture(spriteKey);
         img.setPosition(s.x, s.y);
         img.setAlpha(s.alpha);
-        const dispW = big ? 22 : 18;
-        const dispH = big ? 32 : 26;
+        // sprite 표시 크기 — 약 3배 (사용자 요청). 너무 큰 빌딩(층 많음) 에서는
+        // floor 박스 안에 들어가게 cap 처리 (floorHeight 의 75%).
+        const fullW = big ? 66 : 54;
+        const fullH = big ? 96 : 78;
+        const floorHeightForCap = Math.max(60, (this.layout.totalHeight / Math.max(1, this.lastFloorCount)));
+        const cap = Math.max(40, floorHeightForCap * 0.75);
+        let dispH = Math.min(fullH, cap);
+        let dispW = dispH * (fullW / fullH);
         img.setDisplaySize(dispW, dispH);
         img.setTint(isAngry ? 0xff5555 : 0xffffff);
         img.setVisible(true);
