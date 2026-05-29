@@ -327,6 +327,232 @@ function exportAll(): void {
   toast('전체 번들 내보내기');
 }
 
+// ─── 사용처 추적 ────────────────────────────────────────────
+interface Reference { tab: Tab; id: string; via: string; }
+
+/** entry 가 다른 곳에서 참조되는지 찾기. 현재 도메인:
+ *  - effectId: skills / modifiers 가 사용
+ *  - speaker: dialog 의 speaker 가 캐릭터 이름 ('mentor' 등) — 정적 enum 이라 추적 X
+ *  - portrait: dialog 가 'smirk'/'worried' 같은 변형 키 사용 — 캐릭터 sprite 키
+ *  - phase weights 의 phase 이름은 정적
+ *
+ *  현재 효과적인 추적은 effect-id 가 메인.
+ */
+function findReferences(refTab: Tab, _refId: string): Reference[] {
+  const refs: Reference[] = [];
+
+  // effect-id 추적 — skills / modifiers
+  if (refTab === 'skills' || refTab === 'modifiers') return refs; // skill/modifier 자체는 다른 entry 가 참조 X (effect-id 는 enum)
+
+  // dialog 의 portrait 필드는 캐릭터 변형 키 (smirk 등) — character 카탈로그 없으니 패스
+  return refs;
+}
+
+/** 카탈로그 모든 entry 의 effect-id 사용 카운트. 미사용 effect-id 도 표시 가능. */
+function countEffectUsage(): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const tabs: Tab[] = ['skills', 'modifiers'];
+  for (const t of tabs) {
+    const data = TABS[t].data as Record<string, { effectId?: string }>;
+    for (const entry of Object.values(data)) {
+      if (entry.effectId) counts[entry.effectId] = (counts[entry.effectId] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
+/** archetype 별 페이즈 가중치 합 — 분석용. */
+function archetypeWeightSums(): Record<string, number> {
+  const sums: Record<string, number> = {};
+  const data = TABS.archetypes.data as Record<string, { weightByPhase?: Record<string, number> }>;
+  for (const [id, entry] of Object.entries(data)) {
+    const w = entry.weightByPhase ?? {};
+    sums[id] = Object.values(w).reduce((a, b) => a + (b ?? 0), 0);
+  }
+  return sums;
+}
+
+// ─── 저장 전 diff 미리보기 ─────────────────────────────────
+let diffModalVisible = false;
+/** 저장 시점에 디스크에 있는 마지막 버전. 비교 기준. import 시점 = lastSavedSnapshot 갱신. */
+const lastSavedSnapshot: Record<Tab, string> = {
+  dialog: JSON.stringify(JSON.parse(JSON.stringify(dialogData)), null, 2),
+  skills: JSON.stringify(JSON.parse(JSON.stringify(skillData)), null, 2),
+  modifiers: JSON.stringify(JSON.parse(JSON.stringify(modifierData)), null, 2),
+  floors: JSON.stringify(JSON.parse(JSON.stringify(floorData)), null, 2),
+  archetypes: JSON.stringify(JSON.parse(JSON.stringify(archetypeData)), null, 2),
+};
+
+/** 단순 라인 diff — 추가 + 제거. 비교 정확도는 평범하지만 검토용 충분. */
+function computeLineDiff(oldText: string, newText: string): Array<{ type: 'same' | 'add' | 'del'; text: string; oldNo?: number; newNo?: number }> {
+  const oldLines = oldText.split('\n');
+  const newLines = newText.split('\n');
+  const out: Array<{ type: 'same' | 'add' | 'del'; text: string; oldNo?: number; newNo?: number }> = [];
+  let i = 0, j = 0;
+  while (i < oldLines.length || j < newLines.length) {
+    const a = oldLines[i];
+    const b = newLines[j];
+    if (a === b && a !== undefined) { out.push({ type: 'same', text: a, oldNo: i + 1, newNo: j + 1 }); i++; j++; continue; }
+    // look-ahead: 다음 5줄 안에 새 줄이 있으면 그 사이를 add 로 처리
+    const foundLater = newLines.slice(j, j + 6).indexOf(a ?? '');
+    const foundOld = oldLines.slice(i, i + 6).indexOf(b ?? '');
+    if (foundLater > 0 && a !== undefined) {
+      for (let k = 0; k < foundLater; k++) out.push({ type: 'add', text: newLines[j + k]!, newNo: j + k + 1 });
+      j += foundLater;
+      continue;
+    }
+    if (foundOld > 0 && b !== undefined) {
+      for (let k = 0; k < foundOld; k++) out.push({ type: 'del', text: oldLines[i + k]!, oldNo: i + k + 1 });
+      i += foundOld;
+      continue;
+    }
+    if (a !== undefined) { out.push({ type: 'del', text: a, oldNo: i + 1 }); i++; }
+    if (b !== undefined) { out.push({ type: 'add', text: b, newNo: j + 1 }); j++; }
+  }
+  return out;
+}
+
+function renderDiffModal(): HTMLElement | null {
+  if (!diffModalVisible) return null;
+  const spec = TABS[currentTab];
+  const oldText = lastSavedSnapshot[currentTab];
+  const newText = JSON.stringify(spec.data, null, 2);
+  const lines = computeLineDiff(oldText, newText);
+  const adds = lines.filter((l) => l.type === 'add').length;
+  const dels = lines.filter((l) => l.type === 'del').length;
+
+  const wrap = el('div', {
+    style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 40px;',
+    onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) { diffModalVisible = false; render(); } },
+  });
+  const panel = el('div', {
+    style: 'background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; width: 90vw; max-width: 1000px; max-height: 80vh; display: flex; flex-direction: column;',
+  });
+
+  panel.append(
+    el('div', { style: 'display: flex; gap: 8px; align-items: center; margin-bottom: 10px;' },
+      el('strong', { style: 'color: var(--accent);' }, `📋 저장 전 diff — ${spec.label}`),
+      el('span', { style: 'background: rgba(126,217,87,0.2); color: var(--success); padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;' }, `+${adds}`),
+      el('span', { style: 'background: rgba(231,76,60,0.2); color: var(--danger); padding: 2px 8px; border-radius: 3px; font-size: 11px; font-weight: bold;' }, `-${dels}`),
+      el('span', { style: 'flex: 1;' }),
+      el('button', {
+        class: 'success', style: 'padding: 6px 14px;',
+        onClick: () => { diffModalVisible = false; save(); },
+      }, '💾 저장 확정'),
+      el('button', {
+        class: 'secondary', style: 'padding: 6px 14px;',
+        onClick: () => { diffModalVisible = false; render(); },
+      }, '취소 (Esc)'),
+    ),
+  );
+
+  const diffBox = el('div', {
+    style: 'overflow: auto; flex: 1; background: #0e0e14; border: 1px solid var(--border); border-radius: 4px; padding: 8px; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.5;',
+  });
+  for (const line of lines) {
+    if (line.type === 'same') {
+      diffBox.append(el('div', { style: 'color: var(--text-dim); white-space: pre;' },
+        `  ${(line.oldNo ?? '').toString().padStart(4)} ${line.text}`));
+    } else if (line.type === 'add') {
+      diffBox.append(el('div', { style: 'color: var(--success); background: rgba(126,217,87,0.08); white-space: pre;' },
+        `+ ${(line.newNo ?? '').toString().padStart(4)} ${line.text}`));
+    } else {
+      diffBox.append(el('div', { style: 'color: var(--danger); background: rgba(231,76,60,0.08); white-space: pre;' },
+        `- ${(line.oldNo ?? '').toString().padStart(4)} ${line.text}`));
+    }
+  }
+  panel.append(diffBox);
+  wrap.append(panel);
+  return wrap;
+}
+
+// ─── 전체 통합 검색 ────────────────────────────────────────
+let globalSearchVisible = false;
+let globalSearchTerm = '';
+
+interface GlobalHit { tab: Tab; id: string; preview: string; }
+
+function searchAll(q: string): GlobalHit[] {
+  const term = q.trim().toLowerCase();
+  if (!term) return [];
+  const hits: GlobalHit[] = [];
+  for (const tab of Object.keys(TABS) as Tab[]) {
+    const spec = TABS[tab];
+    for (const [id, entry] of Object.entries(spec.data)) {
+      const text = entrySearchableText(id, entry);
+      if (text.includes(term)) {
+        let preview = '';
+        if (tab === 'dialog') {
+          const lines = entry as Array<{ text: string }>;
+          preview = lines[0]?.text?.slice(0, 60) ?? '';
+        } else {
+          const e = entry as Record<string, unknown>;
+          preview = String(e.name ?? e.nameKo ?? e.desc ?? '').slice(0, 60);
+        }
+        hits.push({ tab, id, preview });
+      }
+    }
+  }
+  return hits.slice(0, 50);
+}
+
+function renderGlobalSearchModal(): HTMLElement | null {
+  if (!globalSearchVisible) return null;
+  const hits = searchAll(globalSearchTerm);
+  const wrap = el('div', {
+    style: 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 1000; display: flex; align-items: flex-start; justify-content: center; padding-top: 80px;',
+    onClick: (e: MouseEvent) => { if (e.target === e.currentTarget) { globalSearchVisible = false; render(); } },
+  });
+  const panel = el('div', {
+    style: 'background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; min-width: 600px; max-width: 80vw; max-height: 70vh; overflow: hidden; display: flex; flex-direction: column;',
+  });
+
+  panel.append(
+    el('div', { style: 'display: flex; gap: 8px; align-items: center; margin-bottom: 10px;' },
+      el('strong', { style: 'color: var(--accent);' }, '🔎 전체 통합 검색'),
+      el('span', { style: 'flex: 1;' }),
+      el('button', {
+        class: 'secondary', style: 'padding: 2px 8px; font-size: 11px;',
+        onClick: () => { globalSearchVisible = false; render(); },
+      }, '닫기 (Esc)'),
+    ),
+    el('input', {
+      id: 'global-search-input', type: 'text', placeholder: '모든 탭에서 검색...',
+      value: globalSearchTerm,
+      style: 'padding: 10px 12px; background: var(--row); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-size: 14px; margin-bottom: 10px;',
+      onInput: (e: Event) => { globalSearchTerm = (e.target as HTMLInputElement).value; render(); document.getElementById('global-search-input')?.focus(); },
+    }),
+    el('div', { style: 'color: var(--text-dim); font-size: 11px; margin-bottom: 8px;' },
+      hits.length > 0 ? `${hits.length}건 (50건 표시)` : (globalSearchTerm ? '결과 없음' : '검색어 입력')),
+  );
+
+  const list = el('div', { style: 'overflow-y: auto; flex: 1;' });
+  for (const hit of hits) {
+    list.append(el('div', {
+      style: 'padding: 8px 12px; border-bottom: 1px solid var(--border); cursor: pointer;',
+      onClick: () => {
+        currentTab = hit.tab;
+        activeKey = hit.id;
+        globalSearchVisible = false;
+        viewMode = 'form';
+        render();
+      },
+    },
+      el('div', { style: 'display: flex; gap: 8px; align-items: center;' },
+        el('span', { style: 'background: var(--accent); color: #0b0b10; padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: bold;' }, TABS[hit.tab].label),
+        el('span', { style: 'color: var(--warning); font-weight: bold; font-size: 13px;' }, hit.id),
+      ),
+      hit.preview ? el('div', { style: 'color: var(--text-dim); font-size: 11px; margin-top: 3px;' }, hit.preview) : el('span'),
+    ));
+  }
+  panel.append(list);
+  wrap.append(panel);
+
+  // input 자동 포커스
+  setTimeout(() => document.getElementById('global-search-input')?.focus(), 0);
+  return wrap;
+}
+
 // ─── 검증 ─────────────────────────────────────────────────
 interface ValidationIssue { level: 'error' | 'warn'; tab: Tab; id: string; msg: string; }
 
@@ -487,13 +713,15 @@ function toast(msg: string, kind: 'ok' | 'error' = 'ok'): void {
 async function save(): Promise<void> {
   const spec = TABS[currentTab];
   try {
+    const body = JSON.stringify(spec.data, null, 2);
     const res = await fetch(`/_api/save-data?file=${spec.file}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(spec.data, null, 2),
+      body,
     });
     if (res.ok) {
       dirty[currentTab] = false;
+      lastSavedSnapshot[currentTab] = body;
       toast(`저장 완료 → data/${spec.file}`);
       render();
     } else {
@@ -537,6 +765,10 @@ function renderHeader(): HTMLElement {
       class: 'secondary', style: 'margin-left: 4px; font-size: 11px;', title: '전체 번들 내보내기',
       onClick: () => exportAll(),
     }, '⇧ all'),
+    el('button', {
+      class: 'secondary', style: 'margin-left: 4px; font-size: 11px;', title: '전체 통합 검색 (⌘K)',
+      onClick: () => { globalSearchVisible = true; render(); },
+    }, '🔎 ⌘K'),
     el('a', { class: 'game-link', href: '/', target: '_blank', style: 'margin-left: 12px;' }, '게임 ↗')
   );
 }
@@ -842,6 +1074,7 @@ function renderEntityContent(): HTMLElement {
       hintText
     ),
     renderIdRow(spec.id, spec.file),
+    renderInsightsRow(entry),
     el('div', { class: 'toolbar' },
       el('button', { class: dirty[currentTab] ? 'success' : 'secondary', onClick: save },
         dirty[currentTab] ? '💾 저장 (변경됨)' : '💾 저장'),
@@ -849,6 +1082,52 @@ function renderEntityContent(): HTMLElement {
     ),
     ...fields
   );
+}
+
+/** entry 별 인사이트 — 사용처 / 같은 effectId 갯수 / archetype 가중치 합 등. */
+function renderInsightsRow(entry: any): HTMLElement {
+  const chips: HTMLElement[] = [];
+
+  // skills / modifiers — 같은 effectId 사용 수
+  if (currentTab === 'skills' || currentTab === 'modifiers') {
+    const effectId = (entry as { effectId?: string }).effectId;
+    if (effectId) {
+      const counts = countEffectUsage();
+      const count = counts[effectId] ?? 0;
+      chips.push(el('span', {
+        style: 'background: var(--row); padding: 4px 10px; border-radius: 999px; font-size: 11px; color: var(--text-dim); border: 1px solid var(--border);',
+        title: `effect-id "${effectId}" 가 사용되는 entry 수`,
+      },
+        el('span', { style: 'color: var(--accent); font-weight: bold; margin-right: 4px;' }, `${count}`),
+        document.createTextNode(`개 entry 에서 같은 effect-id 사용`)));
+    }
+  }
+
+  // archetypes — 페이즈 가중치 합
+  if (currentTab === 'archetypes') {
+    const sums = archetypeWeightSums();
+    const sum = sums[activeKey!] ?? 0;
+    const col = sum === 0 ? 'var(--danger)' : sum < 3 ? 'var(--warning)' : 'var(--success)';
+    chips.push(el('span', {
+      style: `background: var(--row); padding: 4px 10px; border-radius: 999px; font-size: 11px; color: var(--text-dim); border: 1px solid ${col};`,
+      title: '모든 페이즈 가중치 합',
+    },
+      el('span', { style: `color: ${col}; font-weight: bold; margin-right: 4px;` }, String(sum)),
+      document.createTextNode(`= 페이즈 가중치 합${sum === 0 ? ' (등장 X)' : ''}`)));
+  }
+
+  // 외부 참조 (현재 도메인에서는 비어 있을 수 있음)
+  const refs = findReferences(currentTab, activeKey!);
+  if (refs.length > 0) {
+    chips.push(el('span', {
+      style: 'background: var(--row); padding: 4px 10px; border-radius: 999px; font-size: 11px; color: var(--text-dim); border: 1px solid var(--border);',
+    },
+      el('span', { style: 'color: var(--accent); font-weight: bold; margin-right: 4px;' }, String(refs.length)),
+      document.createTextNode(`개 entry 가 이 항목 참조`)));
+  }
+
+  if (chips.length === 0) return el('div');
+  return el('div', { style: 'display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0;' }, ...chips);
 }
 
 function renderField(entry: any, f: FieldSpec): HTMLElement {
@@ -1107,12 +1386,13 @@ function renderShortcutBar(): HTMLElement {
     el('span', {}, '⌘N 새 항목'),
     el('span', {}, '⌘Z / ⇧⌘Z 되돌리기 / 다시 실행'),
     el('span', {}, '⌘1–5 탭'),
-    el('span', {}, '/ 검색'),
-    el('span', {}, 'Esc 검색 지우기'),
+    el('span', {}, '⌘K 전체 검색'),
+    el('span', {}, '/ 사이드바 검색'),
+    el('span', {}, 'Esc 닫기'),
   );
 }
 
-/** Form / Raw JSON 보기 토글 + undo/redo 버튼 — 컨텐츠 영역 최상단. */
+/** Form / Raw JSON 보기 토글 + undo/redo + diff 버튼 — 컨텐츠 영역 최상단. */
 function renderContentToolbar(): HTMLElement {
   const switchBtn = (label: string, mode: 'form' | 'json') =>
     el('button', {
@@ -1126,6 +1406,13 @@ function renderContentToolbar(): HTMLElement {
     switchBtn('📋 폼', 'form'),
     switchBtn('{ } Raw JSON', 'json'),
     el('span', { style: 'flex: 1;' }),
+    el('button', {
+      class: dirty[currentTab] ? 'secondary' : 'secondary',
+      style: `padding: 4px 10px; font-size: 12px; ${dirty[currentTab] ? 'border-color: var(--warning); color: var(--warning);' : ''}`,
+      title: '저장 전 변경사항 미리보기 (디스크 vs 현재)',
+      disabled: !dirty[currentTab],
+      onClick: () => { diffModalVisible = true; render(); },
+    }, '📋 diff 보기'),
     el('button', {
       class: 'secondary', style: 'padding: 4px 10px; font-size: 12px;',
       title: `되돌리기 (⌘Z) — ${undoStack.length}개 가능`,
@@ -1215,6 +1502,11 @@ function render(): void {
     ),
     renderShortcutBar(),
   );
+  // 모달 (있을 때만 root 위에 overlay)
+  const modal = renderGlobalSearchModal();
+  if (modal) root.append(modal);
+  const diff = renderDiffModal();
+  if (diff) root.append(diff);
 }
 
 render();
@@ -1260,6 +1552,21 @@ window.addEventListener('keydown', (e) => {
   if (meta && e.key.toLowerCase() === 'z' && !inEditable) {
     e.preventDefault();
     if (e.shiftKey) redo(); else undo();
+    return;
+  }
+  // Cmd/Ctrl+K — 전체 통합 검색 모달
+  if (meta && e.key.toLowerCase() === 'k') {
+    e.preventDefault();
+    globalSearchVisible = true;
+    render();
+    return;
+  }
+  // Escape — 모달 닫기 우선
+  if (e.key === 'Escape' && (globalSearchVisible || diffModalVisible)) {
+    e.preventDefault();
+    globalSearchVisible = false;
+    diffModalVisible = false;
+    render();
     return;
   }
   // / — sidebar 검색 포커스 (editable 안 일 때만)
