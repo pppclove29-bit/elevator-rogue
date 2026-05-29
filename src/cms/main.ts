@@ -258,6 +258,117 @@ let activeKey: string | null = null;
 let dirty: Record<Tab, boolean> = { dialog: false, skills: false, modifiers: false, floors: false, archetypes: false };
 /** sidebar 검색어 (탭별로 분리). 빈 문자열이면 전체 표시. */
 let searchByTab: Record<Tab, string> = { dialog: '', skills: '', modifiers: '', floors: '', archetypes: '' };
+/** 우측 컨텐츠 표시 모드 — Form (기본) / Raw JSON. */
+let viewMode: 'form' | 'json' = 'form';
+
+// ─── Undo / Redo ────────────────────────────────────────────
+interface Snapshot { tab: Tab; data: any; activeKey: string | null; }
+const UNDO_LIMIT = 30;
+const undoStack: Snapshot[] = [];
+const redoStack: Snapshot[] = [];
+
+/** 변경 직전 호출 — 현재 탭 데이터 deep clone 을 stack 에 push. */
+function recordSnapshot(): void {
+  const spec = TABS[currentTab];
+  undoStack.push({ tab: currentTab, data: JSON.parse(JSON.stringify(spec.data)), activeKey });
+  while (undoStack.length > UNDO_LIMIT) undoStack.shift();
+  redoStack.length = 0;
+}
+
+function undo(): void {
+  const snap = undoStack.pop();
+  if (!snap) { toast('되돌릴 변경 없음'); return; }
+  const spec = TABS[snap.tab];
+  redoStack.push({ tab: snap.tab, data: JSON.parse(JSON.stringify(spec.data)), activeKey });
+  spec.data = snap.data;
+  currentTab = snap.tab;
+  activeKey = snap.activeKey;
+  dirty[snap.tab] = true;
+  render();
+  toast('되돌리기 (⌘Z)');
+}
+
+function redo(): void {
+  const snap = redoStack.pop();
+  if (!snap) { toast('다시 실행할 변경 없음'); return; }
+  const spec = TABS[snap.tab];
+  undoStack.push({ tab: snap.tab, data: JSON.parse(JSON.stringify(spec.data)), activeKey });
+  spec.data = snap.data;
+  currentTab = snap.tab;
+  activeKey = snap.activeKey;
+  dirty[snap.tab] = true;
+  render();
+  toast('다시 실행 (⇧⌘Z)');
+}
+
+// ─── Import / Export ───────────────────────────────────────
+function exportCurrentTab(): void {
+  const spec = TABS[currentTab];
+  const blob = new Blob([JSON.stringify(spec.data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = spec.file;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast(`내보내기 → ${spec.file}`);
+}
+
+function exportAll(): void {
+  const bundle: Record<string, any> = {};
+  for (const spec of Object.values(TABS) as TabSpec[]) bundle[spec.file] = spec.data;
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `elevator-rogue-data-bundle.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('전체 번들 내보내기');
+}
+
+async function importFromFile(): Promise<void> {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = () => {
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result));
+        // 번들 구조 (file → data) 인지 단일 탭 데이터인지 자동 판별
+        const tabIds = Object.keys(TABS) as Tab[];
+        const isBundle = tabIds.some((t) => TABS[t].file in parsed);
+        if (isBundle) {
+          if (!confirm(`번들 파일로 보입니다. ${Object.keys(parsed).length}개 파일을 모두 덮어쓸까요?`)) return;
+          recordSnapshot();
+          for (const t of tabIds) {
+            const f = TABS[t].file;
+            if (parsed[f]) {
+              TABS[t].data = parsed[f];
+              dirty[t] = true;
+            }
+          }
+          toast('번들 가져오기 완료');
+        } else {
+          if (!confirm(`현재 탭(${TABS[currentTab].label}) 데이터를 덮어쓸까요?`)) return;
+          recordSnapshot();
+          TABS[currentTab].data = parsed;
+          dirty[currentTab] = true;
+          toast('탭 가져오기 완료');
+        }
+        resetActiveKey();
+        render();
+      } catch (e) {
+        toast(`가져오기 실패: ${String(e)}`, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 
 function resetActiveKey(): void {
   const keys = Object.keys(TABS[currentTab].data);
@@ -328,6 +439,19 @@ function renderHeader(): HTMLElement {
     el('span', { style: 'flex: 1;' }),
     el('span', { style: 'color: var(--text-dim); font-size: 11px; margin-right: 12px;' }, `전체 ${totalEntries}개 항목`),
     statusChip,
+    // import / export 버튼
+    el('button', {
+      class: 'secondary', style: 'margin-left: 12px; font-size: 11px;', title: 'JSON 파일 가져오기',
+      onClick: () => importFromFile(),
+    }, '⇩ import'),
+    el('button', {
+      class: 'secondary', style: 'margin-left: 4px; font-size: 11px;', title: '현재 탭만 내보내기',
+      onClick: () => exportCurrentTab(),
+    }, '⇧ export'),
+    el('button', {
+      class: 'secondary', style: 'margin-left: 4px; font-size: 11px;', title: '전체 번들 내보내기',
+      onClick: () => exportAll(),
+    }, '⇧ all'),
     el('a', { class: 'game-link', href: '/', target: '_blank', style: 'margin-left: 12px;' }, '게임 ↗')
   );
 }
@@ -381,6 +505,7 @@ function renderSidebar(): HTMLElement {
         onClick: (e: MouseEvent) => {
           e.stopPropagation();
           if (!confirm(`"${id}" 삭제?`)) return;
+          recordSnapshot();
           delete spec.data[id];
           if (activeKey === id) {
             const remaining = Object.keys(spec.data);
@@ -428,6 +553,7 @@ function createNewEntry(): void {
   const spec = TABS[currentTab];
   const id = prompt(`새 ${spec.label} ID`);
   if (!id || spec.data[id]) return;
+  recordSnapshot();
   spec.data[id] = spec.newEntryFactory();
   activeKey = id;
   dirty[currentTab] = true;
@@ -443,6 +569,7 @@ function duplicateEntry(id: string): void {
   let newId = `${id}${suffix}`;
   let n = 2;
   while (spec.data[newId]) { newId = `${id}-copy-${n}`; n += 1; }
+  recordSnapshot();
   // 깊은 복사
   spec.data[newId] = JSON.parse(JSON.stringify(source));
   activeKey = newId;
@@ -774,6 +901,7 @@ function renderIdRow(_tab: Tab, file: string): HTMLElement {
       class: 'danger',
       onClick: () => {
         if (!confirm(`"${activeKey}" 삭제?`)) return;
+        recordSnapshot();
         delete TABS[currentTab].data[activeKey!];
         const keys = Object.keys(TABS[currentTab].data);
         activeKey = keys[0] ?? null;
@@ -786,26 +914,118 @@ function renderIdRow(_tab: Tab, file: string): HTMLElement {
 
 function renderShortcutBar(): HTMLElement {
   return el('div', {
-    style: 'padding: 6px 16px; background: #0e0e14; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 11px; display: flex; gap: 16px; justify-content: center;',
+    style: 'padding: 6px 16px; background: #0e0e14; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 11px; display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;',
   },
     el('span', {}, '⌘S 저장'),
     el('span', {}, '⌘D 복제'),
     el('span', {}, '⌘N 새 항목'),
+    el('span', {}, '⌘Z / ⇧⌘Z 되돌리기 / 다시 실행'),
     el('span', {}, '⌘1–5 탭'),
     el('span', {}, '/ 검색'),
-    el('span', {}, 'Esc 검색지우기'),
+    el('span', {}, 'Esc 검색 지우기'),
+  );
+}
+
+/** Form / Raw JSON 보기 토글 + undo/redo 버튼 — 컨텐츠 영역 최상단. */
+function renderContentToolbar(): HTMLElement {
+  const switchBtn = (label: string, mode: 'form' | 'json') =>
+    el('button', {
+      class: viewMode === mode ? 'success' : 'secondary',
+      style: 'padding: 4px 12px; font-size: 12px;',
+      onClick: () => { viewMode = mode; render(); },
+    }, label);
+  return el('div', {
+    style: 'display: flex; gap: 6px; align-items: center; padding: 8px 14px; background: #0e0e14; border-bottom: 1px solid var(--border);',
+  },
+    switchBtn('📋 폼', 'form'),
+    switchBtn('{ } Raw JSON', 'json'),
+    el('span', { style: 'flex: 1;' }),
+    el('button', {
+      class: 'secondary', style: 'padding: 4px 10px; font-size: 12px;',
+      title: `되돌리기 (⌘Z) — ${undoStack.length}개 가능`,
+      disabled: undoStack.length === 0,
+      onClick: () => undo(),
+    }, `↶ undo (${undoStack.length})`),
+    el('button', {
+      class: 'secondary', style: 'padding: 4px 10px; font-size: 12px;',
+      title: `다시 실행 (⇧⌘Z) — ${redoStack.length}개 가능`,
+      disabled: redoStack.length === 0,
+      onClick: () => redo(),
+    }, `↷ redo (${redoStack.length})`),
+  );
+}
+
+/** Raw JSON 편집 — 현재 탭 전체 또는 활성 entry 만. */
+function renderRawJsonContent(): HTMLElement {
+  const spec = TABS[currentTab];
+  const showEntry = activeKey !== null && spec.data[activeKey] !== undefined;
+  const target = showEntry ? spec.data[activeKey!] : spec.data;
+  const ta = el('textarea', {
+    value: JSON.stringify(target, null, 2),
+    style: 'width: 100%; min-height: 60vh; padding: 12px; background: var(--row); color: var(--text); border: 1px solid var(--border); border-radius: 4px; font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.5;',
+    onInput: (e: Event) => {
+      const v = (e.target as HTMLTextAreaElement).value;
+      try {
+        const parsed = JSON.parse(v);
+        (e.target as HTMLElement).style.borderColor = 'var(--success)';
+        // 변경 즉시 반영 (재렌더 안 함 — focus 유지)
+        if (showEntry) spec.data[activeKey!] = parsed;
+        else spec.data = parsed;
+        dirty[currentTab] = true;
+      } catch {
+        (e.target as HTMLElement).style.borderColor = 'var(--danger)';
+      }
+    },
+  }) as HTMLTextAreaElement;
+
+  return el('div', { class: 'cms-content' },
+    el('div', { class: 'hint' },
+      el('strong', {}, '💡 Raw JSON: '),
+      showEntry
+        ? `활성 entry "${activeKey}" 만 표시. JSON 파싱 성공 시 즉시 메모리 반영. ⌘S 로 디스크 저장. 다른 항목 선택하려면 폼으로 돌아가서 클릭.`
+        : '현재 탭 전체 데이터. 위험 — 잘못된 구조면 게임 깨질 수 있음. 백업 권장 (⇧ export 먼저).',
+    ),
+    el('div', { class: 'toolbar' },
+      el('button', {
+        class: dirty[currentTab] ? 'success' : 'secondary',
+        onClick: save,
+      }, dirty[currentTab] ? '💾 저장 (변경됨)' : '💾 저장'),
+      el('button', {
+        class: 'secondary',
+        onClick: () => {
+          if (!confirm('전체 vs entry 보기 전환?')) return;
+          // 토글
+          if (activeKey === null) {
+            const ids = Object.keys(spec.data);
+            activeKey = ids[0] ?? null;
+          } else {
+            activeKey = null;
+          }
+          render();
+        },
+      }, showEntry ? '전체 보기' : 'entry 보기'),
+      el('span', { style: 'flex: 1;' }),
+      el('span', { style: 'color: var(--text-dim); font-size: 11px;' },
+        showEntry ? `entry "${activeKey}"` : `${Object.keys(spec.data).length}개 항목`),
+    ),
+    ta,
   );
 }
 
 function render(): void {
   root.innerHTML = '';
-  const content = currentTab === 'dialog' ? renderDialogContent() : renderEntityContent();
+  const content = viewMode === 'json'
+    ? renderRawJsonContent()
+    : currentTab === 'dialog' ? renderDialogContent() : renderEntityContent();
   root.append(
     renderHeader(),
     renderTabs(),
     el('div', { class: 'cms-main' },
       renderSidebar(),
-      content
+      el('div', { style: 'display: flex; flex-direction: column; flex: 1; min-width: 0;' },
+        renderContentToolbar(),
+        content,
+      ),
     ),
     renderShortcutBar(),
   );
@@ -848,6 +1068,12 @@ window.addEventListener('keydown', (e) => {
     const tabIds = (Object.keys(TABS) as Tab[]);
     const idx = parseInt(e.key, 10) - 1;
     if (tabIds[idx]) { currentTab = tabIds[idx]; resetActiveKey(); render(); }
+    return;
+  }
+  // Cmd/Ctrl+Z — undo, Cmd/Ctrl+Shift+Z — redo (editable 안 일 때만)
+  if (meta && e.key.toLowerCase() === 'z' && !inEditable) {
+    e.preventDefault();
+    if (e.shiftKey) redo(); else undo();
     return;
   }
   // / — sidebar 검색 포커스 (editable 안 일 때만)
