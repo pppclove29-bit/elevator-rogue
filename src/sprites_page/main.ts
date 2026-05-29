@@ -180,6 +180,99 @@ function render(): void {
   dropZone.addEventListener('click', () => fileInput.click());
   root.append(dropZone, fileInput);
 
+  // ── 전체 프롬프트 묶음 (ChatGPT/AI 에 일괄 전달용) ──
+  const bundleBar = el('div', {
+    style: 'display: flex; gap: 8px; align-items: center; margin: 0 0 12px 0; padding: 12px; background: #14141c; border: 1px solid #4a90e2; border-radius: 6px;',
+  });
+  const buildBundle = (filter: 'all' | 'must' | 'missing'): string => {
+    const list = SPRITE_KEYS.filter((m) => {
+      if (filter === 'must') return m.priority === 'must';
+      if (filter === 'missing') return status[m.key] !== 'loaded-public' && status[m.key] !== 'loaded-upload';
+      return true;
+    });
+    const lines: string[] = [];
+    lines.push(`# 분주한 승강씨 — 스프라이트 ${list.length}종 일괄 생성 요청`);
+    lines.push('');
+    lines.push('아래 명세에 따라 각 키마다 PNG 이미지 1장씩 만들어줘.');
+    lines.push('- 전반적 톤: 픽셀 아트, 16색 팔레트 (ENDESGA-16 권장), 투명 배경, 픽셀 그리드 정확.');
+    lines.push('- 캐릭터 portrait (character-*) 만 anime 비주얼 노벨 스타일, 픽셀 X.');
+    lines.push('- 각 이미지는 명시된 사이즈로 생성. 모든 sprite 일관 톤 유지.');
+    lines.push('');
+    const grouped: Record<string, typeof SPRITE_KEYS[number][]> = {};
+    for (const m of list) (grouped[m.category] ??= []).push(m);
+    const CATEGORY_LABEL_LOCAL: Record<string, string> = {
+      character: '캐릭터 portrait',
+      elevator: '엘리베이터',
+      passenger: '승객',
+      floor: '층 역할 아이콘',
+      environment: '환경',
+      ui: 'UI 아이콘',
+      decoration: '데코',
+    };
+    let n = 1;
+    for (const cat of ['character', 'elevator', 'passenger', 'floor', 'environment', 'ui', 'decoration']) {
+      const items = grouped[cat];
+      if (!items || items.length === 0) continue;
+      lines.push(`## ${CATEGORY_LABEL_LOCAL[cat] ?? cat} (${items.length}종)`);
+      lines.push('');
+      for (const m of items) {
+        const prompt = fullPromptFor(m.key);
+        lines.push(`### ${n}. \`${m.key}\` — ${m.label} (${m.size})`);
+        lines.push(`- 용도: ${m.usage}`);
+        lines.push(`- 우선순위: ${m.priority === 'must' ? '🔴 필수' : '⚪ 선택'}`);
+        lines.push(`- 프롬프트:`);
+        lines.push(`> ${prompt}`);
+        lines.push('');
+        n += 1;
+      }
+    }
+    return lines.join('\n');
+  };
+  const copyBundle = async (filter: 'all' | 'must' | 'missing'): Promise<void> => {
+    const text = buildBundle(filter);
+    try {
+      await navigator.clipboard.writeText(text);
+      const labels: Record<string, string> = { all: '전체', must: '필수만', missing: '미생성만' };
+      alert(`${labels[filter]} 프롬프트 묶음 복사됨 (${text.length.toLocaleString()}자).\nChatGPT 등에 붙여넣기.`);
+    } catch {
+      alert('복사 실패. 다운로드 버튼 사용.');
+    }
+  };
+  const downloadBundle = (filter: 'all' | 'must' | 'missing'): void => {
+    const text = buildBundle(filter);
+    const blob = new Blob([text], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sprite-prompts-${filter}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  bundleBar.append(
+    el('div', { style: 'flex: 1; color: #9aa0a6; font-size: 12px;' },
+      el('strong', { style: 'color: #4a90e2;' }, '🤖 AI 일괄 생성용 프롬프트 묶음'),
+      ' — 카테고리별 정렬 + 사이즈 + 우선순위 markdown. ChatGPT/Claude 에 한 번에 던지기.'),
+    el('button', {
+      style: 'background: #4a90e2; color: #0b0b10; padding: 8px 12px; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;',
+      onClick: () => copyBundle('all'),
+    }, '📋 전체 복사'),
+    el('button', {
+      style: 'background: #e74c3c; color: #0b0b10; padding: 8px 12px; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;',
+      onClick: () => copyBundle('must'),
+    }, '🔴 필수만'),
+    el('button', {
+      style: 'background: #f5c542; color: #0b0b10; padding: 8px 12px; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;',
+      onClick: () => copyBundle('missing'),
+    }, '❌ 미생성만'),
+    el('button', {
+      style: 'background: #2a2a35; color: #f5f5f5; padding: 8px 12px; border: 1px solid #4a4a55; border-radius: 4px; font-size: 12px; cursor: pointer;',
+      title: '전체 .md 다운로드',
+      onClick: () => downloadBundle('all'),
+    }, '⇩ .md'),
+  );
+  root.append(bundleBar);
+
   // ── 일괄 placeholder 생성 버튼 ──
   const bulkBar = el('div', {
     style: 'display: flex; gap: 8px; align-items: center; margin: 0 0 16px 0; padding: 12px; background: #14141c; border: 1px solid #2a2a35; border-radius: 6px;',
