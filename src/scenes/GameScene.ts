@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS } from '../config';
+import {  GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS , FONT } from '../config';
 import { Rng } from '../domain/rng';
 import { phaseAtTick, Phase } from '../domain/phase';
 import { createSim, tick } from '../domain/simulation';
@@ -624,7 +624,7 @@ export class GameScene extends Phaser.Scene {
     const x = 150 + (Math.random() - 0.5) * 20;
     const y = 12;
     const txt = this.add.text(x, y, text, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '18px',
       color,
       fontStyle: 'bold',

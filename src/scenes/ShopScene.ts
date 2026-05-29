@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
+import {  COLORS, GAME_HEIGHT, GAME_WIDTH , FONT } from '../config';
 import { sound } from '../audio/sound';
 import { repairElevator } from '../domain/simulation';
 import { localizeCard } from '../i18n/cards';
@@ -23,21 +23,21 @@ export class ShopScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.78);
 
     this.add.text(GAME_WIDTH / 2, 24, t('shop.title'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '26px', color: COLORS.text,
+      fontFamily: FONT, fontSize: '26px', color: COLORS.text,
     }).setOrigin(0.5, 0);
 
     this.add.text(GAME_WIDTH / 2, 58, t('shop.subtitle'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: COLORS.textDim,
+      fontFamily: FONT, fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
 
     this.goldText = this.add.text(GAME_WIDTH / 2, 86, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '22px', color: '#f5c542',
+      fontFamily: FONT, fontSize: '22px', color: '#f5c542',
     }).setOrigin(0.5, 0);
 
     new Button(this, GAME_WIDTH - 100, 36, 140, 32, t('shop.next_day'), () => this.closeShop(), { fontSize: 13 });
 
     this.rerollText = this.add.text(GAME_WIDTH / 2 - 80, GAME_HEIGHT - 60, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: COLORS.textDim,
+      fontFamily: FONT, fontSize: '11px', color: COLORS.textDim,
     }).setOrigin(0.5);
 
     new Button(this, GAME_WIDTH / 2 + 60, GAME_HEIGHT - 60, 140, 36, t('shop.reroll_button', { cost: '?' }), () => {
@@ -90,7 +90,7 @@ export class ShopScene extends Phaser.Scene {
 
     if (items.length === 0) {
       const txt = this.add.text(GAME_WIDTH / 2, startY + 60, t('shop.no_items'), {
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '14px', color: COLORS.textDim,
+        fontFamily: FONT, fontSize: '14px', color: COLORS.textDim,
       }).setOrigin(0.5);
       this.content.add(txt);
     }
@@ -106,23 +106,23 @@ export class ShopScene extends Phaser.Scene {
       .setStrokeStyle(2, affordable ? meta.accent : 0x3a3a48);
     const header = this.add.rectangle(x, y, w, 24, meta.accent, affordable ? 1 : 0.5).setOrigin(0, 0);
     const tag = this.add.text(x + 10, y + 4, meta.tag, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#0b0b10',
+      fontFamily: FONT, fontSize: '11px', color: '#0b0b10',
     });
 
     const name = this.add.text(x + 10, y + 32, meta.name, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '14px',
+      fontFamily: FONT, fontSize: '14px',
       color: affordable ? COLORS.text : '#5a5a68',
       wordWrap: { width: w - 20 },
     });
 
     const desc = this.add.text(x + 10, y + 60, meta.desc, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px',
+      fontFamily: FONT, fontSize: '11px',
       color: affordable ? COLORS.textDim : '#3a3a48',
       wordWrap: { width: w - 20 },
     });
 
     const cost = this.add.text(x + 10, y + h - 36, `${meta.cost}${t('common.gold_suffix')}`, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '16px',
+      fontFamily: FONT, fontSize: '16px',
       color: affordable ? '#f5c542' : '#5a5a68',
     });
 

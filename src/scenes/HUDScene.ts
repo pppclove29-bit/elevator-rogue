@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS } from '../config';
+import {  GAME_HEIGHT, GAME_WIDTH, COLORS, TICK_MS , FONT } from '../config';
 import { dayLengthTicks, dayOfWeekFor, dayToDate, PHASES, PHASE_TICKS, phaseAtTick, WEEKEND, Phase } from '../domain/phase';
 import { localizeEvent } from '../i18n/cards';
 import { t } from '../i18n/locale';
@@ -41,7 +41,7 @@ export class HUDScene extends Phaser.Scene {
     }
     const timeX = hasSprite(this, 'ui-icon-clock') ? 34 : 16;
     this.timeText = this.add.text(timeX, 12, '0:00', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '22px',
       color: COLORS.text,
     });
@@ -51,13 +51,13 @@ export class HUDScene extends Phaser.Scene {
     }
     const goldX = hasSprite(this, 'ui-icon-gold') ? 138 : 120;
     this.goldText = this.add.text(goldX, 16, '0G', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '18px',
       color: '#f5c542',
     });
 
     this.dangerText = this.add.text(GAME_WIDTH - 16, 12, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '14px',
       color: COLORS.textDim,
     }).setOrigin(1, 0);
@@ -68,19 +68,19 @@ export class HUDScene extends Phaser.Scene {
     }
 
     this.modifierText = this.add.text(GAME_WIDTH - 16, 32, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#e74c3c',
+      fontFamily: FONT, fontSize: '11px', color: '#e74c3c',
     }).setOrigin(1, 0);
 
     this.relicText = this.add.text(GAME_WIDTH - 16, 50, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#e2a04a',
+      fontFamily: FONT, fontSize: '11px', color: '#e2a04a',
     }).setOrigin(1, 0);
 
     this.eventText = this.add.text(GAME_WIDTH - 16, 68, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: '#ff6a6a',
+      fontFamily: FONT, fontSize: '12px', color: '#ff6a6a',
     }).setOrigin(1, 0);
 
     this.phaseText = this.add.text(GAME_WIDTH / 2, 16, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '18px',
       color: COLORS.text,
     }).setOrigin(0.5, 0);
@@ -88,7 +88,7 @@ export class HUDScene extends Phaser.Scene {
     // 24시간 시계 — 중앙 상단, phaseText 우측
     this.clockG = this.add.graphics();
     this.clockTimeLabel = this.add.text(GAME_WIDTH / 2 + 200, 30, '06:00', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '14px', color: COLORS.text, fontStyle: 'bold',
     }).setOrigin(0, 0.5);
 
@@ -102,7 +102,7 @@ export class HUDScene extends Phaser.Scene {
   private buildTutorialBanner(): void {
     const bg = this.add.rectangle(0, 0, 480, 44, 0xf5c542, 0.95).setStrokeStyle(2, 0xffffff);
     const txt = this.add.text(0, 0, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '16px', color: '#0b0b10', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
     this.tutorialBanner = this.add.container(GAME_WIDTH / 2, 100, [bg, txt]).setDepth(10).setVisible(false);
@@ -135,7 +135,7 @@ export class HUDScene extends Phaser.Scene {
     new ControlButton(this, 274, y - 14, 90, 24, '🔊 SOUNDS', open('/sounds.html'));
     new ControlButton(this, 370, y - 14, 70, 24, '📝 CMS', open('/cms.html'));
     this.add.text(446, y - 12, '[DEV]', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '10px', color: '#5a5a68',
+      fontFamily: FONT, fontSize: '10px', color: '#5a5a68',
     });
   }
 
@@ -319,7 +319,7 @@ export class HUDScene extends Phaser.Scene {
     const startY = 84;
     const titleY = startY;
     const title = this.add.text(GAME_WIDTH - 16, titleY, t('hud.emergency_repair'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px', color: '#e74c3c',
+      fontFamily: FONT, fontSize: '11px', color: '#e74c3c',
     }).setOrigin(1, 0);
     this.repairContainer.add(title);
 
@@ -330,7 +330,7 @@ export class HUDScene extends Phaser.Scene {
         .setOrigin(1, 0).setStrokeStyle(1, 0x6a2c2c)
         .setInteractive({ useHandCursor: affordable });
       const txt = this.add.text(GAME_WIDTH - 16 - 75, y + 12, t('hud.repair_button', { id: e.id + 1, cost: REPAIR_COST }), {
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '11px',
+        fontFamily: FONT, fontSize: '11px',
         color: affordable ? '#0b0b10' : '#7a5a5a',
       }).setOrigin(0.5);
       if (affordable) {
@@ -354,15 +354,15 @@ class SkillSlotView {
     this.container = scene.add.container(x + w / 2, y + h / 2);
     this.bg = scene.add.rectangle(0, 0, w, h, 0x1c1c26, 0.85).setStrokeStyle(1, 0x3a3a48);
     this.keyLabel = scene.add.text(-w / 2 + 8, -h / 2 + 6, key, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: '#7ed957',
+      fontFamily: FONT, fontSize: '12px', color: '#7ed957',
     });
     this.nameLabel = scene.add.text(0, -4, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: COLORS.text,
+      fontFamily: FONT, fontSize: '13px', color: COLORS.text,
       wordWrap: { width: w - 16 }, align: 'center',
     }).setOrigin(0.5);
     this.cdFill = scene.add.rectangle(-w / 2, h / 2 - 4, 0, 4, 0x7ed957, 1).setOrigin(0, 0.5);
     this.cdText = scene.add.text(0, h / 2 - 14, '', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '10px', color: COLORS.textDim,
+      fontFamily: FONT, fontSize: '10px', color: COLORS.textDim,
     }).setOrigin(0.5);
     this.container.add([this.bg, this.keyLabel, this.nameLabel, this.cdFill, this.cdText]);
     this.container.setSize(w, h);
@@ -415,7 +415,7 @@ class ControlButton {
     this.container = scene.add.container(relative ? x : x + w / 2, relative ? y : y + h / 2);
     this.bg = scene.add.rectangle(0, 0, w, h, 0x222230, 1).setStrokeStyle(1, 0x3a3a48);
     this.label = scene.add.text(0, 0, text, {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '13px',
       color: COLORS.text,
     }).setOrigin(0.5);

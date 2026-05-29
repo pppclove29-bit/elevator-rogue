@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { COLORS, GAME_HEIGHT, GAME_WIDTH, TICK_MS } from '../config';
+import {  COLORS, GAME_HEIGHT, GAME_WIDTH, TICK_MS , FONT } from '../config';
 import { phaseAtTick } from '../domain/phase';
 import { SimState } from '../domain/types';
 import { localizeCard } from '../i18n/cards';
@@ -44,17 +44,17 @@ export class GameOverScene extends Phaser.Scene {
 
     // 상단 GAME OVER 라벨 (작게)
     this.add.text(GAME_WIDTH / 2, 44, t('gameover.title'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '24px', color: '#e74c3c', fontStyle: 'bold',
     }).setOrigin(0.5);
 
     // 가운데 큰 결과 — "N 일차 도달" + 카운트업
     const dayLabel = this.add.text(GAME_WIDTH / 2, 100, '0', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '88px', color: COLORS.text, fontStyle: 'bold',
     }).setOrigin(0.5);
     this.add.text(GAME_WIDTH / 2 + 110, 130, '일차', {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '24px', color: COLORS.textDim,
     }).setOrigin(0, 1);
     // 카운트업
@@ -67,7 +67,7 @@ export class GameOverScene extends Phaser.Scene {
     // 신기록 배너 — 가운데 위. 빛나는 효과.
     if (isNewBest && finalDay > 1) {
       const banner = this.add.text(GAME_WIDTH / 2, 168, `✨  NEW BEST  ✨   (이전 ${prevBest})`, {
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+        fontFamily: FONT,
         fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
       }).setOrigin(0.5).setAlpha(0);
       this.tweens.add({ targets: banner, alpha: 1, duration: 400, delay: 400 });
@@ -76,7 +76,7 @@ export class GameOverScene extends Phaser.Scene {
 
     // 플레이버 문구
     this.add.text(GAME_WIDTH / 2, 200, this.deathFlavor(s), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif',
+      fontFamily: FONT,
       fontSize: '13px', color: COLORS.textDim, fontStyle: 'italic',
     }).setOrigin(0.5);
 
@@ -85,43 +85,43 @@ export class GameOverScene extends Phaser.Scene {
     this.add.rectangle(panelX, panelY, panelW, panelH, 0x14141c, 1).setOrigin(0, 0).setStrokeStyle(1, 0x3a3a48);
 
     this.add.text(panelX + 20, panelY + 16, t('gameover.summary_title'), {
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
+      fontFamily: FONT, fontSize: '16px', color: '#f5c542', fontStyle: 'bold',
     });
 
     // 좌측 — 숫자 통계
     const stats = this.collectStats(s);
     let y = panelY + 56;
     for (const [label, value] of stats) {
-      this.add.text(panelX + 24, y, label, { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: COLORS.textDim });
-      this.add.text(panelX + 280, y, value, { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '14px', color: COLORS.text });
+      this.add.text(panelX + 24, y, label, { fontFamily: FONT, fontSize: '13px', color: COLORS.textDim });
+      this.add.text(panelX + 280, y, value, { fontFamily: FONT, fontSize: '14px', color: COLORS.text });
       y += 26;
     }
 
     // 우측 — 획득 카드 리스트
     const rightX = panelX + 440;
-    this.add.text(rightX, panelY + 56, t('gameover.acquired_relics'), { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: '#e2a04a' });
+    this.add.text(rightX, panelY + 56, t('gameover.acquired_relics'), { fontFamily: FONT, fontSize: '13px', color: '#e2a04a' });
     if (s.ownedRelics.length === 0) {
-      this.add.text(rightX, panelY + 80, t('common.empty'), { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX, panelY + 80, t('common.empty'), { fontFamily: FONT, fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedRelics) {
         const r = RELICS[id];
         const nm = r ? localizeCard('relic', r).name : id;
-        this.add.text(rightX, ry, `• ${nm}`, { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: COLORS.text });
+        this.add.text(rightX, ry, `• ${nm}`, { fontFamily: FONT, fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }
 
     const rightX2 = rightX + 200;
-    this.add.text(rightX2, panelY + 56, t('gameover.held_skills'), { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '13px', color: '#7ed957' });
+    this.add.text(rightX2, panelY + 56, t('gameover.held_skills'), { fontFamily: FONT, fontSize: '13px', color: '#7ed957' });
     if (s.ownedSkills.length === 0) {
-      this.add.text(rightX2, panelY + 80, t('common.empty'), { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: '#5a5a68' });
+      this.add.text(rightX2, panelY + 80, t('common.empty'), { fontFamily: FONT, fontSize: '12px', color: '#5a5a68' });
     } else {
       let ry = panelY + 80;
       for (const id of s.ownedSkills) {
         const sk = SKILLS[id];
         const nm = sk ? localizeCard('skill', sk).name : id;
-        this.add.text(rightX2, ry, `• ${nm}`, { fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: COLORS.text });
+        this.add.text(rightX2, ry, `• ${nm}`, { fontFamily: FONT, fontSize: '12px', color: COLORS.text });
         ry += 18;
       }
     }
@@ -131,11 +131,11 @@ export class GameOverScene extends Phaser.Scene {
       const noticeY = panelY + panelH + 12;
       this.add.rectangle(panelX, noticeY, panelW, 50, 0x2a3d1f, 1).setOrigin(0, 0).setStrokeStyle(2, 0x7ed957);
       this.add.text(panelX + panelW / 2, noticeY + 8, t('gameover.unlock_banner'), {
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '14px', color: '#7ed957', fontStyle: 'bold',
+        fontFamily: FONT, fontSize: '14px', color: '#7ed957', fontStyle: 'bold',
       }).setOrigin(0.5, 0);
       const names = newUnlocks.map((id) => THEMES[id]?.name ?? id).join(', ');
       this.add.text(panelX + panelW / 2, noticeY + 28, names + ' — ' + unlockLabel(newUnlocks[0]!), {
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif', fontSize: '12px', color: COLORS.text,
+        fontFamily: FONT, fontSize: '12px', color: COLORS.text,
       }).setOrigin(0.5, 0);
     }
 
