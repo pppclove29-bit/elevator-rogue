@@ -14,7 +14,8 @@ export type PassengerArchetype =
   | 'normal' | 'vip' | 'elderly' | 'suit'
   | 'group' | 'baggage' | 'shady' | 'tourist' | 'staff'
   | 'thief'
-  | 'patient' | 'medical' | 'hotel-guest' | 'crew';
+  | 'patient' | 'medical' | 'hotel-guest' | 'crew'
+  | 'delivery' | 'celebrity' | 'pregnant' | 'parent' | 'monk';
 
 export interface ArchetypeSpec {
   id: PassengerArchetype;
