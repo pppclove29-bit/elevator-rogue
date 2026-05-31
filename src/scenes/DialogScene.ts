@@ -19,7 +19,7 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { hasSprite } from '../render/sprites';
-import { CHARACTERS, CharacterId } from '../story/characters';
+import { CharacterId, getCharacter } from '../story/characters';
 import { DialogLine, SCRIPTS } from '../story/script';
 
 const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
@@ -141,7 +141,7 @@ export class DialogScene extends Phaser.Scene {
       return;
     }
     const line = this.lines[this.lineIdx]!;
-    const character = CHARACTERS[line.speaker];
+    const character = getCharacter(line.speaker);
     const isNarrator = line.speaker === 'narrator';
 
     // 이름 박스 / portrait 갱신
@@ -189,7 +189,7 @@ export class DialogScene extends Phaser.Scene {
   }
 
   private showPortrait(line: DialogLine): void {
-    const character = CHARACTERS[line.speaker as CharacterId];
+    const character = getCharacter(line.speaker);
     const portraitKey = line.portrait && character.portraits?.[line.portrait]
       ? character.portraits[line.portrait]
       : character.defaultPortrait;
@@ -211,7 +211,7 @@ export class DialogScene extends Phaser.Scene {
     }
   }
 
-  private renderSlot(slot: PortraitSlot, character: typeof CHARACTERS[CharacterId], portraitKey: string, alpha: number): void {
+  private renderSlot(slot: PortraitSlot, character: ReturnType<typeof getCharacter>, portraitKey: string, alpha: number): void {
     const cx = slot.side === 'left' ? 220 : GAME_WIDTH - 220;
     const cy = GAME_HEIGHT / 2 - 40;
     const w = 220, h = 330;

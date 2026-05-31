@@ -1,0 +1,12 @@
+{
+  "d-golden-fang":     { "name": "황금 송곳니",      "desc": "모든 도착 골드 ×1.3 (영구)",                              "effectId": "gold-mul",        "params": { "factor": 1.3 } },
+  "d-stained-key":     { "name": "얼룩진 마스터키",   "desc": "엘베 정원 +5, 정차 시간 +1",                            "effectId": "capacity-load",   "params": { "capDelta": 5, "loadDelta": 1 } },
+  "d-night-pact":      { "name": "야간의 계약",       "desc": "전 페이즈 스폰 -25%, 평판 자연 회복 0",                  "effectId": "spawn-noregen",   "params": { "spawnFactor": 0.75 } },
+  "d-blood-elevator":  { "name": "피의 엘리베이터",   "desc": "엘베 속도 ×1.5, 도둑 스폰 ×2 (평판 20 이하 시 산산조각)", "effectId": "speed-thief",     "params": { "speedFactor": 1.5, "thiefFactor": 2 }, "fragile": { "conditionId": "rep-below", "params": { "threshold": 20 } } },
+  "d-soul-contract":   { "name": "영혼 계약",         "desc": "정원 ×2 — 평판 0 도달 즉시 게임오버 (부활 무시)",        "effectId": "soul-contract",   "params": {} },
+  "d-crimson-mirror":  { "name": "진홍빛 거울",       "desc": "모든 anger 누적 ×0.6, 평판 손실 ×1.5",                  "effectId": "anger-rep-trade", "params": { "angerFactor": 0.6, "repLossMul": 1.5 } },
+  "d-iron-discipline": { "name": "강철 규율",         "desc": "정차 시간 -4, 화난 손님 도착 시 -3 평판 (페널티 강화)",  "effectId": "fast-strict",     "params": { "loadDelta": -4, "angryLossExtra": 1 } },
+  "d-rich-glutton":    { "name": "탐욕의 부자",       "desc": "시작 골드 +200, 매일 자정 -10 골드 (골드 5 미만 시 깨짐)", "effectId": "rich-glutton",    "params": { "initGold": 200, "dailyDrain": 10 }, "fragile": { "conditionId": "gold-below", "params": { "threshold": 5 } } },
+  "d-cursed-haste":    { "name": "저주받은 가속",     "desc": "전체 스폰 -40%, 고장률 ×3 (엘베 고장 시 깨짐)",          "effectId": "haste-breakdown", "params": { "spawnFactor": 0.6, "breakdownFactor": 3 }, "fragile": { "conditionId": "broken-elev", "params": {} } },
+  "d-shadow-floor":    { "name": "어둠의 층 +1",      "desc": "즉시 층 1개 추가, 평판 시작 -15 (캐스케이드 2회 시 깨짐)", "effectId": "shadow-floor",    "params": { "addFloors": 1, "repCost": 15 }, "fragile": { "conditionId": "cascade-twice", "params": { "count": 2 } } }
+}

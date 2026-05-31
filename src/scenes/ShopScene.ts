@@ -4,7 +4,9 @@ import { sound } from '../audio/sound';
 import { repairElevator } from '../domain/simulation';
 import { localizeCard } from '../i18n/cards';
 import { t } from '../i18n/locale';
-import { currentShopItems, rerollCost, ShopItem, tryReroll } from '../meta/shop';
+import { currentShopItems, openMysteryBox, rerollCost, ShopItem, tryReroll } from '../meta/shop';
+import { acquireTrinket, discardTrinket, MAX_TRINKETS, TRINKETS, trinketById } from '../meta/trinkets';
+import { adjustReputation } from '../domain/simulation';
 import { Button } from '../ui/Button';
 import { GameScene } from './GameScene';
 
@@ -154,6 +156,25 @@ export class ShopScene extends Phaser.Scene {
         return { tag: t('shop.tag.repair'), accent: 0xe74c3c,
           name: t('shop.repair_name', { id: item.elevatorId + 1 }),
           desc: t('shop.repair_desc'), cost: item.cost };
+      case 'trinket': {
+        const catLabel = item.trinket.category === 'common' ? '일반'
+          : item.trinket.category === 'conditional' ? '조건부' : '도박';
+        return {
+          tag: `🎁 소품 · ${catLabel}`,
+          accent: 0xb978ff,
+          name: item.trinket.name,
+          desc: item.trinket.desc,
+          cost: item.cost,
+        };
+      }
+      case 'mystery':
+        return {
+          tag: '?? 미스터리',
+          accent: 0x4a90e2,
+          name: '?? 미스터리 박스',
+          desc: '뭐가 들었을지 모름 — 소품 / 골드 / 평판 / 보너스. 한 번 열면 끝.',
+          cost: item.cost,
+        };
     }
   }
 
@@ -178,7 +199,107 @@ export class ShopScene extends Phaser.Scene {
       case 'repair':
         repairElevator(s, item.elevatorId);
         break;
+      case 'trinket':
+        if (s.ownedTrinkets.length >= MAX_TRINKETS) {
+          this.openTrinketReplaceModal(item.trinket.id);
+          return;
+        }
+        s.gold -= item.cost;
+        acquireTrinket(s, item.trinket.id);
+        s.shopTrinketId = null;
+        break;
+      case 'mystery':
+        s.gold -= item.cost;
+        this.resolveMystery();
+        s.shopMysteryAvailable = false;
+        break;
     }
     this.rebuild();
   }
+
+  /** 소품 3개 full 시 교체 모달 — 어떤 걸 버릴지 선택 + 새 소품 획득. */
+  private openTrinketReplaceModal(newTrinketId: string): void {
+    const s = this.gs.state;
+    const overlay = this.add.container(0, 0).setDepth(2000);
+    const bg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85).setInteractive();
+    const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, 640, 360, 0x14141c, 1).setStrokeStyle(2, 0xb978ff);
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 150, '소품 교체 — 버릴 것 선택', {
+      fontFamily: FONT, fontSize: '20px', color: '#f5c542', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    const newT = trinketById(newTrinketId);
+    const sub = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 118, `새 소품: ${newT?.name ?? '?'}`, {
+      fontFamily: FONT, fontSize: '13px', color: COLORS.textDim,
+    }).setOrigin(0.5);
+    overlay.add([bg, panel, title, sub]);
+
+    const slotW = 180, slotH = 130, gap = 14;
+    const totalW = slotW * 3 + gap * 2;
+    const sx = GAME_WIDTH / 2 - totalW / 2;
+    for (let i = 0; i < 3; i++) {
+      const ownedId = s.ownedTrinkets[i]!;
+      const owned = trinketById(ownedId);
+      const x = sx + i * (slotW + gap);
+      const y = GAME_HEIGHT / 2 - 30;
+      const card = this.add.rectangle(x + slotW / 2, y + slotH / 2, slotW, slotH, 0x1c1c26, 1)
+        .setStrokeStyle(1, 0x3a3a48).setInteractive({ useHandCursor: true });
+      const name = this.add.text(x + 10, y + 10, owned?.name ?? ownedId, {
+        fontFamily: FONT, fontSize: '14px', color: COLORS.text, wordWrap: { width: slotW - 20 },
+      });
+      const desc = this.add.text(x + 10, y + 42, owned?.desc ?? '', {
+        fontFamily: FONT, fontSize: '11px', color: COLORS.textDim, wordWrap: { width: slotW - 20 },
+      });
+      card.on('pointerover', () => card.setStrokeStyle(2, 0xe74c3c));
+      card.on('pointerout', () => card.setStrokeStyle(1, 0x3a3a48));
+      card.on('pointerdown', () => {
+        discardTrinket(s, ownedId);
+        s.gold -= 5;   // 교체 시 동일 가격 — 단순화 위해 common 가격 적용
+        acquireTrinket(s, newTrinketId);
+        s.shopTrinketId = null;
+        overlay.destroy();
+        bg.destroy(); panel.destroy(); title.destroy(); sub.destroy(); card.destroy(); name.destroy(); desc.destroy();
+        this.rebuild();
+      });
+      overlay.add([card, name, desc]);
+    }
+
+    const cancelBtn = new Button(this, GAME_WIDTH / 2, GAME_HEIGHT / 2 + 120, 160, 36, '취소', () => {
+      overlay.destroy(); bg.destroy(); panel.destroy(); title.destroy(); sub.destroy();
+    }, { fontSize: 13, bg: 0x3a3a48, bgHover: 0x4a4a55 });
+    overlay.add(cancelBtn.container);
+  }
+
+  private resolveMystery(): void {
+    const s = this.gs.state;
+    const result = openMysteryBox(s, this.gs.rngHandle());
+    let msg = '';
+    if (result.kind === 'trinket') {
+      const id = result.payload as string;
+      const t = trinketById(id);
+      if (t && s.ownedTrinkets.length < MAX_TRINKETS) {
+        acquireTrinket(s, id);
+        msg = `🎁  소품: ${t.name}`;
+      } else if (t) {
+        s.gold += 20;
+        msg = `🎁  소품 ${t.name} — 자리 없어 +20G로 환원`;
+      }
+    } else if (result.kind === 'gold') {
+      s.gold += result.payload as number;
+      msg = `💰  골드 +${result.payload}G`;
+    } else if (result.kind === 'reputation') {
+      adjustReputation(s, result.payload as number);
+      msg = `✨  평판 +${result.payload}`;
+    } else {
+      s.gold += 100;
+      msg = `🏆  잭팟! +100G`;
+    }
+    const toast = this.add.text(GAME_WIDTH / 2, 130, msg, {
+      fontFamily: FONT, fontSize: '20px', color: '#f5c542', fontStyle: 'bold',
+      backgroundColor: '#14141c', padding: { x: 16, y: 10 },
+    }).setOrigin(0.5).setDepth(1500);
+    this.cameras.main.flash(280, 74, 144, 226);
+    this.tweens.add({ targets: toast, alpha: 0, duration: 600, delay: 2400, onComplete: () => toast.destroy() });
+  }
 }
+
+// Silence TS6133 for static imports referenced only in case branches
+void TRINKETS;

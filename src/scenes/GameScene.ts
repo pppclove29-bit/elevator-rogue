@@ -1,5 +1,8 @@
 import Phaser from 'phaser';
 import { COLORS, GAME_HEIGHT, GAME_WIDTH, INITIAL_ELEVATORS, INITIAL_FLOORS, TICK_MS, FONT } from '../config';
+import { t } from '../i18n/locale';
+// Button removed — yearly recap now uses inline rectangle cards instead of Button
+// import { Button } from '../ui/Button';
 import { Rng } from '../domain/rng';
 import { phaseAtTick, Phase } from '../domain/phase';
 import { createSim, tick } from '../domain/simulation';
@@ -7,6 +10,10 @@ import { defaultPolicy, ElevatorId, ElevatorPolicy, SimState } from '../domain/t
 import { EventEntry, rollDailyEvent } from '../meta/events';
 import { modifierById } from '../meta/modifiers';
 import { relicById } from '../meta/relics';
+import { relicMeta } from '../meta/relicLookup';
+import { checkTransformations, TRANSFORMATIONS } from '../meta/transformations';
+import { applyCurse, clearCurse, curseById, rollCurse } from '../meta/curses';
+import { acquireTrinket, MAX_TRINKETS, TRINKETS } from '../meta/trinkets';
 import { loadOptions } from '../meta/options';
 import { loadProgression, recordDayReached, saveProgression } from '../meta/progression';
 import { sound } from '../audio/sound';
@@ -30,7 +37,7 @@ export class GameScene extends Phaser.Scene {
   private modifierCleanups: Map<string, () => void> = new Map();
   private eventCleanups: Array<{ id: string; expiresAtTick: number; cleanup: () => void }> = [];
   activeEventToday: EventEntry | null = null;
-  pendingModalQueue: Array<'Shop' | 'Modifier' | 'Relic'> = [];
+  pendingModalQueue: Array<'Shop' | 'Modifier' | 'Relic' | 'Deal' | 'YearReview'> = [];
   recentUnlocks: ThemeId[] = []; // HUD가 잠시 표시할 새 해금
   private prevServedCount = 0;
   private prevGold = 0;
@@ -38,6 +45,13 @@ export class GameScene extends Phaser.Scene {
   private prevBrokenIds = new Set<number>();
   private prevEventName: string | null = null;
   private prevGameOver = false;
+  private prevCascadeActive = false;
+  /** 영구 비네팅 — 캐스케이드 동안 항상 표시. */
+  private cascadeVignette: Phaser.GameObjects.Graphics | null = null;
+  /** 현재 활성 저주의 cleanup ref — save 직전 호출 후 재apply. */
+  private curseCleanup: (() => void) | null = null;
+  /** 글래스 캐논 — 영구 파괴된 렐릭 ID 누적 (state.brokenRelics 미러). */
+  private fragileCheckedAtDay = -1;
   private rng!: Rng;
   private view!: BuildingView;
   private sprites!: PassengerSprites;
@@ -50,6 +64,11 @@ export class GameScene extends Phaser.Scene {
   private accumulator = 0;
   paused = false;
   timeScale = 1;
+  /** 단일 층 풀스크린 뷰의 포커스 위치. 연속(float) — 0=1F, 0.5=1F와 2F 사이. */
+  focusY = 0;
+  private dragStartScreenY: number | null = null;
+  private dragStartFocusY = 0;
+  private focusSnapTween: Phaser.Tweens.Tween | null = null;
   private seed = 1;
   private themeId: ThemeId = DEFAULT_THEME;
   private challengeId: string | null = null;
@@ -88,17 +107,20 @@ export class GameScene extends Phaser.Scene {
 
     const margin = 80;
     const usableHeight = GAME_HEIGHT - margin * 2;
-    // 빌딩을 넓혀서 큐 줄이 길어져도 보이고, 엘베/승객 확대 사이즈가 들어갈 공간 확보.
-    const width = 900;
+    // 풀스크린 단일 층 뷰 — 빌딩 폭을 화면 거의 끝까지.
+    const width = GAME_WIDTH - 80;
     const layout = {
       x: Math.floor((GAME_WIDTH - width) / 2),
       y: margin,
       width,
       totalHeight: usableHeight,
-      shaftSpacing: 110,
+      shaftSpacing: Math.floor((width - 200) / Math.max(1, this.state?.building?.elevators?.length ?? 4)),
     };
     this.view = new BuildingView(this, layout);
     this.sprites = new PassengerSprites(this, layout);
+    // 초기 포커스 = 1F (가장 트래픽 많음)
+    this.focusY = 0;
+    this.bindFloorDrag();
     this.fx = new EventFx(this);
     this.prevFxEventId = null;
 
@@ -408,6 +430,20 @@ export class GameScene extends Phaser.Scene {
       this.cameras.main.flash(400, 231, 76, 60); // 빨간 플래시
     }
     this.prevGameOver = this.state.gameOver;
+
+    // ─ 캐스케이드 진입/탈출 감지 ─
+    const cascade = this.state.cascadeActive ?? false;
+    if (cascade && !this.prevCascadeActive) {
+      // 진입 — 토스트 + 빨간 비네팅 영구 표시
+      this.showCascadeToast();
+      this.ensureCascadeVignette();
+      this.cameras.main.flash(280, 200, 30, 30);
+    } else if (!cascade && this.prevCascadeActive) {
+      // 탈출 — 비네팅 제거 + 토스트
+      this.showCascadeExitToast();
+      if (this.cascadeVignette) { this.cascadeVignette.destroy(); this.cascadeVignette = null; }
+    }
+    this.prevCascadeActive = cascade;
   }
 
   resolveShop(): void { this.advanceModalQueue(); }
@@ -425,22 +461,8 @@ export class GameScene extends Phaser.Scene {
     const m = modifierById(id);
     const cleanup = m.apply(this.state);
     this.modifierCleanups.set(id, cleanup);
-    this.state.activeModifiers.push({ id, expiresAtDay: this.state.dayCompleted + 1 });
-  }
-
-  private expireDailyModifiers(): void {
-    const now = this.state.dayCompleted;
-    const remaining: typeof this.state.activeModifiers = [];
-    for (const am of this.state.activeModifiers) {
-      if (am.expiresAtDay <= now) {
-        const undo = this.modifierCleanups.get(am.id);
-        if (undo) undo();
-        this.modifierCleanups.delete(am.id);
-      } else {
-        remaining.push(am);
-      }
-    }
-    this.state.activeModifiers = remaining;
+    // 운영 변수는 이번 런 동안 영구. expiresAtDay = -1 sentinel (만료 X).
+    this.state.activeModifiers.push({ id, expiresAtDay: -1 });
   }
 
   private applyRelic(id: string): void {
@@ -448,6 +470,66 @@ export class GameScene extends Phaser.Scene {
     const r = relicById(id);
     r.apply(this.state);
     this.state.ownedRelics.push(id);
+    // 세트 변신 체크 — 새 태그 만족하면 변신 적용 + 토스트
+    const newTransforms = checkTransformations(this.state);
+    for (const tfId of newTransforms) {
+      const tf = TRANSFORMATIONS[tfId];
+      if (tf) this.showTransformToast(tf.name);
+    }
+  }
+
+  private showTransformToast(name: string): void {
+    const w = 580, h = 70;
+    const bg = this.add.rectangle(GAME_WIDTH / 2, 200, w, h, 0xf5c542, 0.95)
+      .setStrokeStyle(2, 0xffffff).setDepth(1100);
+    const txt = this.add.text(GAME_WIDTH / 2, 200, `✨  당신은 ${name}(으)로 변신했다!`, {
+      fontFamily: FONT, fontSize: '20px', color: '#0b0b10', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(1101);
+    this.cameras.main.flash(400, 245, 197, 66);
+    this.tweens.add({ targets: [bg, txt], alpha: 0, duration: 600, delay: 4000,
+      onComplete: () => { bg.destroy(); txt.destroy(); }});
+  }
+
+  /** 악재 발동/해제 토스트 — 색상으로 진입/해제 구분. */
+  private showCurseToast(message: string, color: number): void {
+    const w = 640, h = 70;
+    const bg = this.add.rectangle(GAME_WIDTH / 2, 170, w, h, color, 0.95)
+      .setStrokeStyle(2, 0xffffff).setDepth(1100);
+    const txt = this.add.text(GAME_WIDTH / 2, 170, message, {
+      fontFamily: FONT, fontSize: '18px', color: '#0b0b10', fontStyle: 'bold',
+      align: 'center', wordWrap: { width: w - 40 },
+    }).setOrigin(0.5).setDepth(1101);
+    this.cameras.main.flash(280, (color >> 16) & 0xff, (color >> 8) & 0xff, color & 0xff);
+    this.tweens.add({ targets: [bg, txt], alpha: 0, duration: 700, delay: 4200,
+      onComplete: () => { bg.destroy(); txt.destroy(); }});
+  }
+
+  /** 글래스 캐논 — fragile 렐릭 조건 검사 후 파괴. apply의 reverse는 못 함 (effect 누적). */
+  private checkFragileRelics(): void {
+    const ownedCopy = [...this.state.ownedRelics];
+    for (const id of ownedCopy) {
+      const meta = relicMeta(id);
+      if (!meta?.fragile) continue;
+      if (this.evalFragileCondition(meta.fragile.conditionId, meta.fragile.params)) {
+        this.state.ownedRelics = this.state.ownedRelics.filter((x) => x !== id);
+        if (!this.state.brokenRelics.includes(id)) this.state.brokenRelics.push(id);
+        this.showCurseToast(`💔  ${meta.name} 산산조각났다`, 0xe74c3c);
+      }
+    }
+  }
+
+  /** fragile 조건 평가 — 보수적인 정의 몇 가지. */
+  private evalFragileCondition(conditionId: string, params: any): boolean {
+    void params;
+    const s = this.state;
+    switch (conditionId) {
+      case 'rep-below':       return s.reputation < (params?.threshold ?? 20);
+      case 'gold-below':      return s.gold < (params?.threshold ?? 5);
+      case 'cascade-twice':   return (s as any).cascadeEnterCount >= (params?.count ?? 2);
+      case 'day-elapsed':     return s.dayCompleted >= (params?.day ?? 30);
+      case 'broken-elev':     return s.building.elevators.some((e) => e.state.kind === 'broken');
+      default: return false;
+    }
   }
 
   private advanceModalQueue(): void {
@@ -459,6 +541,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
     this.pendingReward = true;
+    // 'YearReview' 는 별도 Scene 미존재 — inline 회고로 처리. 선택 시 advanceModalQueue 호출.
+    if (next === 'YearReview') {
+      this.showYearlyRecap(this.state.dayCompleted, () => this.advanceModalQueue());
+      return;
+    }
+    if (next === 'Deal') {
+      this.scene.launch('Deal', { onClose: () => this.advanceModalQueue() });
+      return;
+    }
     this.scene.launch(next);
   }
 
@@ -469,21 +560,54 @@ export class GameScene extends Phaser.Scene {
     const day = this.state.dayCompleted; // 막 완료된 day (1 이상)
     this.lastRewardedDay = day;
 
-    this.expireDailyModifiers();
     // 이벤트 만료/소진: 새 day 시작 시점에 남은 게 있다면 강제 정리
     for (const ec of this.eventCleanups) ec.cleanup();
     this.eventCleanups = [];
     this.activeEventToday = null;
-    // 미만료된 active modifier도 강제 cleanup (저장 위해 — drop)
+    // 운영 변수는 런 동안 영구 — 저장 직전 effect cleanup → save → 재 apply.
+    // activeModifiers 배열은 유지 (저장 대상).
     for (const am of this.state.activeModifiers) {
       const undo = this.modifierCleanups.get(am.id);
       if (undo) undo();
     }
     this.modifierCleanups.clear();
-    this.state.activeModifiers = [];
 
-    // 깨끗한 상태 → 자동 저장
+    // ── 악재 만료 검사 (보스데이 종료) ──
+    if (this.state.activeCurse && day >= this.state.activeCurse.expiresAtDay) {
+      const expiredName = curseById(this.state.activeCurse.id)?.name ?? this.state.activeCurse.id;
+      clearCurse(this.state, this.curseCleanup);
+      this.curseCleanup = null;
+      this.showCurseToast(`🌅  악재 해제: ${expiredName}`, 0x7ed957);
+    }
+
+    // ── 글래스캐논 — 매일 자정 fragile 렐릭 조건 검사 ──
+    if (this.fragileCheckedAtDay !== day) {
+      this.fragileCheckedAtDay = day;
+      this.checkFragileRelics();
+    }
+
+    // 저장 직전 — 악재 효과 cleanup → 저장 → 재 apply
+    if (this.curseCleanup) { this.curseCleanup(); this.curseCleanup = null; }
     this.saveNow();
+    if (this.state.activeCurse) {
+      const ce = curseById(this.state.activeCurse.id);
+      if (ce) this.curseCleanup = ce.apply(this.state);
+    }
+    // 운영 변수 effect 재 apply (modifierCleanups 다시 채움)
+    for (const am of this.state.activeModifiers) {
+      const m = modifierById(am.id);
+      this.modifierCleanups.set(am.id, m.apply(this.state));
+    }
+
+    // ── 보스데이 진입 — 다음 day 가 7의 배수면 악재 새로 발동 ──
+    const nextDay = day + 1;
+    if (nextDay > 0 && nextDay % 7 === 0 && !this.state.activeCurse) {
+      const curseId = rollCurse(() => this.rng());
+      const expiresAtDay = nextDay + 7;
+      this.curseCleanup = applyCurse(this.state, curseId, expiresAtDay, () => this.rng());
+      const ce = curseById(curseId);
+      if (ce) this.showCurseToast(`⚠  악재 발동: ${ce.name} — ${ce.desc}`, 0xb978ff);
+    }
 
     // 진행도 기록 (day = 방금 끝난 day. 새 day는 day+1)
     const prog = loadProgression();
@@ -498,13 +622,22 @@ export class GameScene extends Phaser.Scene {
     this.maybeRollDailyEvent(day + 1);
 
     rollShopOffers(this.state, this.rng);
-    const queue: Array<'Shop' | 'Modifier' | 'Relic'> = ['Shop'];
+    const queue: Array<'Shop' | 'Modifier' | 'Relic' | 'Deal' | 'YearReview'> = ['Shop'];
     if (day - this.lastModifierDay >= 3) { queue.push('Modifier'); this.lastModifierDay = day; }
     if (day - this.lastRelicDay >= 5) { queue.push('Relic'); this.lastRelicDay = day; }
     if (day - this.lastFloorAddedDay >= 4) {
       addFloor(this.state.building);
       this.lastFloorAddedDay = day;
       console.log(`[t=${this.state.tick}] floor added → ${this.state.building.floors.length} floors`);
+    }
+    // ── 매 5일 거래 (보스 day 7/14/21/28과 겹치지 않을 때) ──
+    const isBossDay = day % 7 === 0;
+    if (day >= 5 && day % 5 === 0 && !isBossDay) {
+      queue.push('Deal');
+    }
+    // ── 매 365일 = 연도 마감 회고 ──
+    if (day > 0 && day % 365 === 0) {
+      queue.push('YearReview');
     }
 
     this.pendingModalQueue = queue;
@@ -574,7 +707,17 @@ export class GameScene extends Phaser.Scene {
     this.eventCleanups = [];
     this.activeEventToday = null;
     this.pendingModalQueue = [];
-    // 저장은 깨끗한 상태 (activeModifiers/eventCleanups 비어있음)
+    // 저장은 eventCleanups 빈 상태. activeModifiers/activeCurse 는 영구라 active 상태로 저장됨.
+    // 로드 시 effect 다시 apply.
+    this.curseCleanup = null;
+    if (this.state.activeCurse) {
+      const ce = curseById(this.state.activeCurse.id);
+      if (ce) this.curseCleanup = ce.apply(this.state);
+    }
+    for (const am of this.state.activeModifiers) {
+      const m = modifierById(am.id);
+      this.modifierCleanups.set(am.id, m.apply(this.state));
+    }
   }
 
   /** 정책 편집기에서 호출 — 현재 상태 저장하고 타이틀로. 일일 챌린지/게임오버는 저장 안 함. */
@@ -712,6 +855,111 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
+  /** 캐스케이드 진입 토스트 — 화면 가운데 한 번만. */
+  private showCascadeToast(): void {
+    const w = 540, h = 60;
+    const bg = this.add.rectangle(GAME_WIDTH / 2, 130, w, h, 0xe74c3c, 0.95)
+      .setStrokeStyle(2, 0xff8888).setDepth(1100);
+    const txt = this.add.text(GAME_WIDTH / 2, 130, '⚠  ' + (t('cascade.entered') ?? '평판 임계 도달'), {
+      fontFamily: FONT, fontSize: '18px', color: '#0b0b10', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(1101);
+    this.tweens.add({ targets: [bg, txt], alpha: 0, duration: 600, delay: 3500,
+      onComplete: () => { bg.destroy(); txt.destroy(); }});
+  }
+  private showCascadeExitToast(): void {
+    const w = 540, h = 60;
+    const bg = this.add.rectangle(GAME_WIDTH / 2, 130, w, h, 0x7ed957, 0.95)
+      .setStrokeStyle(2, 0xc0ffc0).setDepth(1100);
+    const txt = this.add.text(GAME_WIDTH / 2, 130, t('cascade.exit') ?? '평판 회복', {
+      fontFamily: FONT, fontSize: '18px', color: '#0b0b10', fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(1101);
+    this.tweens.add({ targets: [bg, txt], alpha: 0, duration: 600, delay: 2500,
+      onComplete: () => { bg.destroy(); txt.destroy(); }});
+  }
+  /** 캐스케이드 동안 화면 가장자리 빨간 비네팅 (영구). */
+  private ensureCascadeVignette(): void {
+    if (this.cascadeVignette) return;
+    const g = this.add.graphics().setDepth(990);
+    const vignW = 100;
+    for (let i = 0; i < vignW; i++) {
+      const a = (1 - i / vignW) * 0.35;
+      g.fillStyle(0xe74c3c, a);
+      g.fillRect(0, i, GAME_WIDTH, 1);                            // top
+      g.fillRect(0, GAME_HEIGHT - 1 - i, GAME_WIDTH, 1);          // bottom
+      g.fillRect(i, 0, 1, GAME_HEIGHT);                            // left
+      g.fillRect(GAME_WIDTH - 1 - i, 0, 1, GAME_HEIGHT);          // right
+    }
+    // 펄스 (천천히 깜빡)
+    this.tweens.add({ targets: g, alpha: { from: 0.7, to: 1 }, duration: 1400, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.cascadeVignette = g;
+  }
+
+  /** 매 365일 회고 모달 — 처리/평판/골드 요약 + 3택 신년 보너스. */
+  private showYearlyRecap(day: number, onClose: () => void): void {
+    const year = day / 365;
+    const served = this.state.servedCount;
+    const gold = this.state.gold;
+    const rep = Math.round(this.state.reputation);
+    const w = 760, h = 460;
+    const bg = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.85).setDepth(1200);
+    const panel = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, w, h, 0x14141c, 1).setStrokeStyle(2, 0xf5c542).setDepth(1201);
+    const title = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - h / 2 + 28, `🎊  ${year}년차 결산`, {
+      fontFamily: FONT, fontSize: '28px', color: '#f5c542', fontStyle: 'bold',
+    }).setOrigin(0.5, 0).setDepth(1202);
+    const lines = [
+      `누적 처리 손님: ${served} 명`,
+      `현재 평판: ${rep} / 100`,
+      `보유 골드: ${gold} G`,
+      `유물: ${this.state.ownedRelics.length} · 스킬: ${this.state.ownedSkills.length} · 소품: ${this.state.ownedTrinkets.length}/3`,
+      '',
+      '신년 보너스 — 한 가지 선택:',
+    ];
+    const body = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - h / 2 + 80, lines.join('\n'), {
+      fontFamily: FONT, fontSize: '15px', color: COLORS.text, align: 'center', lineSpacing: 6,
+    }).setOrigin(0.5, 0).setDepth(1202);
+
+    const choices: Array<{ label: string; desc: string; apply: () => void; color: number }> = [
+      { label: '💰 풍요', desc: '+150 G', color: 0xf5c542, apply: () => { this.state.gold += 150; } },
+      { label: '✨ 명성', desc: '평판 +20', color: 0x7ed957, apply: () => { this.state.reputation = Math.min(100, this.state.reputation + 20); } },
+      { label: '🎁 운명', desc: '랜덤 소품 +1', color: 0xb978ff, apply: () => {
+        const owned = new Set(this.state.ownedTrinkets);
+        const discarded = new Set(this.state.discardedTrinkets);
+        const pool = Object.keys(TRINKETS).filter((id) => !owned.has(id) && !discarded.has(id));
+        if (pool.length > 0 && this.state.ownedTrinkets.length < MAX_TRINKETS) {
+          const pick = pool[Math.floor(this.rng() * pool.length)]!;
+          acquireTrinket(this.state, pick);
+        } else {
+          this.state.gold += 50;
+        }
+      } },
+    ];
+    const cardW = 200, cardH = 130, gap = 16;
+    const totalW = cardW * 3 + gap * 2;
+    const sx = GAME_WIDTH / 2 - totalW / 2;
+    const sy = GAME_HEIGHT / 2 + h / 2 - cardH - 50;
+    const destroyAll: Array<{ destroy: () => void }> = [bg, panel, title, body];
+    for (let i = 0; i < choices.length; i++) {
+      const c = choices[i]!;
+      const x = sx + i * (cardW + gap);
+      const cardBg = this.add.rectangle(x + cardW / 2, sy + cardH / 2, cardW, cardH, 0x1c1c26, 1)
+        .setStrokeStyle(2, c.color).setInteractive({ useHandCursor: true }).setDepth(1202);
+      const lbl = this.add.text(x + cardW / 2, sy + 28, c.label, {
+        fontFamily: FONT, fontSize: '22px', color: '#ffffff', fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(1203);
+      const dsc = this.add.text(x + cardW / 2, sy + 70, c.desc, {
+        fontFamily: FONT, fontSize: '14px', color: COLORS.text,
+      }).setOrigin(0.5).setDepth(1203);
+      cardBg.on('pointerover', () => cardBg.setFillStyle(0x2c2c3a, 1));
+      cardBg.on('pointerout', () => cardBg.setFillStyle(0x1c1c26, 1));
+      cardBg.on('pointerdown', () => {
+        c.apply();
+        for (const o of destroyAll) o.destroy();
+        onClose();
+      });
+      destroyAll.push(cardBg, lbl, dsc);
+    }
+  }
+
   private flashAngryOverlay(): void {
     const flash = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0xe74c3c, 0.35)
       .setDepth(999);
@@ -721,6 +969,64 @@ export class GameScene extends Phaser.Scene {
       duration: 350,
       ease: 'Cubic.easeOut',
       onComplete: () => flash.destroy(),
+    });
+  }
+
+  /** 빌딩 위에서 세로 드래그 + 휠 → 포커스 층 변경. continuous focusY. */
+  private bindFloorDrag(): void {
+    const floorCount = () => this.state?.building?.floors?.length ?? 1;
+    const snapToNearest = () => {
+      if (this.focusSnapTween) { this.focusSnapTween.stop(); this.focusSnapTween = null; }
+      const target = Math.max(0, Math.min(floorCount() - 1, Math.round(this.focusY)));
+      this.focusSnapTween = this.tweens.add({
+        targets: this, focusY: target, duration: 220, ease: 'Cubic.easeOut',
+      });
+    };
+    this.input.on('pointerdown', (p: Phaser.Input.Pointer) => {
+      if (this.modalActive()) return;
+      if (this.focusSnapTween) { this.focusSnapTween.stop(); this.focusSnapTween = null; }
+      this.dragStartScreenY = p.y;
+      this.dragStartFocusY = this.focusY;
+    });
+    this.input.on('pointermove', (p: Phaser.Input.Pointer) => {
+      if (this.dragStartScreenY === null) return;
+      const dy = p.y - this.dragStartScreenY;
+      // 위로 드래그 (dy < 0) → focus 증가 (위 층). 120px = 한 층.
+      const newFocus = this.dragStartFocusY - dy / 120;
+      this.focusY = Math.max(0, Math.min(floorCount() - 1, newFocus));
+    });
+    this.input.on('pointerup', () => {
+      if (this.dragStartScreenY === null) return;
+      this.dragStartScreenY = null;
+      snapToNearest();
+    });
+    this.input.on('pointerupoutside', () => {
+      if (this.dragStartScreenY === null) return;
+      this.dragStartScreenY = null;
+      snapToNearest();
+    });
+    // 휠: 위로 = 위 층 (smooth tween)
+    this.input.on('wheel', (_p: any, _go: any, _dx: number, dy: number) => {
+      if (this.modalActive()) return;
+      const dir = dy > 0 ? -1 : 1;
+      const target = Math.max(0, Math.min(floorCount() - 1, Math.round(this.focusY) + dir));
+      if (this.focusSnapTween) { this.focusSnapTween.stop(); this.focusSnapTween = null; }
+      this.focusSnapTween = this.tweens.add({
+        targets: this, focusY: target, duration: 280, ease: 'Cubic.easeOut',
+      });
+    });
+    // 키보드 화살표
+    this.input.keyboard?.on('keydown-UP', () => {
+      if (this.modalActive()) return;
+      const target = Math.min(floorCount() - 1, Math.round(this.focusY) + 1);
+      if (this.focusSnapTween) { this.focusSnapTween.stop(); this.focusSnapTween = null; }
+      this.focusSnapTween = this.tweens.add({ targets: this, focusY: target, duration: 280, ease: 'Cubic.easeOut' });
+    });
+    this.input.keyboard?.on('keydown-DOWN', () => {
+      if (this.modalActive()) return;
+      const target = Math.max(0, Math.round(this.focusY) - 1);
+      if (this.focusSnapTween) { this.focusSnapTween.stop(); this.focusSnapTween = null; }
+      this.focusSnapTween = this.tweens.add({ targets: this, focusY: target, duration: 280, ease: 'Cubic.easeOut' });
     });
   }
 
@@ -794,8 +1100,8 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
-    this.view.draw(this.state);
-    this.sprites.update(this.state, delta, this.timeScale);
+    this.view.draw(this.state, this.focusY);
+    this.sprites.update(this.state, delta, this.timeScale, this.focusY);
     this.updateEventFx(delta);
   }
 

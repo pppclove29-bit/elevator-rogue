@@ -5,6 +5,7 @@ import { ANGER_THRESHOLD } from '../domain/simulation';
 import { ROLE_COLOR } from '../domain/spawner';
 import { SimState } from '../domain/types';
 import { BuildingViewLayout, DOOR_AREA_W } from './BuildingView';
+import { getElevatorScreenY, getFloorCenterY } from './floorLayout';
 import { hasSprite } from './sprites';
 
 type Phase = 'entering' | 'queued' | 'boarding' | 'riding' | 'alighting' | 'leaving' | 'escalator' | 'subway';
@@ -64,13 +65,21 @@ export class PassengerSprites {
    * @param gameSpeed timeScale (1/2/4/8). lerp 속도 스케일링 (높은 배속에서도 엘베 따라가도록).
    *                  stagger/fade 는 실시간 유지 (가독성).
    */
-  update(state: SimState, deltaMs: number, gameSpeed: number = 1): void {
+  /** 현재 frame 의 focus 정보 (float). sync()/draw() 에서 floorY 계산용. */
+  private currentFocus: number = 0;
+
+  update(state: SimState, deltaMs: number, gameSpeed: number = 1, focusY?: number): void {
     this.lastFloorCount = state.building.floors.length;
+    if (focusY !== undefined) this.currentFocus = focusY;
     this.consumeHints(state);
     this.sync(state);
 
     const dt = deltaMs / 1000;
-    const moveStep = LERP_SPEED_PX_PER_SEC * dt * Math.max(1, gameSpeed);
+    // 페이즈별 이동 속도:
+    // - entering/leaving: 실시간 (게임 배속 X) — 사람이 걸어가는 시각 표현
+    // - riding/boarding: 배속 X 1 — 엘베 따라가야 하므로 게임속도 매칭
+    const realMoveStep = 220 * dt;                                       // 실시간 도보 속도 (px/sec)
+    const scaledMoveStep = LERP_SPEED_PX_PER_SEC * dt * Math.max(1, gameSpeed);
     const fadeStep = FADE_SPEED_PER_SEC * dt;
 
     for (const s of this.map.values()) {
@@ -78,8 +87,13 @@ export class PassengerSprites {
         s.delay = Math.max(0, s.delay - deltaMs);
         continue;
       }
-      s.x = approach(s.x, s.targetX, moveStep);
-      s.y = approach(s.y, s.targetY, moveStep);
+      const isWalking = s.phase === 'entering' || s.phase === 'leaving' || s.phase === 'queued';
+      const step = isWalking ? realMoveStep : scaledMoveStep;
+      s.x = approach(s.x, s.targetX, step);
+      s.y = approach(s.y, s.targetY, step);
+      // leaving 은 문 근처 도달 전까지 alpha 유지 (걸어가는 모습 보이게).
+      // 문에 가까워지면 (20px 이내) targetAlpha=0 으로 페이드 시작.
+      if (s.phase === 'leaving' && Math.abs(s.x - s.targetX) < 20) s.targetAlpha = 0;
       s.alpha = approach(s.alpha, s.targetAlpha, fadeStep);
 
       if (s.phase === 'entering' && Math.abs(s.x - s.targetX) < 1 && s.alpha >= 0.95) {
@@ -110,7 +124,6 @@ export class PassengerSprites {
     const { x, y, totalHeight, shaftSpacing } = this.layout;
     const floors = state.building.floors;
     const elevators = state.building.elevators;
-    const floorHeight = totalHeight / floors.length;
     const shaftXStart = x + 80;
 
     const destColorFor = (destFloorId: number): number => {
@@ -121,20 +134,24 @@ export class PassengerSprites {
     const stillAlive = new Set<number>();
 
     // 큐 승객 위치 — 입구(왼쪽 문) 근처에 줄. i=0(헤드)은 첫 엘베에 가깝게,
-    // 신규는 입구 쪽으로 늘어남. sprite 가 ~3배 커진 만큼 spacing 도 키움.
+    // 신규는 입구 쪽으로 늘어남.
+    const buildingWidth = this.layout.width;
     for (const f of floors) {
-      const fy = y + totalHeight - f.id * floorHeight - floorHeight / 2;
-      const queueHeadX = x + 60;       // 첫 엘베(x+80) 직전
+      const fy = getFloorCenterY(y, totalHeight, this.currentFocus, f.id, floors.length);
+      const queueHeadX = x + 60;
       for (let i = 0; i < f.queue.length; i++) {
         const p = f.queue[i]!;
-        const targetX = queueHeadX - i * 36;  // sprite 폭 (~54) 의 67% 간격 — 약간 겹쳐 큐 느낌
+        const targetX = queueHeadX - i * 16;
         const targetY = fy;
         stillAlive.add(p.id);
         let s = this.map.get(p.id);
         if (!s) {
+          // 신규 등장 — 좌/우 입구 중 랜덤하게 (id 홀짝으로 결정 → 결정적)
+          const fromRight = (p.id % 2 === 0);
+          const spawnX = fromRight ? x + buildingWidth + DOOR_AREA_W / 2 : x - DOOR_AREA_W / 2;
           s = {
             id: p.id, archetype: p.archetype, anger: p.anger,
-            x: x - DOOR_AREA_W / 2, y: fy,
+            x: spawnX, y: fy,
             targetX, targetY,
             phase: 'entering',
             alpha: 0, targetAlpha: 1,
@@ -158,7 +175,7 @@ export class PassengerSprites {
     // 엘베 안 승객 위치 — 이번 frame에 boarding으로 전환되는 sprite를 stagger
     for (const e of elevators) {
       const sx = shaftXStart + e.id * shaftSpacing;
-      const ey = y + totalHeight - e.y * floorHeight - floorHeight / 2;
+      const ey = getElevatorScreenY(y, totalHeight, this.currentFocus, e.y, floors.length);
       let boardingStaggerIdx = 0;
       for (let i = 0; i < e.passengers.length; i++) {
         const p = e.passengers[i]!;
@@ -207,15 +224,17 @@ export class PassengerSprites {
       }
     }
 
-    // sim에 없는 sprite → leaving (stagger 적용)
+    // sim에 없는 sprite → leaving (stagger 적용). 좌/우 입구 중 랜덤 선택 (id 결정적).
     let leavingStaggerIdx = 0;
     for (const [id, s] of this.map) {
       if (stillAlive.has(id)) continue;
       if (s.phase === 'leaving' || s.phase === 'escalator' || s.phase === 'subway') continue;
       s.phase = 'leaving';
-      // 우측 방 문(층 안쪽 출구)으로 빠짐
-      s.targetX = this.layout.x + this.layout.width - 8;
-      s.targetAlpha = 0;
+      // 등장과 같은 쪽으로 나감 (id % 2 === 0 → 우측, 그 외 좌측)
+      const toRight = (id % 2 === 0);
+      s.targetX = toRight ? this.layout.x + this.layout.width + 8 : this.layout.x - 8;
+      // alpha 1 유지 — 문 근처 도달 시점에만 페이드 (update 에서 처리)
+      s.targetAlpha = 1;
       s.delay = leavingStaggerIdx * STAGGER_MS;
       leavingStaggerIdx += 1;
     }
@@ -225,7 +244,6 @@ export class PassengerSprites {
     if (state.visualHints.length === 0) return;
     const { x, y, width, totalHeight } = this.layout;
     const floors = state.building.floors;
-    const floorHeight = totalHeight / floors.length;
     const stairX = x + width;
 
     const destColorFor = (destFloorId: number): number => {
@@ -236,15 +254,15 @@ export class PassengerSprites {
     for (const h of state.visualHints) {
       if (h.kind === 'pathEvent') {
         const sp = this.map.get(h.passengerId);
-        const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
+        const fy = getFloorCenterY(y, totalHeight, this.currentFocus, h.floorId, floors.length);
         const px = sp?.x ?? x + 40;
         const py = (sp?.y ?? fy) - 14;
         this.spawnFloatingText(px, py, h.text, h.color);
         continue;
       }
       if (h.kind === 'escalator') {
-        const fyOrigin = y + totalHeight - h.originFloorId * floorHeight - floorHeight / 2;
-        const fyDest = y + totalHeight - h.destFloorId * floorHeight - floorHeight / 2;
+        const fyOrigin = getFloorCenterY(y, totalHeight, this.currentFocus, h.originFloorId, floors.length);
+        const fyDest = getFloorCenterY(y, totalHeight, this.currentFocus, h.destFloorId, floors.length);
         const id = HINT_ID_COUNTER--;
         this.map.set(id, {
           id, archetype: h.archetype, anger: 0,
@@ -257,7 +275,7 @@ export class PassengerSprites {
           destFloor: -1,
         });
       } else if (h.kind === 'subway') {
-        const fy = y + totalHeight - h.floorId * floorHeight - floorHeight / 2;
+        const fy = getFloorCenterY(y, totalHeight, this.currentFocus, h.floorId, floors.length);
         const id = HINT_ID_COUNTER--;
         this.map.set(id, {
           id, archetype: h.archetype, anger: 0,
@@ -313,6 +331,19 @@ export class PassengerSprites {
       let bodyTopY: number;
       let bodyHalfW: number;
 
+      // 엘베 안(riding/boarding/alighting) 승객은 아예 그리지 않음 — cab 안이 좁아서 삐져나오고,
+      // 이용자 입장에서도 큐(밖)에서 우선순위 판단하면 충분.
+      const visibleInBuilding = s.phase === 'queued' || s.phase === 'entering' || s.phase === 'leaving'
+                              || s.phase === 'escalator' || s.phase === 'subway';
+      if (!visibleInBuilding) {
+        // 엘베 안 — 모든 시각요소 숨김
+        const img = this.images.get(s.id);
+        if (img) img.setVisible(false);
+        const lbl = this.destLabels.get(s.id);
+        if (lbl) lbl.setVisible(false);
+        continue;
+      }
+
       if (useSprite) {
         let img = this.images.get(s.id) ?? null;
         if (!img) {
@@ -322,29 +353,34 @@ export class PassengerSprites {
         img.setTexture(spriteKey);
         img.setPosition(s.x, s.y);
         img.setAlpha(s.alpha);
-        // sprite 표시 크기 — 약 3배 (사용자 요청). 너무 큰 빌딩(층 많음) 에서는
-        // floor 박스 안에 들어가게 cap 처리 (floorHeight 의 75%).
-        const fullW = big ? 66 : 54;
-        const fullH = big ? 96 : 78;
-        const floorHeightForCap = Math.max(60, (this.layout.totalHeight / Math.max(1, this.lastFloorCount)));
-        const cap = Math.max(40, floorHeightForCap * 0.75);
-        let dispH = Math.min(fullH, cap);
-        let dispW = dispH * (fullW / fullH);
+        const fullW = big ? 26 : 20;
+        const fullH = big ? 38 : 30;
+        const floorHeightForCap = Math.max(48, (this.layout.totalHeight / Math.max(1, this.lastFloorCount)));
+        const cap = Math.max(28, floorHeightForCap * 0.55);
+        const dispH = Math.min(fullH, cap);
+        const dispW = dispH * (fullW / fullH);
         img.setDisplaySize(dispW, dispH);
         img.setTint(isAngry ? 0xff5555 : 0xffffff);
         img.setVisible(true);
         bodyTopY = s.y - dispH / 2;
         bodyHalfW = dispW / 2;
+        // 발 밑 그림자 (타원) — 입체감
+        const shadowW = dispW * 0.8;
+        const shadowH = 3;
+        this.g.fillStyle(0x000000, s.alpha * 0.5);
+        this.g.fillEllipse(s.x, s.y + dispH / 2, shadowW, shadowH);
       } else {
         const img = this.images.get(s.id);
         if (img) img.setVisible(false);
         // 도형 fallback (몸 + 머리)
         this.g.fillStyle(color, s.alpha);
         this.g.fillRect(s.x - w / 2, s.y - h / 2 + 4, w, h - 4);
-        // 머리
         this.g.fillRect(s.x - (w - 2) / 2, s.y - h / 2 - 2, w - 2, 6);
         bodyTopY = s.y - h / 2 - 2;
         bodyHalfW = w / 2;
+        // 발 밑 그림자
+        this.g.fillStyle(0x000000, s.alpha * 0.5);
+        this.g.fillEllipse(s.x, s.y + h / 2, w * 0.9, 2);
       }
 
       // ───── 인내심(분노) 게이지 ─────

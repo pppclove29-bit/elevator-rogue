@@ -1,3 +1,4 @@
+import { REPUTATION_INITIAL } from '../domain/simulation';
 import { SimState } from '../domain/types';
 import { ThemeId } from './themes';
 
@@ -26,6 +27,23 @@ export function readSave(): SaveData | null {
   try {
     const data = JSON.parse(raw) as SaveData;
     if (data.version !== 1) return null;
+    // ── 마이그레이션: 옛 save 에 신규 필드 없으면 기본값 주입 ──
+    if (!data.state) return data;
+    const s = data.state as any;
+    if (typeof s.reputation !== 'number') s.reputation = REPUTATION_INITIAL;
+    // 아이작 시스템 필드 (Phase 1~4)
+    if (typeof s.hasMadeDevilDeal !== 'boolean') s.hasMadeDevilDeal = false;
+    if (typeof s.devilDealCount !== 'number') s.devilDealCount = 0;
+    if (typeof s.angelDealCount !== 'number') s.angelDealCount = 0;
+    if (!Array.isArray(s.ownedTrinkets)) s.ownedTrinkets = [];
+    if (!Array.isArray(s.discardedTrinkets)) s.discardedTrinkets = [];
+    if (!Array.isArray(s.activeTransformations)) s.activeTransformations = [];
+    if (s.activeCurse === undefined) s.activeCurse = null;
+    if (typeof s.revivesRemaining !== 'number') s.revivesRemaining = 0;
+    if (typeof s.hasBeenRevivedOnce !== 'boolean') s.hasBeenRevivedOnce = false;
+    if (!Array.isArray(s.brokenRelics)) s.brokenRelics = [];
+    if (s.shopTrinketId === undefined) s.shopTrinketId = null;
+    if (typeof s.shopMysteryAvailable !== 'boolean') s.shopMysteryAvailable = false;
     return data;
   } catch {
     return null;

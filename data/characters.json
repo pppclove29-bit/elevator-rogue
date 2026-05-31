@@ -1,0 +1,35 @@
+{
+  "mentor": {
+    "displayName": "선임",
+    "defaultPortrait": "character-mentor-default",
+    "portraits": {
+      "smirk": "character-mentor-smirk"
+    },
+    "fallbackColor": "#4a4a55",
+    "initial": "구"
+  },
+  "owner": {
+    "displayName": "사장님",
+    "defaultPortrait": "character-owner-default",
+    "portraits": {
+      "angry": "character-owner-angry"
+    },
+    "fallbackColor": "#1c1c26",
+    "initial": "사"
+  },
+  "player": {
+    "displayName": "신입 매니저",
+    "defaultPortrait": "character-player-default",
+    "portraits": {
+      "worried": "character-player-worried"
+    },
+    "fallbackColor": "#b89968",
+    "initial": "나"
+  },
+  "narrator": {
+    "displayName": "",
+    "defaultPortrait": "",
+    "fallbackColor": "#0b0b10",
+    "initial": ""
+  }
+}

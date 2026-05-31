@@ -6,13 +6,25 @@ import { t } from '../i18n/locale';
 import { countActiveAngry, GAME_OVER_ACTIVE_ANGRY, repairElevator } from '../domain/simulation';
 import { REPAIR_COST } from '../domain/types';
 import { MAX_SKILLS, skillById } from '../meta/skills';
+import { MAX_TRINKETS, trinketById } from '../meta/trinkets';
+import { TRANSFORMATIONS } from '../meta/transformations';
+import { curseById } from '../meta/curses';
 import { hasSprite } from '../render/sprites';
 import { GameScene } from './GameScene';
 
 export class HUDScene extends Phaser.Scene {
   private timeText!: Phaser.GameObjects.Text;
   private goldText!: Phaser.GameObjects.Text;
+  /** 옛 danger 텍스트 자리에 평판 게이지로 교체. dangerText/reputationLabel 은 보유만 (ref 유지). */
+  // @ts-expect-error 보관 — 호환성 (외부 코드 호출 가능성)
   private dangerText!: Phaser.GameObjects.Text;
+  // @ts-expect-error 보관 — 정적 라벨이라 setText 호출 없음
+  private reputationLabel!: Phaser.GameObjects.Text;
+  private reputationBarBg!: Phaser.GameObjects.Rectangle;
+  private reputationBarFill!: Phaser.GameObjects.Rectangle;
+  private reputationValue!: Phaser.GameObjects.Text;
+  private isaacBadges!: Phaser.GameObjects.Text;
+  private trinketSlotsContainer!: Phaser.GameObjects.Container;
   private modifierText!: Phaser.GameObjects.Text;
   private relicText!: Phaser.GameObjects.Text;
   private eventText!: Phaser.GameObjects.Text;
@@ -56,16 +68,30 @@ export class HUDScene extends Phaser.Scene {
       color: '#f5c542',
     });
 
-    this.dangerText = this.add.text(GAME_WIDTH - 16, 12, '', {
-      fontFamily: FONT,
-      fontSize: '14px',
-      color: COLORS.textDim,
+    // ── 평판 게이지 (우상단, 옛 dangerText 자리) ──
+    // 0~100, 게임오버 = 0. 20 이하 = 캐스케이드. 색 단계: 빨/주/노/녹.
+    this.reputationLabel = this.add.text(GAME_WIDTH - 16, 10, t('hud.reputation') ?? '평판', {
+      fontFamily: FONT, fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(1, 0);
-    if (hasSprite(this, 'ui-icon-anger')) {
-      // dangerText 는 우측 정렬 — 텍스트 좌측에 아이콘 두려면 update 시 텍스트 width 알아야 함.
-      // 단순화: 우측 모서리에서 적당히 안쪽에 고정 배치 (텍스트는 자동으로 왼쪽으로 밀려서 그려짐).
-      this.add.image(GAME_WIDTH - 120, 22, 'ui-icon-anger').setDisplaySize(16, 16).setOrigin(0.5);
-    }
+    const repBarW = 180, repBarH = 10;
+    this.reputationBarBg = this.add.rectangle(GAME_WIDTH - 16, 26, repBarW, repBarH, 0x14141c)
+      .setOrigin(1, 0).setStrokeStyle(1, 0x3a3a48);
+    this.reputationBarFill = this.add.rectangle(GAME_WIDTH - 16 - repBarW + 1, 27, repBarW - 2, repBarH - 2, 0x7ed957)
+      .setOrigin(0, 0);
+    this.reputationValue = this.add.text(GAME_WIDTH - 16, 40, '', {
+      fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+    }).setOrigin(1, 0);
+
+    // ── 소품 3슬롯 (평판 게이지 아래) ──
+    this.trinketSlotsContainer = this.add.container(0, 0);
+
+    // ── 아이작 시스템 배지 (변신/악재/부활/거래) — 소품 슬롯 아래 ──
+    this.isaacBadges = this.add.text(GAME_WIDTH - 16, 110, '', {
+      fontFamily: FONT, fontSize: '11px', color: COLORS.text, align: 'right',
+    }).setOrigin(1, 0);
+
+    // dangerText 는 이제 미사용 — 호환성 위해 객체는 만들되 빈 텍스트 (다른 코드가 setText 호출).
+    this.dangerText = this.add.text(0, 0, '', { fontFamily: FONT, fontSize: '1px' }).setVisible(false);
 
     this.modifierText = this.add.text(GAME_WIDTH - 16, 32, '', {
       fontFamily: FONT, fontSize: '11px', color: '#e74c3c',
@@ -212,6 +238,52 @@ export class HUDScene extends Phaser.Scene {
     this.clockTimeLabel.setText(`${hh}:${mm}`);
   }
 
+  /** 소품 3슬롯 — 평판 게이지 아래 우상단. 카테고리별 색상 + 호버 시 툴팁. */
+  private drawTrinketSlots(game: GameScene): void {
+    this.trinketSlotsContainer.removeAll(true);
+    const slotW = 22, slotH = 22, gap = 4;
+    const totalW = slotW * MAX_TRINKETS + gap * (MAX_TRINKETS - 1);
+    const startX = GAME_WIDTH - 16 - totalW;
+    const y = 80;
+    for (let i = 0; i < MAX_TRINKETS; i++) {
+      const id = game.state.ownedTrinkets[i];
+      const x = startX + i * (slotW + gap);
+      let color = 0x14141c, borderC = 0x3a3a48;
+      let icon = '·';
+      if (id) {
+        const t = trinketById(id);
+        const cat = t?.category ?? 'common';
+        if (cat === 'common') { color = 0x2a3a35; borderC = 0x7ed957; icon = 'C'; }
+        else if (cat === 'conditional') { color = 0x3a3528; borderC = 0xf5c542; icon = '?'; }
+        else { color = 0x3a282a; borderC = 0xe74c3c; icon = '!'; }
+      }
+      const bg = this.add.rectangle(x + slotW / 2, y + slotH / 2, slotW, slotH, color, 1).setStrokeStyle(1, borderC);
+      const label = this.add.text(x + slotW / 2, y + slotH / 2, icon, {
+        fontFamily: FONT, fontSize: '11px', color: id ? '#ffffff' : '#3a3a48', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      if (id) {
+        bg.setInteractive({ useHandCursor: true });
+        const t = trinketById(id);
+        bg.on('pointerover', () => {
+          if (!t) return;
+          const tip = this.add.text(x + slotW / 2, y + slotH + 6, `${t.name}\n${t.desc}`, {
+            fontFamily: FONT, fontSize: '11px', color: COLORS.text,
+            backgroundColor: '#0e0e14', padding: { x: 6, y: 4 },
+            wordWrap: { width: 200 }, align: 'right',
+          }).setOrigin(1, 0).setDepth(2000);
+          tip.setPosition(GAME_WIDTH - 16, y + slotH + 6);
+          (bg as any)._tip = tip;
+          this.trinketSlotsContainer.add(tip);
+        });
+        bg.on('pointerout', () => {
+          const tip = (bg as any)._tip as Phaser.GameObjects.Text | undefined;
+          if (tip) { tip.destroy(); (bg as any)._tip = null; }
+        });
+      }
+      this.trinketSlotsContainer.add([bg, label]);
+    }
+  }
+
   private buildSkillBar(game: GameScene): void {
     const keys = ['Q', 'W', 'E'];
     const slotW = 150;
@@ -256,7 +328,12 @@ export class HUDScene extends Phaser.Scene {
     const m = Math.floor(totalSec / 60);
     const s = totalSec % 60;
     this.timeText.setText(`${m}:${s.toString().padStart(2, '0')}`);
-    this.goldText.setText(`${game.state.gold}G`);
+
+    // 저주 UI 마스킹 — 어둠/혼란/시각장애 시 일부 정보 가림
+    const curse = game.state.activeCurse ? curseById(game.state.activeCurse.id) : null;
+    const mask = curse?.uiMaskId ?? null;
+    this.goldText.setText(mask === 'hide-gold' ? '???G' : `${game.state.gold}G`);
+    this.goldText.setColor(mask === 'hide-gold' ? '#7a4a4a' : '#f5c542');
 
     const info = phaseAtTick(game.state.tick);
     const dayNum = info.day + 1;
@@ -279,9 +356,49 @@ export class HUDScene extends Phaser.Scene {
 
     this.drawClock(game.state.tick);
 
-    const angry = countActiveAngry(game.state);
-    this.dangerText.setText(`${t('hud.angry')}  ${angry} / ${GAME_OVER_ACTIVE_ANGRY}`);
-    this.dangerText.setColor(angry >= GAME_OVER_ACTIVE_ANGRY - 1 ? '#e74c3c' : COLORS.textDim);
+    // 평판 게이지 — 비율 + 색 단계 (저주 hide-rep 시 가림)
+    const rep = Math.max(0, Math.min(100, game.state.reputation ?? 50));
+    const ratio = rep / 100;
+    const fullW = this.reputationBarBg.width - 2;
+    if (mask === 'hide-rep') {
+      this.reputationBarFill.width = fullW;
+      this.reputationBarFill.setFillStyle(0x4a4a55, 1);
+      this.reputationValue.setText('???');
+      this.reputationValue.setColor('#7a4a4a');
+    } else {
+      this.reputationBarFill.width = Math.max(1, fullW * ratio);
+      let color = 0x7ed957;
+      if (rep < 20) color = 0xe74c3c;
+      else if (rep < 40) color = 0xe2a04a;
+      else if (rep < 70) color = 0xf5c542;
+      this.reputationBarFill.setFillStyle(color, 1);
+      this.reputationValue.setText(`${Math.round(rep)} / 100`);
+      this.reputationValue.setColor(rep < 20 ? '#e74c3c' : rep < 40 ? '#e2a04a' : COLORS.text);
+    }
+
+    // ── 소품 3슬롯 (아이콘) ──
+    this.drawTrinketSlots(game);
+
+    // ── 아이작 배지 — 변신/악재/부활/거래 한 줄 요약 ──
+    const badges: string[] = [];
+    const transforms = game.state.activeTransformations ?? [];
+    if (transforms.length > 0) {
+      const tfName = transforms.map((id) => TRANSFORMATIONS[id]?.name ?? id).join('+');
+      badges.push(`✨ ${tfName}`);
+    }
+    if (game.state.activeCurse) {
+      const cname = curseById(game.state.activeCurse.id)?.name ?? game.state.activeCurse.id;
+      badges.push(`⚠ ${cname}`);
+    }
+    if (game.state.revivesRemaining > 0) badges.push(`💀 부활 ${game.state.revivesRemaining}`);
+    if (game.state.devilDealCount > 0) badges.push(`😈 ${game.state.devilDealCount}`);
+    if (game.state.angelDealCount > 0) badges.push(`👼 ${game.state.angelDealCount}`);
+    this.isaacBadges.setText(badges.join('  '));
+
+    // dangerText 는 이제 사용 안 함 — 호환성 위해 빈 호출 유지.
+    const _angry = countActiveAngry(game.state);
+    void _angry;
+    void GAME_OVER_ACTIVE_ANGRY;
 
     const mods = game.state.activeModifiers;
     this.modifierText.setText(mods.length > 0 ? t('hud.modifier_count', { n: mods.length }) : '');

@@ -134,13 +134,13 @@ root.append(
   const p = defaultPolicy();
   const section = el('section', { id: 'policy' });
   section.append(
-    el('h2', {}, '엘리베이터 운영 정책 (기본값)'),
-    el('p', { class: 'section-desc', html: '엘베마다 4가지 form 설정. 룰 블록 조립 시스템은 폐기되고 정책 form으로 단순화됨.' }),
+    el('h2', {}, '엘리베이터 운영 정책 (기본값 v2)'),
+    el('p', { class: 'section-desc', html: '엘베마다 4가지 다중 선택 필드. 빈 배열 = 제약 없음.' }),
     el('div', { class: 'kvs', html: `
-      <dt>운영 층 범위</dt><dd>${p.minFloor + 1}F ~ ${p.maxFloor < 0 ? '무제한' : (p.maxFloor + 1) + 'F'}</dd>
-      <dt>층 패리티</dt><dd>${p.parity} (모두 / 짝수 / 홀수)</dd>
-      <dt>픽업 대상</dt><dd>${p.pickupMode} (any / lobby-only / role)</dd>
-      <dt>정원 풀이면 즉시 하차</dt><dd>${p.prioritizeUnloadWhenFull ? 'ON' : 'OFF'}</dd>
+      <dt>멈출 층</dt><dd>${p.stopFloors.length === 0 ? '전층' : p.stopFloors.map((f) => `${f + 1}F`).join(', ')}</dd>
+      <dt>태울 승객</dt><dd>${p.pickupArchetypes.length === 0 ? '모든 종류' : p.pickupArchetypes.join(', ')}</dd>
+      <dt>승차 전용 층</dt><dd>${p.pickupOnlyFloors.length === 0 ? '제한 없음' : p.pickupOnlyFloors.map((f) => `${f + 1}F`).join(', ')}</dd>
+      <dt>하차 전용 층</dt><dd>${p.dropoffOnlyFloors.length === 0 ? '제한 없음' : p.dropoffOnlyFloors.map((f) => `${f + 1}F`).join(', ')}</dd>
     ` })
   );
   root.append(section);

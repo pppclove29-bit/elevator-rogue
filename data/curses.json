@@ -1,0 +1,14 @@
+{
+  "c-darkness":  { "name": "어둠",       "desc": "골드 잔액이 보이지 않는다",                       "effectId": "noop",            "params": {}, "uiMaskId": "hide-gold" },
+  "c-confusion": { "name": "혼란",       "desc": "평판 수치가 보이지 않는다",                       "effectId": "noop",            "params": {}, "uiMaskId": "hide-rep" },
+  "c-blindness": { "name": "시각장애",   "desc": "승객 불만 게이지가 보이지 않는다",                "effectId": "noop",            "params": {}, "uiMaskId": "hide-anger" },
+  "c-haste":     { "name": "가속",       "desc": "스폰 빈도 +30% (간격 ×0.77)",                     "effectId": "spawn-mul",       "params": { "factor": 0.77 } },
+  "c-fragility": { "name": "취약함",     "desc": "엘베 고장률 ×3",                                  "effectId": "breakdown-mul",   "params": { "factor": 3 } },
+  "c-fury":      { "name": "분노",       "desc": "모든 불만 누적 ×1.5",                             "effectId": "anger-mul",       "params": { "factor": 1.5 } },
+  "c-poverty":   { "name": "빈곤",       "desc": "모든 매출 단가 ×0.7",                             "effectId": "gold-mul",        "params": { "factor": 0.7 } },
+  "c-misfortune":{ "name": "불운",       "desc": "매일 자정 평판 -3 (보스데이 종료까지)",           "effectId": "daily-rep-drain", "params": { "amount": 3 } },
+  "c-crowding":  { "name": "혼잡",       "desc": "엘베 정원 -2 (최소 2)",                            "effectId": "capacity-add",    "params": { "delta": -2, "min": 2 } },
+  "c-sluggish":  { "name": "둔화",       "desc": "엘베 이동 속도 ×0.85",                             "effectId": "speed-mul",       "params": { "factor": 0.85 } },
+  "c-ineptitude":{ "name": "무능",       "desc": "스킬 쿨다운 ×1.5",                                 "effectId": "skill-cd-mul",    "params": { "factor": 1.5 } },
+  "c-fear":      { "name": "공포",       "desc": "VIP/임원 손님 불만 누적 ×2",                       "effectId": "anger-mul",       "params": { "factor": 1.3 } }
+}

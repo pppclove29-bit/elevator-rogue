@@ -59,7 +59,7 @@ export class OptionsScene extends Phaser.Scene {
   private rebuild(): void {
     this.content.removeAll(true);
 
-    const panelX = 200, panelY = 90, panelW = GAME_WIDTH - 400, panelH = 480;
+    const panelX = 200, panelY = 80, panelW = GAME_WIDTH - 400, panelH = 560;
     const bg = this.add.rectangle(panelX, panelY, panelW, panelH, PANEL_BG, 1).setOrigin(0, 0).setStrokeStyle(1, BORDER);
     this.content.add(bg);
 

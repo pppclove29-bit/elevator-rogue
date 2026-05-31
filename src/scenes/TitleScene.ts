@@ -3,13 +3,11 @@ import { COLORS, FONT, GAME_HEIGHT, GAME_WIDTH } from '../config';
 import { t as tr } from '../i18n/locale';
 import { CHALLENGES, challengeById } from '../meta/challenges';
 import { todayBestDay, todayDaily } from '../meta/daily';
-import { loadOptions } from '../meta/options';
 import { isAllThemesCleared, isStoryCleared, isUnlocked, loadProgression, unlockLabel } from '../meta/progression';
 import { readSave, saveExists, summarize } from '../meta/save';
 import { ThemeId, THEMES } from '../meta/themes';
 import { Button } from '../ui/Button';
 
-const TUTORIAL_KEY = 'elevator-rogue.tutorialShown';
 
 /** 도전 모드 view 에 노출되는 테마들 (오피스 = 스토리 모드라 제외) */
 const CHALLENGE_THEMES: ThemeId[] = ['airport', 'hospital', 'hotel', 'chaos'];
@@ -28,13 +26,7 @@ export class TitleScene extends Phaser.Scene {
     this.selectedTheme = 'airport';
     this.selectedChallenge = null;
     this.build();
-
-    // 첫 도움말 한 번만 (튜토리얼 모달)
-    const opt = loadOptions();
-    if (opt.showTutorialOnStart && !localStorage.getItem(TUTORIAL_KEY)) {
-      this.scene.launch('Help', { firstTime: true });
-      localStorage.setItem(TUTORIAL_KEY, '1');
-    }
+    // 빠른 가이드 자동 표시 제거 — 사용자가 [조작법] / [옵션] 등을 직접 누를 때만 표시.
   }
 
   // ───────────────────────────────────────────────────────
@@ -70,35 +62,172 @@ export class TitleScene extends Phaser.Scene {
   }
 
   private buildBuilding(): void {
+    // 빌딩 + 옆 건물 + 도로 + 가로등 + 별 — 도시 야경 무드.
+    // sprite (decor-title-building) 있으면 배경으로 사용, 절차적 디테일은 위에 덧붙임.
+    const buildingX = 80, buildingY = 140, buildingW = 240, buildingH = 480;
     const g = this.add.graphics();
-    g.fillStyle(0x14141c, 1);
-    g.fillRect(80, 140, 240, 480);
-    g.lineStyle(1, 0x2a2a35, 1);
-    g.strokeRect(80, 140, 240, 480);
-    for (let i = 0; i < 8; i++) g.lineBetween(80, 140 + i * 60, 320, 140 + i * 60);
-    g.fillStyle(0x4a90e2, 1);
-    g.fillRect(160, 360, 36, 56);
 
-    const windowConfigs: Array<{ r: number; c: number; baseAlpha: number; period: number }> = [];
-    for (let r = 0; r < 8; r++) {
-      for (let c = 0; c < 5; c++) {
-        if (((r * 5 + c) % 7) === 0) windowConfigs.push({ r, c, baseAlpha: 0.45, period: 2400 + ((r * 5 + c) * 137) % 2000 });
-        else if (((r * 5 + c) % 11) === 3) windowConfigs.push({ r, c, baseAlpha: 0.0, period: 3800 + ((r * 5 + c) * 211) % 2500 });
+    // 1) 밤하늘 별
+    g.fillStyle(0xffffff, 0.5);
+    const starSeed = (n: number) => ((n * 9301 + 49297) % 233280) / 233280;
+    for (let i = 0; i < 60; i++) {
+      const sx = starSeed(i) * (buildingX + buildingW + 40);
+      const sy = starSeed(i + 100) * (buildingY - 20);
+      g.fillRect(Math.floor(sx), Math.floor(sy + 10), 1, 1);
+    }
+
+    // 2) 옆 작은 건물들 (실루엣)
+    g.fillStyle(0x0e0e16, 1);
+    g.fillRect(20, 280, 56, 340);
+    g.fillRect(buildingX + buildingW + 6, 320, 60, 300);
+    g.lineStyle(1, 0x1c1c26, 1);
+    g.strokeRect(20, 280, 56, 340);
+    g.strokeRect(buildingX + buildingW + 6, 320, 60, 300);
+    // 옆 건물 작은 창문
+    g.fillStyle(0xf5c542, 0.35);
+    for (let r = 0; r < 12; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (((r * 3 + c) % 4) !== 0) continue;
+        g.fillRect(28 + c * 16, 290 + r * 26, 5, 5);
       }
     }
-    for (const w of windowConfigs) {
-      const rect = this.add.rectangle(100 + w.c * 40 + 3, 160 + w.r * 60 + 3, 6, 6, 0xf5c542, w.baseAlpha).setOrigin(0.5);
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 3; c++) {
+        if (((r * 3 + c + 1) % 5) !== 0) continue;
+        g.fillRect(buildingX + buildingW + 14 + c * 16, 332 + r * 26, 5, 5);
+      }
+    }
+
+    // 3) 메인 빌딩 본체
+    g.fillStyle(0x14141c, 1);
+    g.fillRect(buildingX, buildingY, buildingW, buildingH);
+    g.lineStyle(1, 0x2a2a35, 1);
+    g.strokeRect(buildingX, buildingY, buildingW, buildingH);
+    // 층 구분선
+    for (let i = 0; i < 8; i++) g.lineBetween(buildingX, buildingY + i * 60, buildingX + buildingW, buildingY + i * 60);
+    // 옥상 패럽 (rooftop antenna 같은 디테일)
+    g.fillStyle(0x2a2a35, 1);
+    g.fillRect(buildingX + buildingW / 2 - 30, buildingY - 14, 60, 14);
+    g.fillStyle(0xe2a04a, 0.6);
+    g.fillRect(buildingX + buildingW / 2 - 2, buildingY - 32, 4, 18);
+    // 안테나 깜빡임 효과 (빨간 등)
+    const antLight = this.add.rectangle(buildingX + buildingW / 2, buildingY - 34, 6, 6, 0xff5555, 0.9).setOrigin(0.5);
+    this.tweens.add({ targets: antLight, alpha: { from: 0.3, to: 1 }, duration: 800, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // 4) 엘베 샤프트 — 빌딩 가운데
+    const shaftX = buildingX + buildingW / 2 - 18;
+    const shaftW = 36;
+    g.fillStyle(0x0b0b10, 1);
+    g.fillRect(shaftX, buildingY + 4, shaftW, buildingH - 8);
+    g.lineStyle(1, 0x222230, 1);
+    g.lineBetween(shaftX, buildingY + 4, shaftX, buildingY + buildingH - 4);
+    g.lineBetween(shaftX + shaftW, buildingY + 4, shaftX + shaftW, buildingY + buildingH - 4);
+
+    // 5) 빌딩 창문 — 좌/우 컬럼 (샤프트 양쪽). 훨씬 더 채워서 도시 느낌.
+    const winRows = 8;
+    const winColsPerSide = 3;
+    const cellW = 30;
+    const cellH = 50;
+    for (let r = 0; r < winRows; r++) {
+      for (let c = 0; c < winColsPerSide * 2; c++) {
+        // 좌측 3칸 / 우측 3칸 — 샤프트 건너뛰고
+        const sideOffset = c < winColsPerSide
+          ? buildingX + 18 + c * cellW
+          : shaftX + shaftW + 6 + (c - winColsPerSide) * cellW;
+        const wx = sideOffset;
+        const wy = buildingY + 8 + r * cellH;
+        // 단계별 알파 — 80% 셀이 어떤 형태로든 켜져있음
+        const seed = r * 31 + c * 7;
+        const pick = seed % 10;
+        let baseAlpha: number;
+        let blink: 'steady' | 'soft' | 'rare';
+        if (pick < 4) { baseAlpha = 0.7; blink = 'steady'; }
+        else if (pick < 7) { baseAlpha = 0.45; blink = 'soft'; }
+        else if (pick < 9) { baseAlpha = 0.0; blink = 'rare'; }
+        else continue; // 어두운 방
+        const rect = this.add.rectangle(wx + cellW / 2 - 6, wy + cellH / 2 - 4, 12, 14, 0xf5c542, baseAlpha).setOrigin(0.5);
+        if (blink === 'steady') {
+          this.tweens.add({ targets: rect, alpha: { from: 0.55, to: 0.95 }, duration: 1800 + seed * 31, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: seed * 17 });
+        } else if (blink === 'soft') {
+          this.tweens.add({ targets: rect, alpha: { from: 0.25, to: 0.7 }, duration: 2400 + seed * 41, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: seed * 29 });
+        } else {
+          this.tweens.add({ targets: rect, alpha: { from: 0, to: 0.6 }, duration: 4000 + seed * 53, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay: seed * 41 });
+        }
+      }
+    }
+
+    // 6) 인도(sidewalk) + 도로 + 가로등
+    //    인도: 건물 바로 아래 14px 회색 띠 — 사람이 다니는 곳
+    //    도로: 인도 아래, 어두운 색 + 차선 점선
+    const sidewalkY = buildingY + buildingH;
+    const sidewalkH = 16;
+    const roadY = sidewalkY + sidewalkH;
+    g.fillStyle(0x1c1c26, 1); // 인도
+    g.fillRect(0, sidewalkY, GAME_WIDTH, sidewalkH);
+    g.fillStyle(0x080810, 1); // 도로
+    g.fillRect(0, roadY, GAME_WIDTH, 80);
+    g.lineStyle(1, 0x222230, 1);
+    g.lineBetween(0, sidewalkY, GAME_WIDTH, sidewalkY);
+    g.lineBetween(0, roadY, GAME_WIDTH, roadY);
+    // 도로 점선 (중앙 차선)
+    g.fillStyle(0x2a2a35, 1);
+    for (let dx = 0; dx < GAME_WIDTH; dx += 24) g.fillRect(dx, roadY + 28, 12, 2);
+    // 가로등 (좌측 작은 건물 옆)
+    g.fillStyle(0x3a3a48, 1);
+    g.fillRect(86, sidewalkY - 30, 2, 30);
+    g.fillStyle(0xfff0a0, 0.6);
+    g.fillCircle(87, sidewalkY - 32, 5);
+
+    // 7) 움직이는 엘베 캐브 — 샤프트 안에서 부드럽게 위아래
+    const cabW = shaftW - 8;
+    const cabH = 48;
+    const cab = this.add.rectangle(shaftX + shaftW / 2, buildingY + buildingH - 50, cabW, cabH, 0x4a90e2, 1).setOrigin(0.5);
+    // cab 내부 디테일 (창문 라인)
+    const cabLine = this.add.rectangle(shaftX + shaftW / 2, buildingY + buildingH - 50, cabW - 6, 2, 0x0b0b10, 0.5).setOrigin(0.5);
+    this.tweens.add({
+      targets: [cab, cabLine],
+      y: buildingY + 50,
+      duration: 7000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut',
+    });
+
+    // 8) 보행자 — 인도(sidewalk) 위에서 좌우 왕복. 도로 X.
+    const streetY = sidewalkY + sidewalkH / 2;
+    const PEDESTRIAN_COLORS = [0xb0b0c0, 0xb89968, 0xb08cff, 0x7ed957, 0xf5c542, 0xff9ed8, 0xc0a86a];
+    const pedestrianCount = 7;
+    for (let i = 0; i < pedestrianCount; i++) {
+      const goLeftToRight = i % 2 === 0;
+      const startX = goLeftToRight ? -12 : GAME_WIDTH + 12;
+      const endX = goLeftToRight ? GAME_WIDTH + 12 : -12;
+      const yJitter = (i % 3) * 4 - 2;
+      const color = PEDESTRIAN_COLORS[i % PEDESTRIAN_COLORS.length]!;
+      const ped = this.add.container(startX, streetY + yJitter);
+      const body = this.add.rectangle(0, 2, 4, 8, color, 1).setOrigin(0.5);
+      const head = this.add.rectangle(0, -5, 3, 3, color, 1).setOrigin(0.5);
+      // 가방/짐 — 일부 보행자만
+      if (i % 3 === 0) {
+        const bag = this.add.rectangle(2.5, 2, 2, 4, 0x4a4a55, 1).setOrigin(0.5);
+        ped.add(bag);
+      }
+      ped.add([body, head]);
+      // 좌우 방향에 따라 뒤집어서 가방 위치 다르게 보이도록
+      if (!goLeftToRight) ped.scaleX = -1;
+
+      const duration = 9000 + (i * 1700) % 6000;  // 사람마다 다른 속도
+      const delay = (i * 1300) % 8000;
+
+      // 살짝 위아래 흔들리는 걸음 (별도 tween)
       this.tweens.add({
-        targets: rect,
-        alpha: w.baseAlpha > 0.2 ? { from: 0.45, to: 0.95 } : { from: 0, to: 0.6 },
-        duration: w.period, yoyo: true, repeat: -1,
-        delay: (w.r * 5 + w.c) * 73, ease: 'Sine.easeInOut',
+        targets: ped, y: streetY + yJitter - 1.5,
+        duration: 240 + (i * 17) % 80,
+        yoyo: true, repeat: -1, ease: 'Sine.easeInOut', delay,
+      });
+      // 좌우 이동 — 끝까지 가면 즉시 반대편에서 다시 시작
+      this.tweens.add({
+        targets: ped, x: endX,
+        duration, repeat: -1, ease: 'Linear', delay,
+        onRepeat: () => { ped.x = startX; },
       });
     }
-    const cab = this.add.rectangle(178, 388, 36, 56, 0x4a90e2, 1).setOrigin(0.5);
-    g.fillStyle(0x0b0b10, 1);
-    g.fillRect(160, 360, 36, 56);
-    this.tweens.add({ targets: cab, y: 268, duration: 6000, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
   }
 
   private buildTitle(): void {
@@ -107,9 +236,6 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5, 0);
     this.add.text(GAME_WIDTH / 2 + 30, 156, '승강씨', {
       fontFamily: FONT, fontSize: '54px', color: '#f5c542', fontStyle: 'bold',
-    }).setOrigin(0.5, 0);
-    this.add.text(GAME_WIDTH / 2 + 30, 224, tr('title.subtitle'), {
-      fontFamily: FONT, fontSize: '12px', color: COLORS.textDim,
     }).setOrigin(0.5, 0);
   }
 
@@ -176,10 +302,7 @@ export class TitleScene extends Phaser.Scene {
     new Button(this, btnX, y, 320, 56, '📖  스토리 모드',
       () => this.startStory(),
       { fontSize: 18, bg: 0x4a90e2, bgHover: 0x5aa0f2, textColor: '#0b0b10', textColorActive: '#0b0b10' });
-    this.add.text(btnX, y + 40, '오피스 빌딩 · 멘토와 함께 운영을 배웁니다', {
-      fontFamily: FONT, fontSize: '11px', color: COLORS.textDim,
-    }).setOrigin(0.5, 0);
-    y += 88;
+    y += 72;
 
     // 도전 모드 — 스토리 완주 후 열림
     if (storyCleared) {

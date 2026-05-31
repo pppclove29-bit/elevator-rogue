@@ -1,0 +1,8 @@
+{
+  "a-kind-feather":  { "name": "친절의 깃털",       "desc": "불만 누적 -5%, 평판 자연 회복 +0.2/일",            "effectId": "anger-regen",      "params": { "angerFactor": 0.95, "regenBonus": 0.2 } },
+  "a-pure-light":    { "name": "순백의 빛",         "desc": "캐스케이드 임계 -5 (15 이하에서만 발동)",          "effectId": "cascade-threshold","params": { "delta": -5 } },
+  "a-guardian-eye":  { "name": "수호자의 눈",       "desc": "도둑 스폰 -50%, 도둑 잡힘 시 평판 +1",             "effectId": "thief-shield",     "params": { "thiefFactor": 0.5, "repGain": 1 } },
+  "a-soothing-bell": { "name": "달래는 종소리",      "desc": "화난 손님 도착 시 평판 손실 -1 (덜 아픔)",          "effectId": "anger-soften",     "params": { "lossReduce": 1 } },
+  "a-mercy-token":   { "name": "자비의 토큰",       "desc": "캐스케이드 진입 시 1회 자동 탈출 (평판 +10 회복)", "effectId": "mercy-escape",     "params": { "repBoost": 10 } },
+  "a-second-life":   { "name": "두 번째 생명",       "desc": "부활 1회 추가",                                    "effectId": "extra-revive",     "params": { "amount": 1 } }
+}

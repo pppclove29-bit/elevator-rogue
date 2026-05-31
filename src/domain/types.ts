@@ -11,7 +11,14 @@ export type FloorRole =
 export type ElevatorState =
   | { kind: 'idle' }
   | { kind: 'moving'; targetFloor: FloorId }
-  | { kind: 'loading'; remainingTicks: number }
+  /**
+   * 정차 + 하차/탑승 처리.
+   * subPhase: 'alighting' 모든 도착 승객 내림 → 'boarding' 큐 사람들 태움.
+   * activeId: 현재 처리 중인 승객 id (null = 다음 사람 픽 단계).
+   * remainingTicks: 현재 활성 승객 완료까지 남은 tick.
+   * boardableIds: 정차 시점의 큐 스냅샷 — 정차 도중 새로 스폰된 승객은 못 탐.
+   */
+  | { kind: 'loading'; subPhase: 'alighting' | 'boarding'; activeId: number | null; remainingTicks: number; boardableIds: PassengerId[] }
   | { kind: 'broken' };
 
 export interface Passenger {
@@ -21,6 +28,8 @@ export interface Passenger {
   spawnTick: number;
   anger: number;
   archetype: PassengerArchetype;
+  /** 이 tick 까지는 "입장 중" (걸어가는 중) — anger 누적 안 함. 빈값 = 즉시 queue 상태. */
+  enteringUntilTick?: number;
 }
 
 export interface Elevator {
@@ -86,26 +95,47 @@ export const BREAKDOWN_BASE_CHANCE = 0.015;    // 정차 1회당 base (1.5%)
 export const BREAKDOWN_GRACE_TRIPS = 20;       // 처음 N회 정차는 무조건 안전
 export const REPAIR_COST = 20;
 
-export type PolicyParity = 'all' | 'even' | 'odd';
-export type PolicyPickup = 'any' | 'lobby-only' | 'role';
-
+/**
+ * 엘리베이터 운영 정책 — v2.
+ *
+ * 모든 배열이 빈 배열이면 "제약 없음" (전부 허용).
+ * - stopFloors: 멈출 층 (다중 선택). 빈 배열 = 모든 층 정차 가능.
+ * - pickupArchetypes: 태울 승객 종류. 빈 배열 = 모든 승객.
+ * - pickupOnlyFloors: 이 층들에서만 픽업 (드롭은 가능). 빈 배열 = 픽업 층 제한 없음.
+ * - dropoffOnlyFloors: 이 층들에선 픽업 X, 드롭만. 빈 배열 = 제약 없음.
+ *
+ * pickupOnly 와 dropoffOnly 가 충돌하면 dropoff 우선 (안 태움).
+ */
 export interface ElevatorPolicy {
-  minFloor: number;
-  maxFloor: number;      // -1 = 무제한
-  parity: PolicyParity;
-  pickupMode: PolicyPickup;
-  pickupRole?: FloorRole;          // pickupMode='role' 일 때
-  prioritizeUnloadWhenFull: boolean;
+  stopFloors: number[];
+  pickupArchetypes: string[];          // PassengerArchetype 키
+  pickupOnlyFloors: number[];
+  dropoffOnlyFloors: number[];
 }
 
 export function defaultPolicy(): ElevatorPolicy {
   return {
-    minFloor: 0,
-    maxFloor: -1,
-    parity: 'all',
-    pickupMode: 'any',
-    prioritizeUnloadWhenFull: true,
+    stopFloors: [],
+    pickupArchetypes: [],
+    pickupOnlyFloors: [],
+    dropoffOnlyFloors: [],
   };
+}
+
+/** 옛 정책 (v1) 가 저장된 경우 새 형식으로 마이그레이션. */
+export function migratePolicy(raw: any): ElevatorPolicy {
+  if (!raw || typeof raw !== 'object') return defaultPolicy();
+  // 이미 v2 형식?
+  if (Array.isArray(raw.stopFloors)) {
+    return {
+      stopFloors: raw.stopFloors ?? [],
+      pickupArchetypes: raw.pickupArchetypes ?? [],
+      pickupOnlyFloors: raw.pickupOnlyFloors ?? [],
+      dropoffOnlyFloors: raw.dropoffOnlyFloors ?? [],
+    };
+  }
+  // v1 → v2: 다 기본값 (전체 허용).
+  return defaultPolicy();
 }
 
 export interface SimState {
@@ -126,11 +156,47 @@ export interface SimState {
   gold: number;
   /** 직전 day end 정산 매출 (HUD/결산 표시용). 0 = 미정산 또는 초기값. */
   lastDayPayout?: number;
+  /**
+   * 빌딩 평판 (0~100). 초기 50.
+   * - 화난 손님 도착 → -2 영구
+   * - 만족 손님 도착 → +0.5
+   * - 매일 자정 자연 회복 +1
+   * - 0 도달 시 게임오버 (기존 "불만 5명 동시" 게임오버 대체)
+   * - 20 이하 시 캐스케이드 디버프 발동
+   */
+  reputation: number;
+  /** 캐스케이드 디버프 활성 여부 (평판 20 이하 진입 시 true → 해제 시 false). */
+  cascadeActive?: boolean;
+
+  // ─── 아이작 차용 시스템 (Phase 1~4) ─────────────────
+  /** 악마 거래 1회 이상 했는지 — 천사방 영구 봉인 조건. */
+  hasMadeDevilDeal: boolean;
+  devilDealCount: number;
+  angelDealCount: number;
+  /** 트링킷 (최대 3) — 보유 ID. */
+  ownedTrinkets: string[];
+  /** 한 번 거절/교체한 트링킷 — 재등장 방지. */
+  discardedTrinkets: string[];
+  /** 활성 변신 ID 들 (보통 1개, 다중 가능). */
+  activeTransformations: string[];
+  /** 보스 day 동안 활성 저주. */
+  activeCurse: { id: string; expiresAtDay: number } | null;
+  /** 남은 부활 횟수 (Lazarus). */
+  revivesRemaining: number;
+  /** 이번 런에서 이미 부활 한 적 있음 (페널티 누적 방지). */
+  hasBeenRevivedOnce: boolean;
+  /** 글래스 캐논으로 파괴된 렐릭 — 재획득 방지. */
+  brokenRelics: string[];
+
   repairKits: number;
   activeModifiers: ActiveModifier[];
   ownedRelics: string[];
   shopOfferIds: string[];        // 이번 상점에 등장할 카드 id (upgrade/skill만, 수리는 고장 시 자동 추가)
   shopRerollCount: number;       // 이번 상점에서 리롤 횟수 (비용 점증)
+  /** 이번 상점의 트링킷 슬롯 id (1개). null = 풀이 비었거나 등장 X. */
+  shopTrinketId?: string | null;
+  /** 이번 상점의 미스터리 박스 표시 여부 (Day ≥ 3 부터 등장, 1회 한정). */
+  shopMysteryAvailable?: boolean;
   visualHints: VisualHint[];     // 시각 신호 큐 (렌더가 매 frame 소비)
 }
 

@@ -1,7 +1,7 @@
 /**
  * CMS 페이지 — 게임 데이터 폼 편집 → data/*.json 저장.
  *
- * 5개 탭: 다이얼로그 / 스킬 / 모디파이어 / 층 / 승객
+ * 10개 탭: 대화 / 스킬 / 운영 변수 / 층 / 승객 / 등장인물 / 악마·천사 거래 / 소품 / 악재
  * 모두 동일 패턴: 좌측 목록 + 우측 폼.
  */
 import dialogData from '../../data/dialog.json';
@@ -9,8 +9,14 @@ import skillData from '../../data/skills.json';
 import modifierData from '../../data/modifiers.json';
 import floorData from '../../data/floors.json';
 import archetypeData from '../../data/archetypes.json';
+import characterData from '../../data/characters.json';
+import devilRelicsData from '../../data/devil-relics.json';
+import angelRelicsData from '../../data/angel-relics.json';
+import trinketsData from '../../data/trinkets.json';
+import cursesData from '../../data/curses.json';
 
-type Tab = 'dialog' | 'skills' | 'modifiers' | 'floors' | 'archetypes';
+type Tab = 'dialog' | 'skills' | 'modifiers' | 'floors' | 'archetypes' | 'characters'
+  | 'devil-relics' | 'angel-relics' | 'trinkets' | 'curses';
 
 // ─── effectId 메타데이터 (한글 설명 + 파라미터 스키마 + 미리보기) ─────────
 interface ParamSchema {
@@ -184,12 +190,17 @@ interface FieldSpec {
 }
 
 // ─── 탭 정의 ────────────────────────────────────────────────
-const SPEAKERS = ['narrator', 'mentor', 'owner', 'player'];
+// speakers 는 characters.json 의 키 + 'narrator' (특수 — portrait 없는 내레이션)
+function speakerList(): string[] {
+  const keys = Object.keys(TABS.characters.data);
+  const withNarrator = keys.includes('narrator') ? keys : ['narrator', ...keys];
+  return withNarrator;
+}
 
-// 다이얼로그는 라인 배열 구조라 별도 처리.
+// 대화는 라인 배열 구조라 별도 처리.
 const TABS: Record<Tab, TabSpec> = {
   dialog: {
-    id: 'dialog', label: '💬 다이얼로그', file: 'dialog.json',
+    id: 'dialog', label: '💬 대화', file: 'dialog.json',
     data: JSON.parse(JSON.stringify(dialogData)),
     newEntryFactory: () => [{ speaker: 'mentor', text: '새 대사' }],
     fields: [], // 특수 처리
@@ -207,9 +218,9 @@ const TABS: Record<Tab, TabSpec> = {
     ],
   },
   modifiers: {
-    id: 'modifiers', label: '✨ 모디파이어', file: 'modifiers.json',
+    id: 'modifiers', label: '✨ 운영 변수', file: 'modifiers.json',
     data: JSON.parse(JSON.stringify(modifierData)),
-    newEntryFactory: () => ({ name: '새 모디파이어', desc: '', type: 'debuff', effectId: 'phase-spawn-mul', params: { phase: 'morning', factor: 0.6 } }),
+    newEntryFactory: () => ({ name: '새 운영 변수', desc: '', type: 'debuff', effectId: 'phase-spawn-mul', params: { phase: 'morning', factor: 0.6 } }),
     fields: [
       { key: 'name', label: '이름 (게임에 표시)', type: 'text' },
       { key: 'desc', label: '설명 (카드 텍스트)', type: 'textarea' },
@@ -251,13 +262,81 @@ const TABS: Record<Tab, TabSpec> = {
       { key: 'weightByPhase', label: '페이즈별 스폰 가중치 (0=등장 안 함)', type: 'phase-weights' },
     ],
   },
+  characters: {
+    id: 'characters', label: '🎭 등장인물', file: 'characters.json',
+    data: JSON.parse(JSON.stringify(characterData)),
+    newEntryFactory: () => ({
+      displayName: '새 캐릭터', defaultPortrait: '', portraits: {},
+      fallbackColor: '#888888', initial: '?',
+    }),
+    fields: [
+      { key: 'displayName', label: '표시 이름 (대화 이름 박스)', type: 'text' },
+      { key: 'defaultPortrait', label: '기본 portrait sprite 키 (예: character-mentor-default)', type: 'text' },
+      { key: 'initial', label: '이니셜 (이미지 없을 때 placeholder 안에 1글자)', type: 'text' },
+      { key: 'fallbackColor', label: 'placeholder 색 (#rrggbb)', type: 'color' },
+      { key: 'portraits', label: '표정 변형 (JSON 객체: { "smirk": "character-mentor-smirk" })', type: 'json' },
+    ],
+  },
+  'devil-relics': {
+    id: 'devil-relics', label: '😈 악마 거래', file: 'devil-relics.json',
+    data: JSON.parse(JSON.stringify(devilRelicsData)),
+    newEntryFactory: () => ({ name: '새 악마 거래', desc: '', effectId: 'gold-mul', params: { factor: 1.3 } }),
+    fields: [
+      { key: 'name', label: '이름', type: 'text' },
+      { key: 'desc', label: '설명', type: 'textarea' },
+      { key: 'effectId', label: '효과 ID (deals.ts DEAL_EFFECTS 참조)', type: 'text' },
+      { key: 'params', label: '효과 파라미터 (JSON)', type: 'json' },
+      { key: 'fragile', label: '글래스캐논 조건 (JSON, optional: {conditionId, params})', type: 'json' },
+    ],
+  },
+  'angel-relics': {
+    id: 'angel-relics', label: '👼 천사 거래', file: 'angel-relics.json',
+    data: JSON.parse(JSON.stringify(angelRelicsData)),
+    newEntryFactory: () => ({ name: '새 천사 축복', desc: '', effectId: 'anger-regen', params: { angerFactor: 0.9, regenBonus: 0.5 } }),
+    fields: [
+      { key: 'name', label: '이름', type: 'text' },
+      { key: 'desc', label: '설명', type: 'textarea' },
+      { key: 'effectId', label: '효과 ID (deals.ts DEAL_EFFECTS 참조)', type: 'text' },
+      { key: 'params', label: '효과 파라미터 (JSON)', type: 'json' },
+    ],
+  },
+  trinkets: {
+    id: 'trinkets', label: '🎁 소품', file: 'trinkets.json',
+    data: JSON.parse(JSON.stringify(trinketsData)),
+    newEntryFactory: () => ({ name: '새 소품', desc: '', category: 'common', effectId: 'gold-flat', params: { amount: 2 } }),
+    fields: [
+      { key: 'name', label: '이름', type: 'text' },
+      { key: 'desc', label: '설명', type: 'textarea' },
+      { key: 'category', label: '카테고리 (common/conditional/gamble)', type: 'select', options: ['common', 'conditional', 'gamble'] },
+      { key: 'effectId', label: '효과 ID (trinkets.ts TRINKET_EFFECTS 참조)', type: 'text' },
+      { key: 'params', label: '효과 파라미터 (JSON)', type: 'json' },
+    ],
+  },
+  curses: {
+    id: 'curses', label: '⚠ 악재', file: 'curses.json',
+    data: JSON.parse(JSON.stringify(cursesData)),
+    newEntryFactory: () => ({ name: '새 악재', desc: '', effectId: 'anger-mul', params: { factor: 1.3 } }),
+    fields: [
+      { key: 'name', label: '이름', type: 'text' },
+      { key: 'desc', label: '설명', type: 'textarea' },
+      { key: 'effectId', label: '효과 ID (curses.ts CURSE_EFFECTS 참조)', type: 'text' },
+      { key: 'params', label: '효과 파라미터 (JSON)', type: 'json' },
+      { key: 'uiMaskId', label: 'UI 마스킹 (hide-gold / hide-rep / hide-anger, optional)', type: 'select', options: ['', 'hide-gold', 'hide-rep', 'hide-anger'] },
+    ],
+  },
 };
 
 let currentTab: Tab = 'dialog';
 let activeKey: string | null = null;
-let dirty: Record<Tab, boolean> = { dialog: false, skills: false, modifiers: false, floors: false, archetypes: false };
+let dirty: Record<Tab, boolean> = {
+  dialog: false, skills: false, modifiers: false, floors: false, archetypes: false, characters: false,
+  'devil-relics': false, 'angel-relics': false, trinkets: false, curses: false,
+};
 /** sidebar 검색어 (탭별로 분리). 빈 문자열이면 전체 표시. */
-let searchByTab: Record<Tab, string> = { dialog: '', skills: '', modifiers: '', floors: '', archetypes: '' };
+let searchByTab: Record<Tab, string> = {
+  dialog: '', skills: '', modifiers: '', floors: '', archetypes: '', characters: '',
+  'devil-relics': '', 'angel-relics': '', trinkets: '', curses: '',
+};
 /** 우측 컨텐츠 표시 모드 — Form (기본) / Raw JSON. */
 let viewMode: 'form' | 'json' = 'form';
 
@@ -381,6 +460,11 @@ const lastSavedSnapshot: Record<Tab, string> = {
   modifiers: JSON.stringify(JSON.parse(JSON.stringify(modifierData)), null, 2),
   floors: JSON.stringify(JSON.parse(JSON.stringify(floorData)), null, 2),
   archetypes: JSON.stringify(JSON.parse(JSON.stringify(archetypeData)), null, 2),
+  characters: JSON.stringify(JSON.parse(JSON.stringify(characterData)), null, 2),
+  'devil-relics': JSON.stringify(JSON.parse(JSON.stringify(devilRelicsData)), null, 2),
+  'angel-relics': JSON.stringify(JSON.parse(JSON.stringify(angelRelicsData)), null, 2),
+  trinkets: JSON.stringify(JSON.parse(JSON.stringify(trinketsData)), null, 2),
+  curses: JSON.stringify(JSON.parse(JSON.stringify(cursesData)), null, 2),
 };
 
 /** 단순 라인 diff — 추가 + 제거. 비교 정확도는 평범하지만 검토용 충분. */
@@ -563,11 +647,11 @@ function validateAll(): ValidationIssue[] {
     for (const [id, entry] of Object.entries(spec.data)) {
       if (tab === 'dialog') {
         const lines = entry as Array<{ speaker: string; text: string; portrait?: string }>;
-        if (!Array.isArray(lines) || lines.length === 0) { issues.push({ level: 'error', tab, id, msg: '빈 다이얼로그' }); continue; }
+        if (!Array.isArray(lines) || lines.length === 0) { issues.push({ level: 'error', tab, id, msg: '빈 대화' }); continue; }
         for (let i = 0; i < lines.length; i++) {
           const l = lines[i]!;
           if (!l.speaker) issues.push({ level: 'error', tab, id, msg: `${i + 1}번 라인: speaker 빈값` });
-          else if (!SPEAKERS.includes(l.speaker)) issues.push({ level: 'warn', tab, id, msg: `${i + 1}번 라인: 알 수 없는 speaker "${l.speaker}"` });
+          else if (!speakerList().includes(l.speaker)) issues.push({ level: 'warn', tab, id, msg: `${i + 1}번 라인: 알 수 없는 speaker "${l.speaker}" — 등장인물 탭에서 추가 또는 ID 확인` });
           if (l.text === undefined || l.text === null) issues.push({ level: 'error', tab, id, msg: `${i + 1}번 라인: text 빈값` });
         }
         continue;
@@ -910,10 +994,10 @@ const SPEAKER_COLOR: Record<string, string> = {
 
 let dialogPreviewIdx = 0;
 
-/** 한 줄의 다이얼로그를 게임 다이얼로그 박스 모양으로 렌더 (미니어처). */
+/** 한 줄의 대화를 게임 대화 박스 모양으로 렌더 (미니어처). */
 function renderDialogPreview(lines: Array<{ speaker: string; text: string; portrait?: string }>): HTMLElement {
   if (lines.length === 0) {
-    return el('div', { style: 'padding: 14px; color: var(--text-dim); font-size: 12px;' }, '빈 다이얼로그');
+    return el('div', { style: 'padding: 14px; color: var(--text-dim); font-size: 12px;' }, '빈 대화');
   }
   if (dialogPreviewIdx >= lines.length) dialogPreviewIdx = 0;
   const cur = lines[dialogPreviewIdx]!;
@@ -944,7 +1028,7 @@ function renderDialogPreview(lines: Array<{ speaker: string; text: string; portr
     stage.append(portrait);
   }
 
-  // 다이얼로그 박스 (하단)
+  // 대화 박스 (하단)
   const dialogBox = el('div', {
     style: 'position: absolute; left: 14px; right: 14px; bottom: 12px; background: #14141cdd; border: 1px solid #4a90e2; border-radius: 6px; padding: 10px 14px; min-height: 80px;',
   });
@@ -989,8 +1073,11 @@ function renderDialogContent(): HTMLElement {
   const lineRows = lines.map((line, idx) => {
     return el('div', { class: 'line-row' },
       el('select', { onChange: (e: Event) => { line.speaker = (e.target as HTMLSelectElement).value; dirty.dialog = true; } },
-        ...SPEAKERS.map((sp) => {
-          const o = el('option', { value: sp }, sp) as HTMLOptionElement;
+        ...speakerList().map((sp) => {
+          // 등장인물 탭의 displayName 을 옵션 라벨에 병기 (narrator 는 그대로)
+          const charData = TABS.characters.data[sp] as { displayName?: string } | undefined;
+          const label = sp === 'narrator' ? '내레이터' : `${sp} (${charData?.displayName ?? '?'})`;
+          const o = el('option', { value: sp }, label) as HTMLOptionElement;
           if (sp === line.speaker) o.selected = true;
           return o;
         })
@@ -1027,7 +1114,7 @@ function renderDialogContent(): HTMLElement {
   // 좌측: 편집 영역, 우측: 미리보기 (게임 모양)
   const editor = el('div', { style: 'flex: 1; min-width: 0; padding: 16px 24px; overflow-y: auto;' },
     el('div', { class: 'hint' },
-      el('strong', {}, '💡 다이얼로그: '),
+      el('strong', {}, '💡 대화: '),
       'speaker = narrator/mentor/owner/player. portrait 은 캐릭터 변형 키 (smirk/worried). 저장 후 게임 새로고침.'
     ),
     renderIdRow(spec.id, 'dialog.json'),
@@ -1043,7 +1130,7 @@ function renderDialogContent(): HTMLElement {
   const preview = el('div', { style: 'width: 380px; min-width: 380px; padding: 14px; border-left: 1px solid var(--border); background: #0e0e14;' },
     el('div', { style: 'color: var(--text-dim); font-size: 11px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;' },
       el('strong', { style: 'color: var(--accent);' }, '🎬 미리보기'),
-      el('span', {}, '— 게임 다이얼로그 박스 모양'),
+      el('span', {}, '— 게임 대화 박스 모양'),
     ),
     renderDialogPreview(lines),
   );
@@ -1238,7 +1325,7 @@ function renderField(entry: any, f: FieldSpec): HTMLElement {
         onChange: (e: Event) => {
           const newId = (e.target as HTMLSelectElement).value;
           entry[f.key] = newId;
-          // 모디파이어인 경우 params 도 기본값으로 갈아끼움 (혼란 방지)
+          // 운영 변수인 경우 params 도 기본값으로 갈아끼움 (혼란 방지)
           if (f.effectKind === 'modifier') {
             const newMeta = MODIFIER_EFFECTS_META[newId];
             if (newMeta) {
@@ -1345,27 +1432,21 @@ function fieldStyle(): string {
 }
 
 function renderIdRow(_tab: Tab, file: string): HTMLElement {
+  // ID 는 코드에서 직접 참조되므로 편집 불가 (변경 시 깨짐).
+  // 새 ID 만들기는 좌측 [+ 새 항목], 삭제는 우측 버튼으로.
   return el('div', { class: 'script-id-row' },
     el('label', {}, 'ID:'),
-    el('input', {
-      type: 'text', value: activeKey ?? '',
-      onChange: (e: Event) => {
-        const newId = (e.target as HTMLInputElement).value.trim();
-        if (!newId || newId === activeKey) return;
-        const data = TABS[currentTab].data;
-        if (data[newId]) { alert('이미 존재하는 ID'); render(); return; }
-        data[newId] = data[activeKey!];
-        delete data[activeKey!];
-        activeKey = newId;
-        dirty[currentTab] = true;
-        render();
-      },
-    }),
+    el('span', {
+      style: 'padding: 6px 10px; background: var(--row); color: var(--text); border: 1px dashed var(--border); border-radius: 4px; font-family: monospace; font-size: 13px; min-width: 200px;',
+      title: 'ID는 코드 참조 키 — 수정 불가. 변경 필요 시 새로 만들고 옛것 삭제.',
+    }, activeKey ?? ''),
+    el('span', { style: 'color: var(--text-faint); font-size: 11px;' }, '🔒 코드 참조용 — 편집 잠금'),
+    el('span', { style: 'flex: 1;' }),
     el('span', { style: 'color: var(--text-dim); font-size: 11px;' }, `→ data/${file}`),
     el('button', {
       class: 'danger',
       onClick: () => {
-        if (!confirm(`"${activeKey}" 삭제?`)) return;
+        if (!confirm(`"${activeKey}" 삭제?\n\n주의: 코드에서 이 ID 를 참조하면 게임이 깨질 수 있음.`)) return;
         recordSnapshot();
         delete TABS[currentTab].data[activeKey!];
         const keys = Object.keys(TABS[currentTab].data);

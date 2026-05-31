@@ -71,6 +71,8 @@ export function maybeSpawn(state: SimState, rng: Rng): void {
       spawnTick: state.tick,
       anger: 0,
       archetype,
+      // 입장 중 (걸어가는 동안) 은 anger 누적 X. 약 1초(20 tick) 후 줄에 도착한 것으로 간주.
+      enteringUntilTick: state.tick + 20,
     };
     effOrigin.queue.push(p);
   }

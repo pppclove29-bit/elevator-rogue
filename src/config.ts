@@ -3,7 +3,9 @@ export const GAME_HEIGHT = 720;
 
 export const TICK_MS = 50;
 
-export const INITIAL_FLOORS = 5;
+// 시작 시 적은 층수로 — 매 N일 자동 추가 (addFloor) 로 점진적 성장.
+// 1층 로비 + 2층 사무실 만 있는 단순 빌딩에서 시작.
+export const INITIAL_FLOORS = 2;
 export const INITIAL_ELEVATORS = 1;
 
 // 게임 폰트 — Galmuri11 (한국어 픽셀 폰트, OFL) 우선, 없으면 system fallback.

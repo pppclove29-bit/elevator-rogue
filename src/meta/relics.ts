@@ -1,12 +1,17 @@
 import { SimState } from '../domain/types';
 
 export type RelicType = 'pure' | 'tradeoff' | 'curse';
+export type RelicTag = 'hotel' | 'medical' | 'airport' | 'office' | 'sanitation' | 'security';
 
 export interface RelicEntry {
   id: string;
   name: string;
   desc: string;
   type: RelicType;
+  /** 세트 변신 태그 (transformations.ts). 없으면 변신 기여 X. */
+  tags?: RelicTag[];
+  /** 글래스 캐논 — 조건 만족 시 영구 파괴 (Phase 4). */
+  fragile?: { conditionId: string; params?: any };
   apply(state: SimState): void;
 }
 
@@ -16,11 +21,11 @@ export const RELICS: Record<string, RelicEntry> = {
     apply: (s) => { for (const e of s.building.elevators) e.capacity += 1; } },
   'r-light-cage':      { id:'r-light-cage', name:'가벼운 케이지', desc:'엘베 속도 +10%', type:'pure',
     apply: (s) => { s.params.globalSpeedMultiplier *= 1.1; } },
-  'r-host':            { id:'r-host', name:'친절한 안내원', desc:'불만 누적 -5%', type:'pure',
+  'r-host':            { id:'r-host', name:'친절한 안내원', desc:'불만 누적 -5%', type:'pure', tags:['hotel'],
     apply: (s) => { s.params.angerWaitingPerTick *= 0.95; s.params.angerRidingPerTick *= 0.95; } },
   'r-24h-cafe':        { id:'r-24h-cafe', name:'24시간 카페', desc:'근무 페이즈 한산 (스폰 ×0.8)', type:'pure',
     apply: (s) => { s.params.phaseSpawnMultiplier.work *= 1.25; } },
-  'r-security':        { id:'r-security', name:'보안 시스템', desc:'층 큐 상한 +2', type:'pure',
+  'r-security':        { id:'r-security', name:'보안 시스템', desc:'층 큐 상한 +2', type:'pure', tags:['security'],
     apply: (s) => { s.params.floorCapacity += 2; } },
   'r-skill-keeper':    { id:'r-skill-keeper', name:'스킬 키퍼', desc:'스킬 쿨다운 -15%', type:'pure',
     apply: (s) => { s.params.skillCooldownMultiplier *= 0.85; } },
@@ -30,7 +35,7 @@ export const RELICS: Record<string, RelicEntry> = {
     apply: (s) => { s.params.angerRidingPerTick *= 0.75; } },
 
   // Tradeoff
-  'r-luxury-interior': { id:'r-luxury-interior', name:'럭셔리 인테리어', desc:'정원 +2, 속도 -10%', type:'tradeoff',
+  'r-luxury-interior': { id:'r-luxury-interior', name:'럭셔리 인테리어', desc:'정원 +2, 속도 -10%', type:'tradeoff', tags:['hotel'],
     apply: (s) => { for (const e of s.building.elevators) e.capacity += 2; s.params.globalSpeedMultiplier *= 0.9; } },
   'r-master-key':      { id:'r-master-key', name:'마스터 키', desc:'스킬 쿨다운 -30%, 불만 ↑10%', type:'tradeoff',
     apply: (s) => { s.params.skillCooldownMultiplier *= 0.7; s.params.angerWaitingPerTick *= 1.1; } },
@@ -50,7 +55,7 @@ export const RELICS: Record<string, RelicEntry> = {
     apply: (s) => { s.params.subwayAbsorbChance = Math.max(s.params.subwayAbsorbChance, 0.3); } },
   'r-subway-express':  { id:'r-subway-express', name:'지하철 급행', desc:'로비 흡수 확률 +25% (누적)', type:'tradeoff',
     apply: (s) => { s.params.subwayAbsorbChance = Math.min(0.85, s.params.subwayAbsorbChance + 0.25); } },
-  'r-helipad':         { id:'r-helipad', name:'옥상 헬리포트', desc:'옥상(RF) 도착 골드 ×2 (영구)', type:'pure',
+  'r-helipad':         { id:'r-helipad', name:'옥상 헬리포트', desc:'옥상(RF) 도착 골드 ×2 (영구)', type:'pure', tags:['airport'],
     apply: (s) => { s.params.rooftopGoldMultiplier = Math.max(s.params.rooftopGoldMultiplier, 2); } },
 
   // 인력/시설
