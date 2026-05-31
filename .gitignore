@@ -8,3 +8,5 @@ release
 .env.local
 .idea
 .vscode
+.venv
+.claude
